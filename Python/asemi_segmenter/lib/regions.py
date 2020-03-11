@@ -1,8 +1,7 @@
 import os
 import numpy as np
 import sys
-sys.path.append(os.path.join('..', 'lib'))
-import downscales
+from asemi_segmenter.lib import downscales
 
 #########################################
 def get_subarray_1d(array_1d, col_slice, pad=0, scale=0):

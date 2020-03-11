@@ -14,11 +14,10 @@ import subprocess
 import tempfile
 import os
 import sys
-sys.path.append(os.path.join('..', 'lib'))
-import files
-import downscales
-import featurisers
-import hashfunctions
+from asemi_segmenter.lib import files
+from asemi_segmenter.lib import downscales
+from asemi_segmenter.lib import featurisers
+from asemi_segmenter.lib import hashfunctions
 
 #########################################
 UNINIT_LABEL = 2**8-1

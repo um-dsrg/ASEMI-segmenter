@@ -1,7 +1,6 @@
 import numpy as np
 import os
 import sys
-sys.path.append(os.path.join('..', 'lib'))
 
 #########################################
 def get_confusion_matrix(predicted_labels, true_labels, num_labels):

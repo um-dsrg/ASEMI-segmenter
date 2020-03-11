@@ -4,8 +4,7 @@ import scipy.ndimage
 import math
 import os
 import sys
-sys.path.append(os.path.join('..', 'lib'))
-import arrayprocs
+from asemi_segmenter.lib import arrayprocs
 
 #########################################
 class DownsampleKernel(object):

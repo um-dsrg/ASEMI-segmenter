@@ -2,10 +2,9 @@ import unittest
 import numpy as np
 import os
 import sys
-sys.path.append(os.path.join('..', 'lib'))
-import arrayprocs
-import downscales
-import regions
+from asemi_segmenter.lib import arrayprocs
+from asemi_segmenter.lib import downscales
+from asemi_segmenter.lib import regions
 
 #########################################
 class ArrayProcs(unittest.TestCase):

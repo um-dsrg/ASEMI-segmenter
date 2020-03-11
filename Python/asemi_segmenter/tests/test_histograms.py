@@ -2,10 +2,9 @@ import unittest
 import numpy as np
 import os
 import sys
-sys.path.append(os.path.join('..', 'lib'))
-import histograms
-import downscales
-import regions
+from asemi_segmenter.lib import histograms
+from asemi_segmenter.lib import downscales
+from asemi_segmenter.lib import regions
 
 #########################################
 def histogram(array, min_range, max_range, num_bins):

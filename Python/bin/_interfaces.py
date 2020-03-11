@@ -2,15 +2,14 @@ import tqdm
 import textwrap
 import os
 import sys
-sys.path.append(os.path.join('..', 'lib'))
-import times
-import segmenters
+from asemi_segmenter.lib import times
+from asemi_segmenter import segmenter
 
 #########################################
 TEXT_WIDTH = 100
 
 #########################################
-class CliProgressListener(segmenters.ProgressListener):
+class CliProgressListener(segmenter.ProgressListener):
     
     #########################################
     def __init__(self, log_file_fullfname):

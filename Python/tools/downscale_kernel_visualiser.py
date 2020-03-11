@@ -3,10 +3,9 @@ import matplotlib
 import matplotlib.pyplot as plt
 import os
 import sys
-sys.path.append(os.path.join('..', 'lib'))
-import downscales
-import regions
-import datas
+from asemi_segmenter.lib import downscales
+from asemi_segmenter.lib import regions
+from asemi_segmenter.lib import datas
 
 #########################################
 def visualise(in_array, sigma):

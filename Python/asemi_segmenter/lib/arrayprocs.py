@@ -4,10 +4,9 @@ import numpy as np
 import joblib
 import itertools
 import sys
-sys.path.append(os.path.join('..', 'lib'))
-import regions
-import downscales
-import times
+from asemi_segmenter.lib import regions
+from asemi_segmenter.lib import downscales
+from asemi_segmenter.lib import times
 
 #########################################
 def get_num_processes(num_processes):
@@ -242,7 +241,9 @@ def process_array_in_blocks(in_array_scales, out_array, processor, block_shape, 
                         params[scale]['contextless_shape'] = tuple(contextless_shape)
                         
                         scaled = in_array_scales[scale]
-                        params[scale]['block'] = regions.get_subarray_3d(scaled, *incontext_slices_wrt_whole, pad_value)
+                        params[scale]['block'] = regions.get_subarray_3d(
+                                scaled, *incontext_slices_wrt_whole, pad_value
+                            )
                         
                     yield [ params ]
     

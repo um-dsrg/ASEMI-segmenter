@@ -5,9 +5,8 @@ import matplotlib.patches
 from mpl_toolkits.mplot3d import Axes3D
 import os
 import sys
-sys.path.append(os.path.join('..', 'lib'))
-import regions
-import datas
+from asemi_segmenter.lib import regions
+from asemi_segmenter.lib import datas
 
 matplotlib.use('TkAgg')
 

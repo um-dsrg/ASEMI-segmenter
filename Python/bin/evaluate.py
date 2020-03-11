@@ -2,13 +2,12 @@ import argparse
 import os
 import sys
 import psutil
-sys.path.append(os.path.join('..', 'lib'))
-import arrayprocs
-import segmenters
-import interfaces
+import _interfaces
+from asemi_segmenter.lib import arrayprocs
+from asemi_segmenter import segmenter
 
 parser = argparse.ArgumentParser(
-        description='Segment a volume using a train segmentation model.'
+        description='Evaluate the performance of a trained segmentation model using the intersection-over-union metric.'
     )
 
 #########################
@@ -24,9 +23,20 @@ parser.add_argument(
         help='Full path to preprocessed volume data file (*.hdf).'
     )
 parser.add_argument(
-        '--results_dir',
+        '--subvolume_dir',
         required=True,
-        help='Directory of folder to contain results which will consist of a folder for each label.'
+        help='Directory of subvolume that was labelled.'
+    )
+parser.add_argument(
+        '--label_dirs',
+        nargs='+',
+        required=True,
+        help='Directories of labels containing the slices in subvolume_dir with unlabelled regions blacked out.'
+    )
+parser.add_argument(
+        '--results_fullfname',
+        required=False,
+        help='Full path to results text file to be created by this process (*.txt). If left out then results will just be displayed.'
     )
 parser.add_argument(
         '--checkpoint_fullfname',
@@ -48,13 +58,6 @@ parser.add_argument(
         help='Full path to file that is used to store a log of what is displayed on screen (*.txt).'
     )
 parser.add_argument(
-        '--soft_segmentation',
-        required=False,
-        default='yes',
-        choices=['yes', 'no'],
-        help='Whether to output greyscale images as segmented slices showing a probability of each voxel belonging to the label (default) or to output a pure binary mask (darkest value being 0 and brightest being 1).'
-    )
-parser.add_argument(
         '--max_processes',
         required=False,
         default=-1,
@@ -74,25 +77,19 @@ parser.add_argument(
 params = None
 params = vars(parser.parse_args())
 if params is not None:
-    params['listener'] = interfaces.CliProgressListener(params.pop('log_file_fullfname'))
-    if 'config_fullfname' in params:
-        assert 'config' not in params
-        params['config'] = params['config_fullfname']
-        del params['config_fullfname']
+    params['listener'] = _interfaces.CliProgressListener(params.pop('log_file_fullfname'))
     if 'model_fullfname' in params:
         assert 'model' not in params
         params['model'] = params['model_fullfname']
         del params['model_fullfname']
     if 'restart_checkpoint' in params:
         params['restart_checkpoint'] = params['restart_checkpoint'] == 'yes'
-    if 'soft_segmentation' in params:
-        params['soft_segmentation'] = params['soft_segmentation'] == 'yes'
     if 'max_processes' in params:
         params['max_processes'] = arrayprocs.get_num_processes(params['max_processes'])
     if 'max_batch_memory' in params:
         if params['max_batch_memory'] <= 0:
             params['max_batch_memory'] = psutil.virtual_memory().available/(1024**3)
     params['listener'].log_output('='*100)
-    segmenters.segment(**params)
+    segmenter.evaluate(**params)
     params['listener'].log_output('')
     params['listener'].log_output('')

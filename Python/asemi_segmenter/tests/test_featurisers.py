@@ -2,11 +2,10 @@ import unittest
 import numpy as np
 import os
 import sys
-sys.path.append(os.path.join('..', 'lib'))
-import featurisers
-import downscales
-import regions
-import histograms
+from asemi_segmenter.lib import featurisers
+from asemi_segmenter.lib import downscales
+from asemi_segmenter.lib import regions
+from asemi_segmenter.lib import histograms
 
 #########################################
 class Features(unittest.TestCase):

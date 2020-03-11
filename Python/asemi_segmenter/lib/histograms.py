@@ -2,8 +2,7 @@ import os
 import numpy as np
 import fast_histogram
 import sys
-sys.path.append(os.path.join('..', 'lib'))
-import regions
+from asemi_segmenter.lib import regions
 
 #########################################
 def histogram(array, num_bins, value_range):

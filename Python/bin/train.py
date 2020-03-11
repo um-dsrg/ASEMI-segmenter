@@ -2,29 +2,45 @@ import argparse
 import os
 import sys
 import psutil
-sys.path.append(os.path.join('..', 'lib'))
-import arrayprocs
-import segmenters
-import interfaces
+import _interfaces
+from asemi_segmenter.lib import arrayprocs
+from asemi_segmenter import segmenter
 
 parser = argparse.ArgumentParser(
-        description='Preprocess a folder of slice images into a single volume file that can be used by the other commands.'
+        description='Train a new segmentation model.'
     )
 
 parser.add_argument(
-        '--volume_dir',
+        '--preproc_volume_fullfname',
         required=True,
-        help='Directory of full volume of image slices.'
+        help='Full path to preprocessed volume data file (*.hdf).'
+    )
+parser.add_argument(
+        '--subvolume_dir',
+        required=True,
+        help='Directory of subvolume that was labelled.'
+    )
+parser.add_argument(
+        '--label_dirs',
+        nargs='+',
+        required=True,
+        help='Directories of labels containing the slices in subvolume_dir with unlabelled regions blacked out.'
     )
 parser.add_argument(
         '--config_fullfname',
         required=True,
-        help='Full path to configuration file specifying how to preprocess the volume (*.json).'
+        help='Full path to configuration file specifying how to extract features and classify them (*.json).'
     )
 parser.add_argument(
-        '--result_data_fullfname',
+        '--result_model_fullfname',
         required=True,
-        help='Full path of data file to store the preprocessed volume.'
+        help='Full path to model pickle file to be created by this process (*.pkl).'
+    )
+parser.add_argument(
+        '--trainingset_file_fullfname',
+        required=False,
+        default=None,
+        help='Full path to file that is used to store the training set (*.hdf). Note that if this is left out then there is nothing to checkpoint.'
     )
 parser.add_argument(
         '--checkpoint_fullfname',
@@ -37,7 +53,7 @@ parser.add_argument(
         required=False,
         default='no',
         choices=['yes', 'no'],
-        help='Whether to skip what has already been completed according to the saved checkpoint file or not (default is no).'
+        help='Whether to skip what has already been completed according to the saved checkpoint file (default) or not (default is no).'
     )
 parser.add_argument(
         '--log_file_fullfname',
@@ -65,25 +81,19 @@ parser.add_argument(
 params = None
 params = vars(parser.parse_args())
 if params is not None:
-    params['listener'] = interfaces.CliProgressListener(params.pop('log_file_fullfname'))
-    if 'config_fullfname' in params:
+    params['listener'] = _interfaces.CliProgressListener(params.pop('log_file_fullfname'))
+    if True:
         assert 'config' not in params
         params['config'] = params['config_fullfname']
         del params['config_fullfname']
-    if 'model_fullfname' in params:
-        assert 'model' not in params
-        params['model'] = params['model_fullfname']
-        del params['model_fullfname']
     if 'restart_checkpoint' in params:
         params['restart_checkpoint'] = params['restart_checkpoint'] == 'yes'
-    if 'soft_segmentation' in params:
-        params['soft_segmentation'] = params['soft_segmentation'] == 'yes'
     if 'max_processes' in params:
         params['max_processes'] = arrayprocs.get_num_processes(params['max_processes'])
     if 'max_batch_memory' in params:
         if params['max_batch_memory'] <= 0:
             params['max_batch_memory'] = psutil.virtual_memory().available/(1024**3)
     params['listener'].log_output('='*100)
-    segmenters.preprocess(**params)
+    segmenter.train(**params)
     params['listener'].log_output('')
     params['listener'].log_output('')

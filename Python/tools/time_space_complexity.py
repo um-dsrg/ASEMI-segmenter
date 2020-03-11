@@ -8,11 +8,10 @@ import matplotlib.patches
 from mpl_toolkits.mplot3d import Axes3D
 import os
 import sys
-sys.path.append(os.path.join('..', 'lib'))
-import regions
-import datas
-import times
-import segmenters
+from asemi_segmenter.lib import regions
+from asemi_segmenter.lib import datas
+from asemi_segmenter.lib import times
+from asemi_segmenter import segmenter
 
 #########################################
 def measure(volume_cube_side_lengths, num_training_slices, num_labels, num_runs, train_config, max_processes, max_batch_memory, listener=lambda side_length, run, train_time, train_memory, segment_time, segment_memory:None):

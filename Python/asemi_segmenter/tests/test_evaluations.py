@@ -2,8 +2,7 @@ import unittest
 import numpy as np
 import os
 import sys
-sys.path.append(os.path.join('..', 'lib'))
-import evaluations
+from asemi_segmenter.lib import evaluations
 
 #########################################
 class Evaluations(unittest.TestCase):

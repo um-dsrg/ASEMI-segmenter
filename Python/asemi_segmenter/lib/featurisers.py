@@ -1,11 +1,10 @@
 import numpy as np
 import os
 import sys
-sys.path.append(os.path.join('..', 'lib'))
-import regions
-import histograms
-import downscales
-import arrayprocs
+from asemi_segmenter.lib import regions
+from asemi_segmenter.lib import histograms
+from asemi_segmenter.lib import downscales
+from asemi_segmenter.lib import arrayprocs
 
 #########################################
 class HistogramFeaturiser(object):

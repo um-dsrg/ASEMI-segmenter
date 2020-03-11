@@ -2,8 +2,7 @@ import unittest
 import numpy as np
 import os
 import sys
-sys.path.append(os.path.join('..', 'lib'))
-import regions
+from asemi_segmenter.lib import regions
 
 #########################################
 class Regions(unittest.TestCase):
