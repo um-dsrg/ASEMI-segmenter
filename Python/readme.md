@@ -1,1 +1,1 @@
-Code of interest is found in the 'main' folder.
+Code of interest is found in the 'bin' folder.

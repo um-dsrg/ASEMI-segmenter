@@ -1,11 +1,11 @@
-python ../main\preprocess.py \
+python ..\bin\preprocess.py \
     --volume_dir "volume" \
     --config_fullfname "preprocess_config.json" \
     --result_data_fullfname "preprocess\volume.hdf" \
     --max_processes 2 \
     --max_batch_memory 0.1
 
-python ../main\train.py \
+python ..\bin\train.py \
     --preproc_volume_fullfname "preprocess\volume.hdf" \
     --subvolume_dir "train\subvolume" \
     --label_dirs \
@@ -17,7 +17,7 @@ python ../main\train.py \
     --max_processes 2 \
     --max_batch_memory 0.1
 
-python ../main\evaluate.py \
+python ..\bin\evaluate.py \
     --model_fullfname "train\model.pkl" \
     --preproc_volume_fullfname "preprocess\volume.hdf" \
     --subvolume_dir "evaluate\subvolume" \
@@ -28,7 +28,7 @@ python ../main\evaluate.py \
     --max_processes 2 \
     --max_batch_memory 0.1
 
-python ../main\segment.py \
+python ..\bin\segment.py \
     --model_fullfname "train\model.pkl" \
     --preproc_volume_fullfname "preprocess\volume.hdf" \
     --results_dir "segment" \

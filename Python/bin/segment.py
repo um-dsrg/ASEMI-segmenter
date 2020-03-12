@@ -23,6 +23,13 @@ parser.add_argument(
         help='Full path to preprocessed volume data file (*.hdf).'
     )
 parser.add_argument(
+        '--soft_segmentation',
+        required=False,
+        default='yes',
+        choices=['yes', 'no'],
+        help='Whether to output greyscale images as segmented slices showing a probability of each voxel belonging to the label (default) or to output a pure binary mask (darkest value being 0 and brightest being 1).'
+    )
+parser.add_argument(
         '--results_dir',
         required=True,
         help='Directory of folder to contain results which will consist of a folder for each label.'
@@ -45,13 +52,6 @@ parser.add_argument(
         required=False,
         default=None,
         help='Full path to file that is used to store a log of what is displayed on screen (*.txt).'
-    )
-parser.add_argument(
-        '--soft_segmentation',
-        required=False,
-        default='yes',
-        choices=['yes', 'no'],
-        help='Whether to output greyscale images as segmented slices showing a probability of each voxel belonging to the label (default) or to output a pure binary mask (darkest value being 0 and brightest being 1).'
     )
 parser.add_argument(
         '--max_processes',
