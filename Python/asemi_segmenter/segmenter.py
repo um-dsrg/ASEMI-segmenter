@@ -13,15 +13,11 @@ from asemi_segmenter.lib import evaluations
 
 #########################################
 class ProgressListener(object):
-    '''
-    Class for listening to the progress of segmenter commands.
-    '''
+    '''Class for listening to the progress of segmenter commands.'''
 
     #########################################
     def __init__(self):
-        '''
-        Empty constructor.
-        '''
+        '''Empty constructor.'''
         pass
 
     #########################################
@@ -157,11 +153,15 @@ def preprocess(
                 volume_fullfnames = volume_data.fullfnames
                 hash_function.init(slice_shape, seed=0)
                 full_volume = datas.FullVolume(result_data_fullfname)
-                checkpoint = datas.Checkpoint(
-                    'preprocess', checkpoint_fullfname, restart_checkpoint)
+                checkpoint = datas.CheckpointManager(
+                    'preprocess',
+                    checkpoint_fullfname,
+                    restart_checkpoint
+                    )
             listener.log_output('Input loaded.')
             listener.log_output('Duration: {}'.format(
-                times.get_readable_duration(timer.duration)))
+                times.get_readable_duration(timer.duration)
+                ))
             listener.log_output('')
 
             ###################
@@ -203,14 +203,16 @@ def preprocess(
                     arrayprocs.parallel_processer(
                         lambda volume_slice_index, volume_fullfname: (
                             volume_slice_index,
-                            datas.load_image(volume_fullfname)),
+                            datas.load_image(volume_fullfname)
+                            ),
                         enumerate(volume_fullfnames),
                         len(volume_fullfnames),
                         post_processor=post_processor,
                         n_jobs=max_processes,
                         extra_params=(),
                         progress_listener=lambda ready, total, duration: (
-                            listener.current_progress_update(ready)))
+                            listener.current_progress_update(ready)
+                            ))
                     listener.current_progress_end()
             listener.log_output('Slices dumped.')
             listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
@@ -235,12 +237,15 @@ def preprocess(
                             context_needed,
                             max_processes,
                             max_batch_memory,
-                            implicit_depth=False)
+                            implicit_depth=False
+                            )
                         listener.current_progress_start(
                             0, arrayprocs.get_num_blocks_in_data(
                                 full_volume.get_scale_array(scale-1).shape,
                                 best_block_shape,
-                                context_needed))
+                                context_needed
+                                )
+                            )
                         downscales.downscale_in_blocks(
                             full_volume.get_scale_array(scale-1),
                             full_volume.get_scale_array(scale),
@@ -249,7 +254,8 @@ def preprocess(
                             1,
                             n_jobs=max_processes,
                             progress_listener=lambda ready, total, duration:\
-                                listener.current_progress_update(ready))
+                                listener.current_progress_update(ready)
+                            )
                         listener.current_progress_end()
             listener.log_output('Volume downscaled.')
             listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
@@ -279,7 +285,8 @@ def preprocess(
 
         listener.log_output('Done.')
         listener.log_output('Entire process duration: {}'.format(
-            times.get_readable_duration(full_timer.duration)))
+            times.get_readable_duration(full_timer.duration)
+            ))
         listener.log_output(times.get_timestamp())
 
         listener.overall_progress_end()
@@ -295,7 +302,8 @@ def train(
         preproc_volume_fullfname, subvolume_dir, label_dirs, config,
         result_model_fullfname, trainingset_file_fullfname,
         checkpoint_fullfname, restart_checkpoint,
-        max_processes, max_batch_memory, listener=ProgressListener()):
+        max_processes, max_batch_memory, listener=ProgressListener()
+    ):
     '''
     Train a classifier model to segment volumes based on manually labelled slices.
 
@@ -383,7 +391,11 @@ def train(
                 subvolume_fullfnames = subvolume_data.fullfnames
                 labels = sorted(label_data.name for label_data in labels_data)
                 hash_function.init(slice_shape, seed=0)
-                checkpoint = datas.Checkpoint('train', checkpoint_fullfname, restart_checkpoint)
+                checkpoint = datas.CheckpointManager(
+                    'train',
+                    checkpoint_fullfname,
+                    restart_checkpoint
+                    )
                 training_set = datas.TrainingSet(trainingset_file_fullfname)
                 sample_size_per_label = config_data['training_set']['sample_size_per_label']
 
@@ -428,12 +440,15 @@ def train(
                     listener.current_progress_update(i+1)
                 listener.current_progress_end()
                 volume_slice_indexes_in_subvolume = datas.get_volume_slice_indexes_in_subvolume(
-                    full_volume.get_hashes_array()[:], subvolume_hashes)
+                    full_volume.get_hashes_array()[:], subvolume_hashes  #Load the hashes eagerly.
+                    )
                 listener.log_output('> Subvolume to volume file name mapping found:')
                 for (subvolume_index, volume_index) in enumerate(
-                        volume_slice_indexes_in_subvolume):
+                        volume_slice_indexes_in_subvolume
+                    ):
                     listener.log_output('>> {} -> volume slice #{}'.format(
-                        subvolume_fullfnames[subvolume_index], volume_index+1))
+                        subvolume_fullfnames[subvolume_index], volume_index+1
+                        ))
                 del hash_function
             listener.log_output('Slices hashed.')
             listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
@@ -454,8 +469,13 @@ def train(
 
                 listener.log_output('> Constructing features.')
                 best_block_shape = arrayprocs.get_optimal_block_size(
-                    slice_shape, full_volume.get_dtype(), context_needed,
-                    max_processes, max_batch_memory, implicit_depth=True)
+                    slice_shape,
+                    full_volume.get_dtype(),
+                    context_needed,
+                    max_processes,
+                    max_batch_memory,
+                    implicit_depth=True
+                    )
                 with checkpoint.apply('constructing_features') as skip:
                     if skip is not None:
                         listener.log_output('> Skipped as was found ready.')
@@ -473,7 +493,8 @@ def train(
                                 block_cols=best_block_shape[0],
                                 output=training_set.get_features_array(),
                                 output_start_index=i*slice_size,
-                                n_jobs=max_processes)
+                                n_jobs=max_processes
+                                )
                         listener.current_progress_update(i+1)
                     listener.current_progress_end()
                 del subvolume_fullfnames
@@ -493,14 +514,16 @@ def train(
                     mask = datas.get_subvolume_slice_label_mask(training_set.get_labels_array())
                     classifier.fit(
                         training_set.get_features_array()[mask],
-                        training_set.get_labels_array()[mask])
+                        training_set.get_labels_array()[mask]
+                        )
                 else:
                     listener.log_output('> Sampling training set.')
-                    new_training_set = training_set.get_sample(sample_size_per_label)
+                    new_training_set = training_set.get_sample(sample_size_per_label, seed=0)
                     listener.log_output('> Training.')
                     classifier.fit(
                         new_training_set.get_features_array(),
-                        new_training_set.get_labels_array())
+                        new_training_set.get_labels_array()
+                        )
             listener.log_output('Segmenter trained.')
             listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
             listener.log_output('')
@@ -519,7 +542,8 @@ def train(
 
         listener.log_output('Done.')
         listener.log_output('Entire process duration: {}'.format(
-            times.get_readable_duration(full_timer.duration)))
+            times.get_readable_duration(full_timer.duration)
+            ))
         listener.log_output(times.get_timestamp())
 
         listener.overall_progress_end()
@@ -540,7 +564,8 @@ def train(
 def evaluate(
         model, preproc_volume_fullfname, subvolume_dir, label_dirs, results_fullfname,
         checkpoint_fullfname, restart_checkpoint, max_processes, max_batch_memory,
-        listener=ProgressListener()):
+        listener=ProgressListener()
+    ):
     '''
     Evaluate a trained classifier model on manually labelled slices.
 
@@ -594,10 +619,10 @@ def evaluate(
 
                 listener.log_output('> Loading model file.')
                 if isinstance(model, str):
-                    (labels, config_data, featuriser, classifier) = \
+                    (config_data, labels, featuriser, classifier) = \
                         datas.load_model_file(model, full_volume)
                 else:
-                    (labels, config_data, featuriser, classifier) = \
+                    (config_data, labels, featuriser, classifier) = \
                         datas.load_model_data(model, full_volume)
                 classifier.n_jobs = max_processes
                 del config_data
@@ -631,7 +656,11 @@ def evaluate(
                     raise ValueError('Labels in evaluation directory do not match labels in model.')
                 evaluation_results_file = datas.EvaluationResultsFile(results_fullfname)
                 hash_function.init(slice_shape, seed=0)
-                checkpoint = datas.Checkpoint('evaluate', checkpoint_fullfname, restart_checkpoint)
+                checkpoint = datas.CheckpointManager(
+                    'evaluate',
+                    checkpoint_fullfname,
+                    restart_checkpoint
+                    )
 
                 del subvolume_data
                 del label_data
@@ -649,18 +678,21 @@ def evaluate(
                 listener.current_progress_start(0, len(subvolume_fullfnames))
                 subvolume_hashes = np.empty(
                     (len(subvolume_fullfnames), hash_function.hash_size),
-                    full_volume.get_hashes_dtype())
+                    full_volume.get_hashes_dtype()
+                    )
                 for (i, fullfname) in enumerate(subvolume_fullfnames):
                     img_data = datas.load_image(fullfname)
                     subvolume_hashes[i, :] = hash_function.apply(img_data)
                     listener.current_progress_update(i+1)
                 listener.current_progress_end()
                 volume_slice_indexes_in_subvolume = datas.get_volume_slice_indexes_in_subvolume(
-                    full_volume.get_hashes_array()[:], subvolume_hashes)
+                    full_volume.get_hashes_array()[:], subvolume_hashes  #Load the hashes eagerly.
+                    )
                 listener.log_output('> Subvolume to volume file name mapping found:')
                 for (subvolume_index, volume_index) in enumerate(volume_slice_indexes_in_subvolume):
                     listener.log_output('>> {} -> volume slice #{}'.format(
-                        subvolume_fullfnames[subvolume_index], volume_index+1))
+                        subvolume_fullfnames[subvolume_index], volume_index+1
+                        ))
             del hash_function
             listener.log_output('Slices hashed.')
             listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
@@ -692,12 +724,19 @@ def evaluate(
                         raise skip
                     evaluation_results_file.create(labels)
                 best_block_shape = arrayprocs.get_optimal_block_size(
-                    slice_shape, full_volume.get_dtype(), context_needed,
-                    max_processes, max_batch_memory, implicit_depth=True)
+                    slice_shape,
+                    full_volume.get_dtype(),
+                    context_needed,
+                    max_processes,
+                    max_batch_memory,
+                    implicit_depth=True
+                    )
                 for (i, (subvolume_fullfname, volume_slice_index)) in enumerate(
-                        zip(subvolume_fullfnames, volume_slice_indexes_in_subvolume)):
+                        zip(subvolume_fullfnames, volume_slice_indexes_in_subvolume)
+                    ):
                     listener.log_output('> Evaluating {} ({:.2%}).'.format(
-                        subvolume_fullfname, (i+1)/len(subvolume_fullfnames)))
+                        subvolume_fullfname, (i+1)/len(subvolume_fullfnames)
+                        ))
                     with checkpoint.apply('evaluating_{}'.format(volume_slice_index)) as skip:
                         if skip is not None:
                             listener.log_output('>> Skipped as was found ready.')
@@ -708,8 +747,10 @@ def evaluate(
                                 (slice_features, _) = featuriser.featurise(
                                     full_volume.get_scale_arrays(featuriser.get_scales_needed()),
                                     slice_index=volume_slice_index,
-                                    block_rows=best_block_shape[0], block_cols=best_block_shape[0],
-                                    n_jobs=max_processes)
+                                    block_rows=best_block_shape[0],
+                                    block_cols=best_block_shape[0],
+                                    n_jobs=max_processes
+                                    )
 
                             with times.Timer() as sub_timer_classifier:
                                 prediction = classifier.predict_proba(slice_features)
@@ -721,7 +762,8 @@ def evaluate(
                             slice_labels = slice_labels.reshape(slice_shape)
 
                             ious = evaluations.get_intersection_over_union(
-                                prediction, slice_labels, len(labels))
+                                prediction, slice_labels, len(labels)
+                                )
                             del prediction
                             del slice_labels
                             for (label, iou) in zip(labels, ious):
@@ -729,14 +771,16 @@ def evaluate(
                                     listener.log_output('>> {}: {:.3%}'.format(label, iou))
                             evaluation_results_file.append(
                                 subvolume_fullfname, ious,
-                                sub_timer_featuriser.duration, sub_timer_classifier.duration)
+                                sub_timer_featuriser.duration, sub_timer_classifier.duration
+                                )
                             results[subvolume_fullfname] = ious
 
                         listener.log_output('   Duration: {} (featurisation: {}, ' \
                             'classification: {})'.format(
                                 times.get_readable_duration(sub_timer.duration),
                                 times.get_readable_duration(sub_timer_featuriser.duration),
-                                times.get_readable_duration(sub_timer_classifier.duration)))
+                                times.get_readable_duration(sub_timer_classifier.duration)
+                                ))
                         listener.log_output('-')
 
             listener.log_output('Evaluated.')
@@ -745,7 +789,8 @@ def evaluate(
 
         listener.log_output('Done.')
         listener.log_output('Entire process duration: {}'.format(
-            times.get_readable_duration(full_timer.duration)))
+            times.get_readable_duration(full_timer.duration)
+            ))
         listener.log_output(times.get_timestamp())
 
         listener.overall_progress_end()
@@ -764,7 +809,8 @@ def evaluate(
 def segment(
         model, preproc_volume_fullfname, soft_segmentation, results_dir,
         checkpoint_fullfname, restart_checkpoint,
-        max_processes, max_batch_memory, listener=ProgressListener()):
+        max_processes, max_batch_memory, listener=ProgressListener()
+    ):
     '''
     Segment a preprocessed volume using a trained classifier model.
 
@@ -811,10 +857,10 @@ def segment(
 
                 listener.log_output('> Loading model file.')
                 if isinstance(model, str):
-                    (labels, config_data, featuriser, classifier) = \
+                    (config_data, labels, featuriser, classifier) = \
                         datas.load_model_file(model, full_volume)
                 else:
-                    (labels, config_data, featuriser, classifier) = \
+                    (config_data, labels, featuriser, classifier) = \
                         datas.load_model_data(model, full_volume)
                 del config_data
                 classifier.n_jobs = max_processes
@@ -829,7 +875,11 @@ def segment(
                 listener.log_output('> Initialising.')
                 context_needed = featuriser.get_context_needed()
                 slice_shape = full_volume.get_shape()[1:]
-                checkpoint = datas.Checkpoint('segment', checkpoint_fullfname, restart_checkpoint)
+                checkpoint = datas.CheckpointManager(
+                    'segment',
+                    checkpoint_fullfname,
+                    restart_checkpoint
+                    )
             listener.log_output('Input loaded.')
             listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
             listener.log_output('')
@@ -850,7 +900,8 @@ def segment(
                     context_needed,
                     max_processes,
                     max_batch_memory,
-                    implicit_depth=True)
+                    implicit_depth=True
+                    )
 
                 with checkpoint.apply('segment') as skip:
                     if skip is not None:
@@ -864,8 +915,10 @@ def segment(
                             (slice_features, _) = featuriser.featurise(
                                 full_volume.get_scale_arrays(featuriser.get_scales_needed()),
                                 slice_index=volume_slice_index,
-                                block_rows=best_block_shape[0], block_cols=best_block_shape[0],
-                                n_jobs=max_processes)
+                                block_rows=best_block_shape[0],
+                                block_cols=best_block_shape[0],
+                                n_jobs=max_processes
+                                )
 
                             prediction = classifier.predict_proba(slice_features)
                             if not soft_segmentation:
@@ -885,8 +938,11 @@ def segment(
                                         '{}_{:0>{}}.png'.format(
                                             label,
                                             volume_slice_index+1,
-                                            num_digits_in_filename)),
-                                    prediction[:, :, label_index])
+                                            num_digits_in_filename
+                                            )
+                                        ),
+                                    prediction[:, :, label_index]
+                                    )
                             del prediction
                         listener.current_progress_update(volume_slice_index+1)
                     listener.current_progress_end()
@@ -896,7 +952,8 @@ def segment(
 
         listener.log_output('Done.')
         listener.log_output('Entire process duration: {}'.format(
-            times.get_readable_duration(full_timer.duration)))
+            times.get_readable_duration(full_timer.duration)
+            ))
         listener.log_output(times.get_timestamp())
 
         listener.overall_progress_end()

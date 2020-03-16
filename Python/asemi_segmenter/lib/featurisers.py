@@ -7,7 +7,30 @@ from asemi_segmenter.lib import downscales
 from asemi_segmenter.lib import arrayprocs
 
 #########################################
-class HistogramFeaturiser(object):
+class Featuriser(object):
+    
+    #########################################
+    def __init__(self):
+        pass
+    
+    #########################################
+    def get_feature_size(self):
+        raise NotImplementedError()
+    
+    #########################################
+    def get_context_needed(self):
+        raise NotImplementedError()
+    
+    #########################################
+    def get_scales_needed(self):
+        raise NotImplementedError()
+    
+    #########################################
+    def featurise(self, data_scales, slice_index, block_rows, block_cols, row_range=slice(None), col_range=slice(None), output=None, output_start_index=0, n_jobs=1, progress_listener=lambda ready, total, duration:None):
+        raise NotImplementedError()
+
+#########################################
+class HistogramFeaturiser(Featuriser):
     '''
     Feature vector plan:
     For each voxel in slice [
