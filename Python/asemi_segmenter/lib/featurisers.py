@@ -26,7 +26,7 @@ class Featuriser(object):
         raise NotImplementedError()
     
     #########################################
-    def featurise(self, data_scales, slice_index, block_rows, block_cols, row_range=slice(None), col_range=slice(None), output=None, output_start_index=0, n_jobs=1, progress_listener=lambda ready, total, duration:None):
+    def featurise(self, data_scales, slice_index, block_rows, block_cols, row_range=slice(None), col_range=slice(None), output=None, output_start_index=0, n_jobs=1, progress_listener=lambda num_ready, num_new:None):
         raise NotImplementedError()
 
 #########################################
@@ -62,7 +62,7 @@ class HistogramFeaturiser(Featuriser):
         return { 0 } | { scale for (radius, scale, num_bins) in self.histogram_params }
     
     #########################################
-    def featurise(self, data_scales, slice_index, block_rows, block_cols, row_range=slice(None), col_range=slice(None), output=None, output_start_index=0, n_jobs=1, progress_listener=lambda ready, total, duration:None):
+    def featurise(self, data_scales, slice_index, block_rows, block_cols, row_range=slice(None), col_range=slice(None), output=None, output_start_index=0, n_jobs=1, progress_listener=lambda num_ready, num_new:None):
         
         def processor(params, use_voxel_value, histogram_params, feature_size, full_input_ranges, output_start_index):
             [ num_rows_out, num_cols_out ] = params[0]['contextless_shape']

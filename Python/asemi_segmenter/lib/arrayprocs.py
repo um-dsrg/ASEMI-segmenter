@@ -50,7 +50,6 @@ import numpy as np
 import joblib
 from asemi_segmenter.lib import regions
 from asemi_segmenter.lib import downscales
-from asemi_segmenter.lib import times
 
 #########################################
 def get_num_processes(num_processes):
@@ -75,8 +74,8 @@ def get_num_processes(num_processes):
 
 #########################################
 def parallel_processer(
-        processor, processor_params, total_params, post_processor=lambda result: None, n_jobs=1,
-        extra_params=(), progress_listener=lambda ready, total, duration: None
+        processor, processor_params, post_processor=lambda result: None, n_jobs=1,
+        extra_params=(), progress_listener=lambda num_ready, num_new: None
     ):
     '''
     Process a list of parameter sets with a single processing function in parallel.
@@ -93,7 +92,6 @@ def parallel_processer(
         and returns a result.
     :param iter processor_params: A generator or list of tuples, where the tuples are to be passed
         to `processor`.
-    :param int total_params: The number of elements in `processor_params`.
     :param callable post_processor: A function that takes in each result from `processor`
         individually and does something with the result. Result of this function is ignored. This
         is useful when `post_processor` has some side effect.
@@ -102,8 +100,8 @@ def parallel_processer(
     :param tuple extra_params: A tuple of extra parameters to pass to `processor` with every
         parameter set. This is meant to be always the same and is concatenated to the end of each
         tuple in `processor_params`.
-    :param callable progress_listener: A function that receives the number of parameters that have
-        been processed in total together with `total_params`.
+    :param callable progress_listener: A function that receives the number of parameter sets that
+        have been processed in total and the number of new parameter sets just processed.
     '''
     n_jobs = get_num_processes(n_jobs)
     params_visited = 0
@@ -111,19 +109,18 @@ def parallel_processer(
     #If max_nbytes is not None then you get out of space errors.
     with joblib.Parallel(n_jobs, max_nbytes=None) as parallel:
         while True:
-            with times.Timer() as timer:
-                parallel_batch = itertools.islice(processor_params, n_jobs)
-                batch_size = 0
-                for res in parallel(
-                        joblib.delayed(processor)(*params, *extra_params)
-                        for params in parallel_batch
-                    ):
-                    post_processor(res)
-                    batch_size += 1
-                if batch_size == 0:
-                    return
-                params_visited += batch_size
-            progress_listener(params_visited, total_params, timer.duration)
+            parallel_batch = itertools.islice(processor_params, n_jobs)
+            batch_size = 0
+            for res in parallel(
+                    joblib.delayed(processor)(*params, *extra_params)
+                    for params in parallel_batch
+                ):
+                post_processor(res)
+                batch_size += 1
+            if batch_size == 0:
+                return
+            params_visited += batch_size
+            progress_listener(params_visited, batch_size)
 
 #########################################
 def get_num_blocks_in_data(data_shape, block_shape, context_needed):
@@ -269,7 +266,7 @@ def get_optimal_block_size(
 def process_array_in_blocks(
         in_array_scales, out_array, processor, block_shape, scales=None, in_ranges=None,
         context_size=0, pad_value=0, n_jobs=1, extra_params=(),
-        progress_listener=lambda ready, total, duration: None
+        progress_listener=lambda num_ready, num_new: None
     ):
     '''
     Transform a 3D array into another array using blocks.
@@ -460,11 +457,6 @@ def process_array_in_blocks(
 
                     yield [params]
 
-    total_num_blocks = get_num_blocks_in_data(
-        [(s.stop - s.start) for s in in_ranges_scaled[0]],
-        block_shape, context_size
-        )
-
     def post_processor(result):
         '''A post processor for the block transformations which puts them in the output array.'''
         if result is not None:
@@ -474,7 +466,6 @@ def process_array_in_blocks(
     parallel_processer(
         processor,
         get_processor_params(),
-        total_num_blocks,
         post_processor=post_processor,
         n_jobs=n_jobs,
         extra_params=extra_params,
@@ -486,7 +477,7 @@ def process_array_in_blocks(
 def process_array_in_blocks_single_slice(
         in_array_scales, out_array, processor, block_shape, slice_index, scales=None,
         in_ranges=None, context_size=0, pad_value=0, n_jobs=1, extra_params=(),
-        progress_listener=lambda ready, total, duration: None
+        progress_listener=lambda num_ready, num_new: None
     ):
     '''
     Version of process_array_in_blocks that is meant to work on a single slice in a volume.

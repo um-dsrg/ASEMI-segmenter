@@ -126,7 +126,7 @@ def downscale(in_array, downsample_kernel, scale, remove_pad=False, trim_front=N
         return in_array
 
 #########################################
-def downscale_in_blocks(in_array, out_array, block_shape, downsample_kernel, scale, n_jobs=1, progress_listener=lambda ready, total, duration:None):
+def downscale_in_blocks(in_array, out_array, block_shape, downsample_kernel, scale, n_jobs=1, progress_listener=lambda num_ready, num_new:None):
     
     def processor(params, downsample_kernel, scale):
         scale_factor = 2**scale

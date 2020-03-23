@@ -206,12 +206,11 @@ def preprocess(
                             datas.load_image(volume_fullfname)
                             ),
                         enumerate(volume_fullfnames),
-                        len(volume_fullfnames),
                         post_processor=post_processor,
                         n_jobs=max_processes,
                         extra_params=(),
-                        progress_listener=lambda ready, total, duration: (
-                            listener.current_progress_update(ready)
+                        progress_listener=lambda num_ready, num_new: (
+                            listener.current_progress_update(num_ready)
                             ))
                     listener.current_progress_end()
             listener.log_output('Slices dumped.')
@@ -253,8 +252,8 @@ def preprocess(
                             downsample_filter,
                             1,
                             n_jobs=max_processes,
-                            progress_listener=lambda ready, total, duration:\
-                                listener.current_progress_update(ready)
+                            progress_listener=lambda num_ready, num_new:\
+                                listener.current_progress_update(num_ready)
                             )
                         listener.current_progress_end()
             listener.log_output('Volume downscaled.')
