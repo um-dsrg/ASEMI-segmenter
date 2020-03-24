@@ -302,8 +302,10 @@ def process_array_in_blocks(
                 },
                 *extra_params
             )
-        ) -> (transformed_block, out_slice_tuple)
-        Note that extra_params is explained below.
+        ) -> result
+        Where result is either None (to signal that the block should not affect the output array
+        or be the tuple (transformed_block, out_slice_tuple). Note that extra_params is explained
+        below.
     :param tuple block_shape: The shape of the numpy array to pass to the processor (or smaller if
         close to the edge of the array, although the context will always be the same size and only
         the payload size will change), including context (in order to make it easier to control

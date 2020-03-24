@@ -1,3 +1,5 @@
+'''Module for histogram related functions.'''
+
 import os
 import numpy as np
 import fast_histogram
@@ -6,32 +8,75 @@ from asemi_segmenter.lib import regions
 
 #########################################
 def histogram(array, num_bins, value_range):
-    '''value_range = (min, max_not_inclusive)'''
+    '''
+    Compute a histogram from a range and number of bins.
+    
+    :param numpy.ndarray array: The array of values.
+    :param int num_bins: The number of bins in the histogram.
+    :param tuple value_range: A 2-tuple consisting of the minimum and maximum values to consider
+        with the maximum not being inclusive.
+    :return: A 1D histogram array.
+    :rtype: numpy.ndarray
+    '''
     return fast_histogram.histogram1d(array, num_bins, value_range)
-    #return np.histogram(array, num_bins, value_range)[0] #Some times fast_histogram fails test cases because of a minor bug (https://github.com/astrofrog/fast-histogram/issues/45) so this may be useful during testing.
+    # Some times fast_histogram fails test cases because of a minor bug (https://github.com/astrofrog/fast-histogram/issues/45) so this may be useful during testing.
+    # return np.histogram(array, num_bins, value_range)[0]
 
 #########################################
 def apply_histogram_to_all_neighbourhoods_in_slice_3d(array_3d, slice_index, radius, neighbouring_dims, min_range, max_range, num_bins, pad=0, row_slice=slice(None), col_slice=slice(None)):
     '''
-    max_range not included.
+    Find a histograms of the values in the neighbourhood around every element in a volume slice.
     
-    Histograms of neighbourhoods around every voxel in a slice can be computed efficiently using a rolling algorithm that reuses histograms in other neighbouring voxels.
-    Consider the following slice:
+    Given a slice of voxels in a volume, this function will find the histogram of values around
+    every voxel in the slice. The histogram around a voxel is computed using a cube of a given
+    radius centered around the voxel. Radius defined such that the side of the cube is
+    radius + 1 + radius long.
+    
+    Histograms of neighbourhoods around every voxel in a slice can be computed efficiently using a
+    rolling algorithm that reuses histograms in other neighbouring voxels. Consider if we had to
+    use this function on a 2D image instead of a volume and using a 2D square neighbourhood instead
+    of a cube. We'll be using this 3x3 image as an example:
         [a,b,c]
         [d,e,f]
         [g,h,i]
-    Then the neighbourhood around (0,0) with radius 1 has the following frequencies:
+    The neighbourhood around the pixel at (0,0) with radius 1 has the following frequencies:
         PAD=5, a=1, b=1, c=0, d=1, e=1, f=0, g=0, h=0, i=0 => [5,1,1,0,1,1,0,0,0,0]
-    The neighbourhood around (0,1) has values in common with the neighbourhood around (0,0) so we can avoid counting all the elements in this neighbourhood by instead counting only what has changed from the previous neighbourhood and update the frequencies with new information in the dropped and new columns:
+    The neighbourhood around (0,1) has values in common with the neighbourhood around (0,0) so we
+    can avoid counting all the elements in this neighbourhood by instead counting only what has
+    changed from the previous neighbourhood and update the frequencies with new information in the
+    dropped and new columns:
         histogram_01 = histogram_00 - histogram([PAD,a,d]) + histogram([PAD,c,f])
-    Likewise, the neighbourhood around (1,0) has values in common with (0,0) as well and can be calculated by subtracting the dropped row and adding the new column:
+    Likewise, the neighbourhood around (1,0) has values in common with (0,0) as well and can be
+    calculated by subtracting the dropped row and adding the new column:
         histogram_10 = histogram_00 - histogram([PAD,PAD,PAD]) + histogram([g,h,i])
-    This means that we only need to perform a full histogram count for the top left corner as everything else can be computed by rolling the values.
+    This means that we only need to perform a full histogram count for the top left corner as
+    everything else can be computed by rolling the values.
     
-    For extracting histograms in 3D space, we will still be only processing a single slice but with adjacent slices for context. The neighbouring_dims orientation of the neighbourhood will change what can be reused however.
-    Given a 3D array A, the neighbourhood around A[r,c] (in the slice of interest) with radius R and neighbouring_dims d is hist(A[r,c], R, d). For each d, the following optimisations can be performed:
-        hist(A[r,c], R, [1,2,3]) = hist(A[r-1,c], R, [1,2,3]) - hist(A[r-1-R,c], R, [1,3]) + hist(A[r+R,c], R, [1,3])
-                          (also) = hist(A[r,c-1], R, [1,2,3]) - hist(A[r,c-1-R], R, [1,2]) + hist(A[r,c+R], R, [1,2])
+    For extracting histograms in 3D space, we will still be only processing a single slice but
+    with adjacent slices for context. Given a 3D array A, the neighbourhood around A[r,c] (in the
+    slice of interest) with radius R and neighbouring_dims d is hist(A[r,c], R, d). For each d,
+    the following optimisations can be performed:
+        hist(A[r,c], R, [1,2,3]) = hist(A[r-1,c], R, [1,2,3])
+                                    - hist(A[r-1-R,c], R, [1,3])
+                                    + hist(A[r+R,c], R, [1,3])
+                          (also) = hist(A[r,c-1], R, [1,2,3])
+                                    - hist(A[r,c-1-R], R, [1,2])
+                                    + hist(A[r,c+R], R, [1,2])
+    
+    :param numpy.ndarray array_3d: The volume from which to extract the histograms.
+    :param int slice_index: The index of the slice to use within the volume.
+    :param int radius: The radius of the neighbourhood around each voxel.
+    :param set neighbouring_dims: The set of dimensions to apply the neighbourhoods on (must be
+        {1,2,3} in this version).
+    :param int min_range: The minimum range of the values to consider.
+    :param int max_range: The maximum range of the values to consider, not included.
+    :param int num_bins: The number of bins in the histograms.
+    :param int pad: The pad value for values outside the array.
+    :param slice row_slice: The range of rows in the slice to consider.
+    :param slice col_slice: The range of columns in the slice to consider.
+    :return: A 3D array where the first two dimensions are equal to the dimensions of the slice
+        and the last dimension is the number of bins.
+    :rtype: numpy.ndarray
     '''
     [ _, num_rows_in, num_cols_in ] = array_3d.shape
     row_slice = slice(

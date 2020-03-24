@@ -1,3 +1,5 @@
+'''Module containing different methods to turn voxels in a volume into feature vectors.'''
+
 import numpy as np
 import os
 import sys
@@ -8,42 +10,105 @@ from asemi_segmenter.lib import arrayprocs
 
 #########################################
 class Featuriser(object):
+    '''Super class for featurisers.'''
     
     #########################################
     def __init__(self):
+        '''Empty constructor.'''
         pass
     
     #########################################
     def get_feature_size(self):
+        '''
+        Get the number of elements in the feature vector.
+        
+        :return: The feature vector size.
+        :rtype: int
+        '''
         raise NotImplementedError()
     
     #########################################
     def get_context_needed(self):
+        '''
+        Get the maximum amount of context needed around a voxel to generate a feature vector.
+        
+        :return: The context size.
+        :rtype: int
+        '''
         raise NotImplementedError()
     
     #########################################
     def get_scales_needed(self):
+        '''
+        Get the different volume scales needed to generate a feature vector.
+        
+        :return: The scales needed.
+        :rtype: set
+        '''
         raise NotImplementedError()
     
     #########################################
     def featurise(self, data_scales, slice_index, block_rows, block_cols, row_range=slice(None), col_range=slice(None), output=None, output_start_index=0, n_jobs=1, progress_listener=lambda num_ready, num_new:None):
+        '''
+        Turn a slice from a volume into a matrix of feature vectors.
+
+        The matrix will have a row for every voxel in the slice and the number of columns is the
+        feature size. This function is made with creating a dataset in mind, that is, where the
+        feature vectors are to be presented as a list rather than in the same shape of the slice.
+        In order to be more memory efficient, the result can be placed in a reserved dataset
+        matrix that should contain the features of a number of slices. The position of the current
+        slice's features within this larger dataset can controlled using the output_start_index
+        parameter.
+        
+        :param dict data_scales: A dictionary of different scales of the volume.
+        :param int slice_index: The index of the slice in the volume to featurise.
+        :param int block_rows: The first dimension of the block shape (2D).
+        :param int block_cols: The second dimension of the block shape (2D).
+        :param slice row_range: The range of rows to featurise (if only a part of the slice is
+            needed).
+        :param slice col_range: The range of columns to featurise (if only a part of the slice is
+            needed).
+        :param numpy.ndarray output: The output dataset to contain the features (will be created
+            if None). Must be 2D.
+        :param int output_start_index: The row index in the output dataset to start putting
+            feature vectors in.
+        :param int n_jobs: The number of concurrent processes to use.
+        :param callable progress_listener: A function that receives information about the progress
+            of the downscale.
+        '''
         raise NotImplementedError()
 
 #########################################
 class HistogramFeaturiser(Featuriser):
     '''
+    A featuriser that collects histograms of voxel values around each voxel.
+    
+    The feature vector of a voxel consists of the voxel value itself, followed by a number of
+    histograms of squares of different sizes and at different scales centered on the voxel. The
+    number of bins in each histogram is controllable but the range of the bins is always uniformly
+    divided between 0 and 2^16-1.
+    
     Feature vector plan:
-    For each voxel in slice [
-        if use_voxel_value:
-            voxel value (1 element)
-        
-        for (radius, scale, num_bins) in histogram_params:
-            histogram of values in cube neighbourhood around voxel (num_bins elements)
-    ]
+        For each voxel in slice [
+            if use_voxel_value:
+                voxel value (1 element)
+            for (radius, scale, num_bins) in histogram_params:
+                histogram of values in cube neighbourhood around voxel (num_bins elements)
+        ]
     '''
     
     #########################################
     def __init__(self, use_voxel_value, histogram_params):
+        '''
+        Constructor.
+        
+        :param bool use_voxel_value: Whether to also include 
+        :param list histogram_params: A list of parameters for each histogram consisting of the
+            triple (radius, scale, num_bins) where radius is the radius of the square
+            neighbourhood around the voxel (such that the side of the square is radius+1+radius
+            long), scale is the scale of the volume from which to extract this neighbourhood, and
+            num_bins is the number of bins in the histogram.
+        '''
         self.use_voxel_value = use_voxel_value
         self.histogram_params = histogram_params
         self.feature_size = 1*self.use_voxel_value + sum(num_bins for (radius, scale, num_bins) in self.histogram_params)
@@ -51,20 +116,55 @@ class HistogramFeaturiser(Featuriser):
         
     #########################################
     def get_feature_size(self):
+        '''
+        Get the number of elements in the feature vector.
+        
+        :return: The feature vector size.
+        :rtype: int
+        '''
         return self.feature_size
     
     #########################################
     def get_context_needed(self):
+        '''
+        Get the maximum amount of context needed around a voxel to generate a feature vector.
+        
+        :return: The context size.
+        :rtype: int
+        '''
         return self.context_needed
     
     #########################################
     def get_scales_needed(self):
+        '''
+        Get the different volume scales needed to generate a feature vector.
+        
+        :return: The scales needed.
+        :rtype: set
+        '''
         return { 0 } | { scale for (radius, scale, num_bins) in self.histogram_params }
     
     #########################################
     def featurise(self, data_scales, slice_index, block_rows, block_cols, row_range=slice(None), col_range=slice(None), output=None, output_start_index=0, n_jobs=1, progress_listener=lambda num_ready, num_new:None):
+        '''
+        Turn a slice from a volume into a matrix of feature vectors.
+
+        See super class for more information.
+        
+        :param dict data_scales: As described in the super class.
+        :param int slice_index: As described in the super class.
+        :param int block_rows: As described in the super class.
+        :param int block_cols: As described in the super class.
+        :param slice row_range: As described in the super class.
+        :param slice col_range: As described in the super class.
+        :param numpy.ndarray output: As described in the super class.
+        :param int output_start_index: As described in the super class.
+        :param int n_jobs: As described in the super class.
+        :param callable progress_listener: As described in the super class.
+        '''
         
         def processor(params, use_voxel_value, histogram_params, feature_size, full_input_ranges, output_start_index):
+            '''Processor for process_array_in_blocks_single_slice.'''
             [ num_rows_out, num_cols_out ] = params[0]['contextless_shape']
             
             features = np.empty([ num_rows_out, num_cols_out, feature_size ], np.float32)

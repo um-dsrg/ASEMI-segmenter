@@ -1,3 +1,37 @@
+'''
+Module for collecting subarrays (regions) from larger arrays.
+
+Given a 1D array, a subarray can be collected by either giving the range of values to extract or by
+giving a center index and a radius from the center to extract (called a neighbourhood). Here is an
+example:
+
+Array:    abcdefghi
+Range:    slice(2, 6)
+Subarray: cdef
+
+Array:    abcdefghi
+Center:   (4,)
+Radius:   2
+Subarray: cdefg
+
+A subarray can also lie outside of the array, in which case pad values will fill in the missing
+values. Here is an example:
+
+Array:    abcdefghi
+Range:    slice(6, 11)
+Subarray: ghi00
+
+Array:    abcdefghi
+Range:    slice(-2, 3)
+Subarray: 00abc
+
+A scale can also be provided in order to be able to specify ranges and centers according to a full
+sized array but adapt them to the corresponding location in smaller array (such that the subarray
+is extracted from the smaller array).
+
+These features are also available for 2D and 3D arrays.
+'''
+
 import os
 import numpy as np
 import sys
@@ -5,6 +39,16 @@ from asemi_segmenter.lib import downscales
 
 #########################################
 def get_subarray_1d(array_1d, col_slice, pad=0, scale=0):
+    '''
+    Get a subarray from a 1D array.
+    
+    :param numpy.ndarray array_1d: The array.
+    :param slice col_slice: Python slice of indexes to extract.
+    :param int pad: The pad value.
+    :param int scale: The scale to adapt the position to.
+    :return: The subarray.
+    :rtype: numpy.ndarray
+    '''
     if col_slice.step is not None:
         raise ValueError()
         
@@ -43,6 +87,19 @@ def get_subarray_1d(array_1d, col_slice, pad=0, scale=0):
 
 #########################################
 def get_neighbourhood_array_1d(array_1d, center, radius, pad=0, scale=0, scale_radius=False):
+    '''
+    Get a neighbourhood from a 1D array.
+    
+    :param numpy.ndarray array_1d: The array.
+    :param tuple center: Tuple with the coordinates of the neighbourhood center.
+    :param int radius: The neighbourhood radius.
+    :param int pad: The pad value.
+    :param int scale: The scale to adapt the position to.
+    :parama bool scale_radius: Whether to also change the radius to the corresponding scale or
+        leave it the same (and cover a larger area of the original volume).
+    :return: The subarray.
+    :rtype: numpy.ndarray
+    '''
     if scale_radius:
         radius //= 2**scale
     subvolume_slices = [
@@ -53,6 +110,19 @@ def get_neighbourhood_array_1d(array_1d, center, radius, pad=0, scale=0, scale_r
 
 #########################################
 def get_subarray_2d(array_2d, row_slice, col_slice, to_1d=False, pad=0, scale=0):
+    '''
+    Get a subarray from a 2D array.
+    
+    :param numpy.ndarray array_2d: The array.
+    :param slice row_slice: Python slice of indexes to extract in terms of rows.
+    :param slice col_slice: Python slice of indexes to extract in terms of columns.
+    :param bool to_1d: Whether to convert the resulting array to 1D if the subarray shape has
+        exactly one non-1 dimension.
+    :param int pad: The pad value.
+    :param int scale: The scale to adapt the position to.
+    :return: The subarray.
+    :rtype: numpy.ndarray
+    '''
     if row_slice.step is not None:
         raise ValueError()
     if col_slice.step is not None:
@@ -123,6 +193,19 @@ def get_subarray_2d(array_2d, row_slice, col_slice, to_1d=False, pad=0, scale=0)
 
 #########################################
 def get_neighbourhood_array_2d(array_2d, center, radius, neighbouring_dims, pad=0, scale=0, scale_radius=False):
+    '''
+    Get a neighbourhood from a 2D array.
+    
+    :param numpy.ndarray array_2d: The array.
+    :param tuple center: Tuple with the coordinates of the neighbourhood center.
+    :param int radius: The neighbourhood radius.
+    :param int pad: The pad value.
+    :param int scale: The scale to adapt the position to.
+    :parama bool scale_radius: Whether to also change the radius to the corresponding scale or
+        leave it the same (and cover a larger area of the original volume).
+    :return: The subarray.
+    :rtype: numpy.ndarray
+    '''
     if scale_radius:
         radius //= 2**scale
     subvolume_slices = [
@@ -133,6 +216,22 @@ def get_neighbourhood_array_2d(array_2d, center, radius, neighbouring_dims, pad=
 
 #########################################
 def get_subarray_3d(array_3d, slice_slice, row_slice, col_slice, to_2d=False, to_1d=False, pad=0, scale=0):
+    '''
+    Get a subarray from a 3D array.
+    
+    :param numpy.ndarray array_3d: The array.
+    :param slice slice_slice: Python slice of indexes to extract in terms of slices (depth).
+    :param slice row_slice: Python slice of indexes to extract in terms of rows.
+    :param slice col_slice: Python slice of indexes to extract in terms of columns.
+    :param bool to_2d: Whether to convert the resulting array to 2D if the subarray shape has
+        exactly one non-1 dimension.
+    :param bool to_1d: Whether to convert the resulting array to 1D if the subarray shape has
+        exactly two non-1 dimensions.
+    :param int pad: The pad value.
+    :param int scale: The scale to adapt the position to.
+    :return: The subarray.
+    :rtype: numpy.ndarray
+    '''
     if slice_slice.step is not None:
         raise ValueError()
     if row_slice.step is not None:
@@ -225,6 +324,19 @@ def get_subarray_3d(array_3d, slice_slice, row_slice, col_slice, to_2d=False, to
 
 #########################################
 def get_neighbourhood_array_3d(array_3d, center, radius, neighbouring_dims, pad=0, scale=0, scale_radius=False):
+    '''
+    Get a neighbourhood from a 3D array.
+    
+    :param numpy.ndarray array_3d: The array.
+    :param tuple center: Tuple with the coordinates of the neighbourhood center.
+    :param int radius: The neighbourhood radius.
+    :param int pad: The pad value.
+    :param int scale: The scale to adapt the position to.
+    :parama bool scale_radius: Whether to also change the radius to the corresponding scale or
+        leave it the same (and cover a larger area of the original volume).
+    :return: The subarray.
+    :rtype: numpy.ndarray
+    '''
     if scale_radius:
         radius //= 2**scale
     subvolume_slices = [
