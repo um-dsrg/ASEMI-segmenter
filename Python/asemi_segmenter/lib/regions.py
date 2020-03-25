@@ -29,7 +29,13 @@ A scale can also be provided in order to be able to specify ranges and centers a
 sized array but adapt them to the corresponding location in smaller array (such that the subarray
 is extracted from the smaller array).
 
-These features are also available for 2D and 3D arrays.
+These features are also available for 2D and 3D arrays. In this case, when extracting a
+neighbourhood, you also specify the neighbouring_dims parameter which is a set specifying which
+dimensions from the neighbourhood square/cube to keep. Specifying a neighbouring_dims of {0,1,2}
+in a 3D array's neighbourhood will keep the whole cube but {1,2} will only return a square
+consisting of the second and third dimensions (a slice) with the original central voxel still being
+at the center. Likewise neighbouring_dims can be just {} which means that only the central voxel
+is to be returned.
 '''
 
 import os
@@ -199,6 +205,7 @@ def get_neighbourhood_array_2d(array_2d, center, radius, neighbouring_dims, pad=
     :param numpy.ndarray array_2d: The array.
     :param tuple center: Tuple with the coordinates of the neighbourhood center.
     :param int radius: The neighbourhood radius.
+    :param set neighbouring_dims: The dimensions of the neighbourhood to keep.
     :param int pad: The pad value.
     :param int scale: The scale to adapt the position to.
     :parama bool scale_radius: Whether to also change the radius to the corresponding scale or
@@ -209,7 +216,7 @@ def get_neighbourhood_array_2d(array_2d, center, radius, neighbouring_dims, pad=
     if scale_radius:
         radius //= 2**scale
     subvolume_slices = [
-            slice(c-radius, c+radius+1) if i+1 in neighbouring_dims else slice(c, c+1)
+            slice(c-radius, c+radius+1) if i in neighbouring_dims else slice(c, c+1)
             for (i, c) in enumerate(downscales.downscale_pos(center, scale))
         ]
     return get_subarray_2d(array_2d, *subvolume_slices, len(neighbouring_dims) == 1, pad)
@@ -330,6 +337,7 @@ def get_neighbourhood_array_3d(array_3d, center, radius, neighbouring_dims, pad=
     :param numpy.ndarray array_3d: The array.
     :param tuple center: Tuple with the coordinates of the neighbourhood center.
     :param int radius: The neighbourhood radius.
+    :param set neighbouring_dims: The dimensions of the neighbourhood to keep.
     :param int pad: The pad value.
     :param int scale: The scale to adapt the position to.
     :parama bool scale_radius: Whether to also change the radius to the corresponding scale or
@@ -340,7 +348,7 @@ def get_neighbourhood_array_3d(array_3d, center, radius, neighbouring_dims, pad=
     if scale_radius:
         radius //= 2**scale
     subvolume_slices = [
-            slice(c-radius, c+radius+1) if i+1 in neighbouring_dims else slice(c, c+1)
+            slice(c-radius, c+radius+1) if i in neighbouring_dims else slice(c, c+1)
             for (i, c) in enumerate(downscales.downscale_pos(center, scale))
         ]
     return get_subarray_3d(array_3d, *subvolume_slices, len(neighbouring_dims) == 2, len(neighbouring_dims) == 1, pad)

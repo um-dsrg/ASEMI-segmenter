@@ -180,7 +180,7 @@ class HistogramFeaturiser(Featuriser):
                         params[scale]['block'],
                         params[scale]['contextless_slices_wrt_block'][0],
                         radius,
-                        {1,2,3},
+                        {0,1,2},
                         0, 2**16,
                         num_bins,
                         row_slice=params[scale]['contextless_slices_wrt_block'][1], col_slice=params[scale]['contextless_slices_wrt_block'][2]

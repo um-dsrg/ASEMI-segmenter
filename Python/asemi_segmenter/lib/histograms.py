@@ -56,18 +56,18 @@ def apply_histogram_to_all_neighbourhoods_in_slice_3d(array_3d, slice_index, rad
     with adjacent slices for context. Given a 3D array A, the neighbourhood around A[r,c] (in the
     slice of interest) with radius R and neighbouring_dims d is hist(A[r,c], R, d). For each d,
     the following optimisations can be performed:
-        hist(A[r,c], R, [1,2,3]) = hist(A[r-1,c], R, [1,2,3])
-                                    - hist(A[r-1-R,c], R, [1,3])
-                                    + hist(A[r+R,c], R, [1,3])
-                          (also) = hist(A[r,c-1], R, [1,2,3])
-                                    - hist(A[r,c-1-R], R, [1,2])
-                                    + hist(A[r,c+R], R, [1,2])
+        hist(A[r,c], R, {0,1,2}) = hist(A[r-1,c], R, {0,1,2})
+                                    - hist(A[r-1-R,c], R, {0,2})
+                                    + hist(A[r+R,c], R, {0,2})
+                          (also) = hist(A[r,c-1], R, {0,1,2})
+                                    - hist(A[r,c-1-R], R, {0,1})
+                                    + hist(A[r,c+R], R, {0,1})
     
     :param numpy.ndarray array_3d: The volume from which to extract the histograms.
     :param int slice_index: The index of the slice to use within the volume.
     :param int radius: The radius of the neighbourhood around each voxel.
     :param set neighbouring_dims: The set of dimensions to apply the neighbourhoods on (must be
-        {1,2,3} in this version).
+        {0,1,2} in this version).
     :param int min_range: The minimum range of the values to consider.
     :param int max_range: The maximum range of the values to consider, not included.
     :param int num_bins: The number of bins in the histograms.
@@ -92,28 +92,28 @@ def apply_histogram_to_all_neighbourhoods_in_slice_3d(array_3d, slice_index, rad
     
     result = np.empty([ num_rows_out, num_cols_out, num_bins ], np.float32)
     
-    if neighbouring_dims == {1,2,3}:
+    if neighbouring_dims == {0,1,2}:
         for (row_out, row_in) in enumerate(range(row_slice.start, row_slice.stop)):
             for (col_out, col_in) in enumerate(range(col_slice.start, col_slice.stop)):
                 if col_out == 0 and row_out == 0:
-                    result[row_out, col_out, :] = histogram(regions.get_neighbourhood_array_3d(array_3d, (slice_index, row_in, col_in), radius, {1,2,3}, pad), num_bins, (min_range, max_range)) #Get the only completely computed histogram (top left corner).
+                    result[row_out, col_out, :] = histogram(regions.get_neighbourhood_array_3d(array_3d, (slice_index, row_in, col_in), radius, {0,1,2}, pad), num_bins, (min_range, max_range)) #Get the only completely computed histogram (top left corner).
                 elif col_out == 0:
                     result[row_out, col_out, :] = (
                             result[row_out-1, col_out, :]
                             -
-                            histogram(regions.get_neighbourhood_array_3d(array_3d, (slice_index, row_in-1-radius, col_in), radius, {1,3}, pad), num_bins, (min_range, max_range)) #Undo effect of dropped row face.
+                            histogram(regions.get_neighbourhood_array_3d(array_3d, (slice_index, row_in-1-radius, col_in), radius, {0,2}, pad), num_bins, (min_range, max_range)) #Undo effect of dropped row face.
                             +
-                            histogram(regions.get_neighbourhood_array_3d(array_3d, (slice_index, row_in+radius, col_in), radius, {1,3}, pad), num_bins, (min_range, max_range)) #Include effect of new row face.
+                            histogram(regions.get_neighbourhood_array_3d(array_3d, (slice_index, row_in+radius, col_in), radius, {0,2}, pad), num_bins, (min_range, max_range)) #Include effect of new row face.
                         )
                 else:
                     result[row_out, col_out, :] = (
                             result[row_out, col_out-1, :]
                             -
-                            histogram(regions.get_neighbourhood_array_3d(array_3d, (slice_index, row_in, col_in-1-radius), radius, {1,2}, pad), num_bins, (min_range, max_range)) #Undo effect of dropped column face.
+                            histogram(regions.get_neighbourhood_array_3d(array_3d, (slice_index, row_in, col_in-1-radius), radius, {0,1}, pad), num_bins, (min_range, max_range)) #Undo effect of dropped column face.
                             +
-                            histogram(regions.get_neighbourhood_array_3d(array_3d, (slice_index, row_in, col_in+radius), radius, {1,2}, pad), num_bins, (min_range, max_range)) #Include effect of new column face.
+                            histogram(regions.get_neighbourhood_array_3d(array_3d, (slice_index, row_in, col_in+radius), radius, {0,1}, pad), num_bins, (min_range, max_range)) #Include effect of new column face.
                         )
     else:
-        raise NotImplementedError('Only neighbouring dimensions of {1,2,3} implemented.')
+        raise NotImplementedError('Only neighbouring dimensions of {0,1,2} implemented.')
         
     return result

@@ -32,7 +32,7 @@ class Histograms(unittest.TestCase):
                         (1, 0, scaled_data[scale].max()+1, scaled_data[scale].size+1, slice(None), slice(None)),
                         (5, 0, scaled_data[scale].max()+1, scaled_data[scale].size+1, slice(None), slice(None)),
                     ]:
-                    for neighbouring_dims in [ {1,2,3} ]:
+                    for neighbouring_dims in [ {0,1,2} ]:
                         for slice_index in range(scaled_data[scale].shape[0]):
                             np.testing.assert_equal(
                                     histograms.apply_histogram_to_all_neighbourhoods_in_slice_3d(scaled_data[scale], slice_index, radius, neighbouring_dims, min_range, max_range, num_bins, pad=0, row_slice=row_slice, col_slice=col_slice),

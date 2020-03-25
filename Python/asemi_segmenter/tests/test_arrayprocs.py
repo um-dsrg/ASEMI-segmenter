@@ -103,7 +103,7 @@ class ArrayProcs(unittest.TestCase):
                 np.array([
                         [
                             [
-                                np.histogram(regions.get_neighbourhood_array_3d(scaled_data[0], (slice_index, row, col), 1, {1,2,3}), 7*7*7, (1, 7*7*7+1))[0]
+                                np.histogram(regions.get_neighbourhood_array_3d(scaled_data[0], (slice_index, row, col), 1, {0,1,2}), 7*7*7, (1, 7*7*7+1))[0]
                                 for col in range(scaled_data[0].shape[2])
                             ] for row in range(scaled_data[0].shape[1])
                         ] for slice_index in range(scaled_data[0].shape[0])
@@ -120,7 +120,7 @@ class ArrayProcs(unittest.TestCase):
                 np.array([
                         [
                             [
-                                np.histogram(regions.get_neighbourhood_array_3d(scaled_data[0], (slice_index, row, col), 2, {1,2,3}), 7*7*7, (1, 7*7*7+1))[0]
+                                np.histogram(regions.get_neighbourhood_array_3d(scaled_data[0], (slice_index, row, col), 2, {0,1,2}), 7*7*7, (1, 7*7*7+1))[0]
                                 for col in range(scaled_data[0].shape[2])
                             ] for row in range(scaled_data[0].shape[1])
                         ] for slice_index in range(scaled_data[0].shape[0])
@@ -136,7 +136,7 @@ class ArrayProcs(unittest.TestCase):
                                     np.array([
                                             [
                                                 [
-                                                    np.histogram(regions.get_neighbourhood_array_3d(params[0]['block'], (slice_index, row, col), 1, {1,2,3}), 7*7*7, (1, 7*7*7+1))[0]
+                                                    np.histogram(regions.get_neighbourhood_array_3d(params[0]['block'], (slice_index, row, col), 1, {0,1,2}), 7*7*7, (1, 7*7*7+1))[0]
                                                     for col in range(params[0]['contextless_slices_wrt_block'][2].start, params[0]['contextless_slices_wrt_block'][2].stop)
                                                 ] for row in range(params[0]['contextless_slices_wrt_block'][1].start, params[0]['contextless_slices_wrt_block'][1].stop)
                                             ] for slice_index in range(params[0]['contextless_slices_wrt_block'][0].start, params[0]['contextless_slices_wrt_block'][0].stop)
@@ -148,7 +148,7 @@ class ArrayProcs(unittest.TestCase):
                 np.array([
                         [
                             [
-                                np.histogram(regions.get_neighbourhood_array_3d(scaled_data[0], (slice_index, row, col), 1, {1,2,3}), 7*7*7, (1, 7*7*7+1))[0]
+                                np.histogram(regions.get_neighbourhood_array_3d(scaled_data[0], (slice_index, row, col), 1, {0,1,2}), 7*7*7, (1, 7*7*7+1))[0]
                                 for col in range(scaled_data[0].shape[2])
                             ] for row in range(scaled_data[0].shape[1])
                         ] for slice_index in range(scaled_data[0].shape[0])
@@ -250,7 +250,7 @@ class ArrayProcs(unittest.TestCase):
                         ),
                     np.array([
                             [
-                                np.histogram(regions.get_neighbourhood_array_3d(scaled_data[0], (slice_index, row, col), 1, {1,2,3}), 5*5*5, (1, 5*5*5+1))[0]
+                                np.histogram(regions.get_neighbourhood_array_3d(scaled_data[0], (slice_index, row, col), 1, {0,1,2}), 5*5*5, (1, 5*5*5+1))[0]
                                 for col in range(scaled_data[0].shape[2])
                             ] for row in range(scaled_data[0].shape[1])
                         ], np.int32),
@@ -266,7 +266,7 @@ class ArrayProcs(unittest.TestCase):
                         ),
                     np.array([
                             [
-                                np.histogram(regions.get_neighbourhood_array_3d(scaled_data[0], (slice_index, row, col), 2, {1,2,3}), 5*5*5, (1, 5*5*5+1))[0]
+                                np.histogram(regions.get_neighbourhood_array_3d(scaled_data[0], (slice_index, row, col), 2, {0,1,2}), 5*5*5, (1, 5*5*5+1))[0]
                                 for col in range(scaled_data[0].shape[2])
                             ] for row in range(scaled_data[0].shape[1])
                         ], np.int32),
@@ -281,7 +281,7 @@ class ArrayProcs(unittest.TestCase):
                                     (
                                         np.array([
                                                 [
-                                                    np.histogram(regions.get_neighbourhood_array_3d(params[0]['block'], (params[0]['contextless_slices_wrt_block'][0], row, col), 1, {1,2,3}), 5*5*5, (1, 5*5*5+1))[0]
+                                                    np.histogram(regions.get_neighbourhood_array_3d(params[0]['block'], (params[0]['contextless_slices_wrt_block'][0], row, col), 1, {0,1,2}), 5*5*5, (1, 5*5*5+1))[0]
                                                     for col in range(params[0]['contextless_slices_wrt_block'][2].start, params[0]['contextless_slices_wrt_block'][2].stop)
                                                 ] for row in range(params[0]['contextless_slices_wrt_block'][1].start, params[0]['contextless_slices_wrt_block'][1].stop)
                                             ], np.int32),
@@ -291,7 +291,7 @@ class ArrayProcs(unittest.TestCase):
                         ),
                     np.array([
                             [
-                                np.histogram(regions.get_neighbourhood_array_3d(scaled_data[0], (slice_index, row, col), 1, {1,2,3}), 5*5*5, (1, 5*5*5+1))[0]
+                                np.histogram(regions.get_neighbourhood_array_3d(scaled_data[0], (slice_index, row, col), 1, {0,1,2}), 5*5*5, (1, 5*5*5+1))[0]
                                 for col in range(scaled_data[0].shape[2])
                             ] for row in range(scaled_data[0].shape[1])
                         ], np.int32),

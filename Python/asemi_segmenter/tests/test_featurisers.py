@@ -38,7 +38,7 @@ class Features(unittest.TestCase):
                             if use_voxel_value:
                                 true_slice_features[row][col].append(scaled_data[0][slice_index, row, col])
                             for (radius, scale, num_histogram_bins) in histogram_params:
-                                neighbourhood = regions.get_neighbourhood_array_3d(scaled_data[scale], (slice_index, row, col), radius, {1,2,3}, scale=scale)
+                                neighbourhood = regions.get_neighbourhood_array_3d(scaled_data[scale], (slice_index, row, col), radius, {0,1,2}, scale=scale)
                                 true_slice_features[row][col].extend(histograms.histogram(neighbourhood, num_histogram_bins, (0, 2**16)))
                     true_slice_features = np.array(true_slice_features, np.float32).reshape([-1, len(true_slice_features[0][0])])
                     
