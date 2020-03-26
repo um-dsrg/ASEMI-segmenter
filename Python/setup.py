@@ -16,5 +16,7 @@ setuptools.setup(
                 'scikit-image',
                 'scikit-learn',
                 'scipy',
+                'tqdm',
+                'psutil'
             ]
     )
