@@ -33,7 +33,7 @@ IMAGE_EXTS = set('tiff tif png jp2 bmp'.split(' '))
 #Available options.
 AVAILABLE_DOWNSAMPLE_FILTER_TYPES = set('gaussian null'.split(' '))
 AVAILABLE_HASH_FUNCTIONS = set('random_indexing'.split(' '))
-AVAILABLE_FEATURISERS = set('histograms'.split(' '))
+AVAILABLE_FEATURISERS = set('voxel histogram composite'.split(' '))
 AVAILABLE_CLASSIFIERS = set('random_forest'.split(' '))
 
 
@@ -1024,98 +1024,101 @@ def load_train_config_data(config_data, full_volume=None):
             'Configuration is invalid as it does not have the expected key values.'
             )
 
-    if not isinstance(config_data['featuriser'], dict):
-        raise DataException('Configuration is invalid as featuriser is not in dictionary format.')
-    if set(config_data['featuriser'].keys()) != {'type', 'params'}:
-        raise DataException(
-            'Configuration is invalid as featuriser does not have the expected key values.'
-            )
     if True:  # pylint: disable=using-constant-test
-        if not isinstance(config_data['featuriser']['type'], str):
-            raise DataException('Configuration is invalid as featuriser type is not a string.')
-        if config_data['featuriser']['type'] not in AVAILABLE_FEATURISERS:
-            raise DataException(
-                'Configuration is invalid as it declares an unexpected featuriser type.'
-                )
-
-        featuriser_params = None
-        if not isinstance(config_data['featuriser']['params'], dict):
-            raise DataException(
-                'Configuration is invalid as featuriser params is not in dictionary format.'
-                )
-        if config_data['featuriser']['type'] == 'histograms':
-            if (
-                    set(config_data['featuriser']['params'].keys()) != \
-                    {'use_voxel_value', 'histograms'}
-                ):
+        
+        def get_featuriser(featuriser_config):
+            '''Create a featuriser object from configuration (recurive).'''
+            if not isinstance(featuriser_config, dict):
+                raise DataException('Configuration is invalid as featuriser is not in dictionary format.')
+            if set(featuriser_config.keys()) != {'type', 'params'}:
                 raise DataException(
-                    'Configuration is invalid as featuriser params does not have the ' \
-                    'expected key values for a featuriser type of {}.'.format(
-                        config_data['featuriser']['type']
-                        )
+                    'Configuration is invalid as featuriser does not have the expected key values.'
+                    )
+            
+            if not isinstance(featuriser_config['type'], str):
+                raise DataException('Configuration is invalid as featuriser type is not a string.')
+            if featuriser_config['type'] not in AVAILABLE_FEATURISERS:
+                raise DataException(
+                    'Configuration is invalid as it declares an unexpected featuriser type.'
                     )
 
-            if not isinstance(config_data['featuriser']['params']['use_voxel_value'], str):
+            if not isinstance(featuriser_config['params'], dict):
                 raise DataException(
-                    'Configuration is invalid as featuriser params use_voxel_value is not ' \
-                    'a string.'
+                    'Configuration is invalid as featuriser params is not in dictionary format.'
                     )
-            if config_data['featuriser']['params']['use_voxel_value'] not in {'yes', 'no'}:
-                raise DataException(
-                    'Configuration is invalid as featuriser params use_voxel_value is ' \
-                    'not \'yes\' or \'no\'.'
+            
+            if featuriser_config['type'] == 'voxel':
+                if (
+                        set(featuriser_config['params'].keys()) != set()
+                    ):
+                    raise DataException(
+                        'Configuration is invalid as featuriser params does not have the ' \
+                        'expected key values for a featuriser type of {}.'.format(
+                            featuriser_config['type']
+                            )
+                        )
+                return featurisers.VoxelFeaturiser()
+                
+            elif featuriser_config['type'] == 'histogram':
+                if (
+                        set(featuriser_config['params'].keys()) != \
+                        {'radius', 'scale', 'num_bins'}
+                    ):
+                    raise DataException(
+                        'Configuration is invalid as featuriser params does not have the ' \
+                        'expected key values for a featuriser type of {}.'.format(
+                            featuriser_config['type']
+                            )
+                        )
+
+                if not isinstance(featuriser_config['params']['radius'], int):
+                    raise DataException(
+                        'Configuration is invalid as featuriser params radius ' \
+                        'is not an integer.'
+                        )
+                if not isinstance(featuriser_config['params']['scale'], int):
+                    raise DataException(
+                        'Configuration is invalid as featuriser params scale is ' \
+                        'not an integer.'
+                        )
+                if not isinstance(featuriser_config['params']['num_bins'], int):
+                    raise DataException(
+                        'Configuration is invalid as featuriser params num_bins ' \
+                        'is not an integer.'
+                        )
+
+                return featurisers.HistogramFeaturiser(
+                    featuriser_config['params']['radius'],
+                    featuriser_config['params']['scale'],
+                    featuriser_config['params']['num_bins']
                     )
-
-            if not isinstance(config_data['featuriser']['params']['histograms'], list):
-                raise DataException(
-                    'Configuration is invalid as featuriser params histograms is not a list.'
+            
+            elif featuriser_config['type'] == 'composite':
+                if (set(featuriser_config['params'].keys()) != {'featuriser_list'}):
+                    raise DataException(
+                        'Configuration is invalid as featuriser params does not have the ' \
+                        'expected key values for a featuriser type of {}.'.format(
+                            featuriser_config['type']
+                            )
+                        )
+                
+                if not isinstance(featuriser_config['params']['featuriser_list'], list):
+                    raise DataException(
+                        'Configuration is invalid as featuriser params featuriser_list ' \
+                        'is not a list.'
+                        )
+                
+                return featurisers.CompositeFeaturiser(
+                    [get_featuriser(sub_featuriser_config) for sub_featuriser_config in featuriser_config['params']['featuriser_list']]
                     )
-            if not config_data['featuriser']['params']['histograms']:
-                raise DataException(
-                    'Configuration is invalid as featuriser params histograms is empty.'
+            
+            else:
+                raise NotImplementedError(
+                    'Featuriser {} is not implemented.'.format(featuriser_config['type'])
                     )
-            for (i, entry) in enumerate(config_data['featuriser']['params']['histograms']):
-                if not isinstance(entry, dict):
-                    raise DataException(
-                        'Configuration is invalid as featuriser params histograms entry ' \
-                        '{} is not in dictionary format.'.format(i)
-                        )
-                if set(entry.keys()) != {'radius', 'scale', 'num_bins'}:
-                    raise DataException(
-                        'Configuration is invalid as featuriser params histograms entry ' \
-                        '{} does not have the expected key values.'.format(i)
-                        )
-
-                if not isinstance(entry['radius'], int):
-                    raise DataException(
-                        'Configuration is invalid as featuriser params entry {} radius ' \
-                        'is not an integer.'.format(i)
-                        )
-
-                if not isinstance(entry['scale'], int):
-                    raise DataException(
-                        'Configuration is invalid as featuriser params entry {} scale is ' \
-                        'not an integer.'.format(i)
-                        )
-
-                if not isinstance(entry['num_bins'], int):
-                    raise DataException(
-                        'Configuration is invalid as featuriser params entry {} num_bins ' \
-                        'is not an integer.'.format(i)
-                        )
-
-            featuriser_params = {
-                'use_voxel_value': config_data['featuriser']['params']['use_voxel_value'] == 'yes',
-                'histogram_params': [
-                    (entry['radius'], entry['scale'], entry['num_bins'])
-                    for entry in config_data['featuriser']['params']['histograms']
-                    ]
-                }
-        else:
-            raise NotImplementedError(
-                'Featuriser {} is not implemented.'.format(config_data['featuriser'])
-                )
-
+        
+        featuriser = get_featuriser(config_data['featuriser'])
+        
     if not isinstance(config_data['classifier'], dict):
         raise DataException('Configuration is invalid as classifier is not in dictionary format.')
     if set(config_data['classifier'].keys()) != {'type', 'params'}:
@@ -1189,14 +1192,6 @@ def load_train_config_data(config_data, full_volume=None):
                 'Configuration is invalid as training_set sample_size_per_label is 0 or a ' \
                 'negative number other than -1.'
                 )
-
-    featuriser = {
-        'histograms': featurisers.HistogramFeaturiser(
-            **featuriser_params
-            ),
-        }[
-            config_data['featuriser']['type']
-            ]
 
     classifier = {
         'random_forest': sklearn.ensemble.RandomForestClassifier(
