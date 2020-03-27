@@ -23,11 +23,9 @@ parser.add_argument(
         help='Full path to preprocessed volume data file (*.hdf).'
     )
 parser.add_argument(
-        '--soft_segmentation',
-        required=False,
-        default='yes',
-        choices=['yes', 'no'],
-        help='Whether to output greyscale images as segmented slices showing a probability of each voxel belonging to the label (default) or to output a pure binary mask (darkest value being 0 and brightest being 1).'
+        '--config_fullfname',
+        required=True,
+        help='Full path to configuration file specifying how to segment the volume (*.json).'
     )
 parser.add_argument(
         '--results_dir',
@@ -74,6 +72,10 @@ params = None
 params = vars(parser.parse_args())
 if params is not None:
     params['listener'] = _interfaces.CliProgressListener(params.pop('log_file_fullfname'))
+    if True:
+        assert 'config' not in params
+        params['config'] = params['config_fullfname']
+        del params['config_fullfname']
     if True:
         assert 'model' not in params
         params['model'] = params['model_fullfname']

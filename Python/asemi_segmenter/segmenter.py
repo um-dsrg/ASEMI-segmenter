@@ -806,7 +806,7 @@ def evaluate(
 
 #########################################
 def segment(
-        model, preproc_volume_fullfname, soft_segmentation, results_dir,
+        model, preproc_volume_fullfname, config, results_dir,
         checkpoint_fullfname, restart_checkpoint,
         max_processes, max_batch_memory, listener=ProgressListener()
     ):
@@ -818,9 +818,10 @@ def segment(
     :type model: str or dict
     :param str preproc_volume_fullfname: The full file name (with path) to the preprocessed
         volume HDF file.
-    :param bool soft_segmentation: Whether to output the segmented slices as grayscale images
-        consisting of graded levels of yes and no (high intensity pixels versus low intensity
-        pixels or to output black and white images.
+    :param config: The configuration to use when segmenting (can be either a path to a
+        json file containing the configuration or a dictionary specifying the configuration
+        directly). See user guide for description of the segment configuration.
+    :type config: str or dict
     :param results_dir: The path to the directory in which to store the segmented slices. Segmented
         slices consist of a directory for each label, each containing images that act as masks for
         whether a particular pixel belongs to said label or not.
@@ -863,6 +864,14 @@ def segment(
                         datas.load_model_data(model, full_volume)
                 del config_data
                 classifier.n_jobs = max_processes
+
+                listener.log_output('> Loading config file.')
+                if isinstance(config, str):
+                    (config_data, soft_segmentation) = \
+                        datas.load_segment_config_file(config)
+                else:
+                    (config_data, soft_segmentation) = \
+                        datas.load_segment_config_data(config)
 
                 listener.log_output('> Checking results directory.')
                 datas.check_segmentation_results_directory(results_dir)

@@ -1216,6 +1216,50 @@ def load_train_config_data(config_data, full_volume=None):
 
 
 #########################################
+def load_segment_config_file(config_fullfname):
+    '''
+    Load and validate a segment configuration JSON file.
+
+    :param str config_fullfname: Full file name (with path) to the configuration file. See user
+        guide for description of the segment configuration.
+    :return: A tuple containing the following elements in order:
+        * The dictionary configuration data.
+        * Whether to perform soft segmentation or not.
+    :rtype: tuple
+    '''
+    with open(config_fullfname, 'r', encoding='utf-8') as f:
+        raw_config = json.load(f)
+    return load_segment_config_data(raw_config)
+
+
+#########################################
+def load_segment_config_data(config_data):
+    '''
+    Load and validate a segment configuration dictionary.
+
+    :param dict config_data: The segment configuration dictionary. See user guide
+        for description of the segment configuration.
+    :return: A tuple containing the following elements in order:
+        * The dictionary configuration data.
+        * Whether to perform soft segmentation (greyscale mask) or not (binary mask).
+    :rtype: tuple
+    '''
+    if not isinstance(config_data, dict):
+        raise DataException('Configuration is invalid as it is not in dictionary format.')
+    if set(config_data.keys()) != {'soft_segmentation'}:
+        raise DataException(
+            'Configuration is invalid as it does not have the expected key values.'
+            )
+    if True:  # pylint: disable=using-constant-test
+        if not isinstance(config_data['soft_segmentation'], str):
+            raise DataException('Configuration is invalid soft_segmentation is not a string.')
+        if config_data['soft_segmentation'] not in { 'yes', 'no' }:
+            raise DataException('Configuration is invalid as soft_segmentation is not "yes" or "no".')
+
+    return (config_data, config_data['soft_segmentation'] == 'yes')
+
+
+#########################################
 def load_model_file(model_fullfname, full_volume=None):
     '''
     Load and validate a classifier model pickle file and return it as usable objects.

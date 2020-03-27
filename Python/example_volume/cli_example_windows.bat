@@ -31,6 +31,7 @@ python ..\bin\evaluate.py \
 python ..\bin\segment.py \
     --model_fullfname "train\model.pkl" \
     --preproc_volume_fullfname "preprocess\volume.hdf" \
+    --config_fullfname "segment_config.json" \
     --results_dir "segment" \
     --max_processes 2 \
     --max_batch_memory 0.1
