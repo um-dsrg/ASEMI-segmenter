@@ -491,7 +491,7 @@ def train(
                                 block_rows=best_block_shape[0],
                                 block_cols=best_block_shape[0],
                                 output=training_set.get_features_array(),
-                                output_start_index=i*slice_size,
+                                output_start_row_index=i*slice_size,
                                 n_jobs=max_processes
                                 )
                         listener.current_progress_update(i+1)
@@ -743,7 +743,7 @@ def evaluate(
                             raise skip
                         with times.Timer() as sub_timer:
                             with times.Timer() as sub_timer_featuriser:
-                                (slice_features, _) = featuriser.featurise(
+                                slice_features = featuriser.featurise(
                                     full_volume.get_scale_arrays(featuriser.get_scales_needed()),
                                     slice_index=volume_slice_index,
                                     block_rows=best_block_shape[0],
@@ -911,7 +911,7 @@ def segment(
                         if volume_slice_index < start:
                             continue
                         with checkpoint.apply('segment_prog'):
-                            (slice_features, _) = featuriser.featurise(
+                            slice_features = featuriser.featurise(
                                 full_volume.get_scale_arrays(featuriser.get_scales_needed()),
                                 slice_index=volume_slice_index,
                                 block_rows=best_block_shape[0],
