@@ -48,6 +48,16 @@ class Featuriser(object):
         raise NotImplementedError()
     
     #########################################
+    def get_config(self):
+        '''
+        Get the dictionary configuration of the featuriser's parameters.
+        
+        :return: The dictionary configuration.
+        :rtype: dict
+        '''
+        raise NotImplementedError()
+    
+    #########################################
     def _fix_ranges(self, data_scales, row_range, col_range):
         '''
         (Protected method) Replace None in the row and column ranges with actual numbers.
@@ -104,26 +114,6 @@ class Featuriser(object):
             raise ValueError('Provided output array does not have enough columns to hold result in expected range (array columns = {}, columns needed = {}, last output column index = {}).'.format(output.shape[1], cols_needed, last_output_col_index))
         
         return (rows_needed, cols_needed, row_range, col_range, output)
-    
-    #########################################
-    def get_num_steps_to_featurise(self, data_scales, block_rows, block_cols, row_range=slice(None), col_range=slice(None)):
-        '''
-        Get the number of iterations in the featurise process.
-
-        This is meant to be used with the feature method's progress_listener to know how many
-        iterations a progress bar will have.
-        
-        :param dict data_scales: A dictionary of different scales of the volume.
-        :param int block_rows: The first dimension of the block shape (2D).
-        :param int block_cols: The second dimension of the block shape (2D).
-        :param slice row_range: The range of rows to featurise (if only a part of the slice is
-            needed).
-        :param slice col_range: The range of columns to featurise (if only a part of the slice is
-            needed).
-        :return: The number of steps needed.
-        :rtype: int
-        '''
-        raise NotImplementedError()
     
     #########################################
     def featurise(self, data_scales, slice_index, block_rows, block_cols, row_range=slice(None), col_range=slice(None), output=None, output_start_row_index=0, output_start_col_index=0, n_jobs=1):
@@ -203,22 +193,15 @@ class CompositeFeaturiser(Featuriser):
         return set.union(*(featuriser.get_scales_needed() for featuriser in self.featuriser_list))
     
     #########################################
-    def get_num_steps_to_featurise(self, data_scales, block_rows, block_cols, row_range=slice(None), col_range=slice(None)):
+    def get_config(self):
         '''
-        Get the number of iterations in the featurise process.
-
-        See super class for more information.
+        Get the dictionary configuration of the featuriser's parameters.
         
-        :param dict data_scales: As described in the super class.
-        :param int block_rows: As described in the super class.
-        :param int block_cols: As described in the super class.
-        :param slice row_range: As described in the super class.
-        :param slice col_range: As described in the super class.
-        :return: As described in the super class.
-        :rtype: int
+        :return: The dictionary configuration.
+        :rtype: dict
         '''
-        return sum(featuriser.get_num_steps_to_featurise(data_scales, row_range, col_range) for featuriser in self.featuriser_list)
-        
+        return {'type': 'composite', 'params': {'featuriser_list': [sub_featuriser.get_config() for sub_featuriser in self.featuriser_list]}}
+    
     #########################################
     def featurise(self, data_scales, slice_index, block_rows, block_cols, row_range=slice(None), col_range=slice(None), output=None, output_start_row_index=0, output_start_col_index=0, n_jobs=1):
         '''
@@ -290,21 +273,14 @@ class VoxelFeaturiser(Featuriser):
         return { 0 }
     
     #########################################
-    def get_num_steps_to_featurise(self, data_scales, block_rows, block_cols, row_range=slice(None), col_range=slice(None)):
+    def get_config(self):
         '''
-        Get the number of iterations in the featurise process.
-
-        See super class for more information.
+        Get the dictionary configuration of the featuriser's parameters.
         
-        :param dict data_scales: As described in the super class.
-        :param int block_rows: As described in the super class.
-        :param int block_cols: As described in the super class.
-        :param slice row_range: As described in the super class.
-        :param slice col_range: As described in the super class.
-        :return: As described in the super class.
-        :rtype: int
+        :return: The dictionary configuration.
+        :rtype: dict
         '''
-        return 1
+        return {'type': 'voxel', 'params': dict()}
     
     #########################################
     def featurise(self, data_scales, slice_index, block_rows, block_cols, row_range=slice(None), col_range=slice(None), output=None, output_start_row_index=0, output_start_col_index=0, n_jobs=1):
@@ -390,21 +366,14 @@ class HistogramFeaturiser(Featuriser):
         return { 0, self.scale }
     
     #########################################
-    def get_num_steps_to_featurise(self, data_scales, block_rows, block_cols, row_range=slice(None), col_range=slice(None)):
+    def get_config(self):
         '''
-        Get the number of iterations in the featurise process.
-
-        See super class for more information.
+        Get the dictionary configuration of the featuriser's parameters.
         
-        :param dict data_scales: As described in the super class.
-        :param int block_rows: As described in the super class.
-        :param int block_cols: As described in the super class.
-        :param slice row_range: As described in the super class.
-        :param slice col_range: As described in the super class.
-        :return: As described in the super class.
-        :rtype: int
+        :return: The dictionary configuration.
+        :rtype: dict
         '''
-        return arrayprocs.get_num_blocks_in_data(data_scales[0].shape, (block_rows, block_cols), self.radius)
+        return {'type': 'histogram', 'params': {'radius': self.radius, 'scale': self.scale, 'num_bins': self.num_bins}}
     
     #########################################
     def featurise(self, data_scales, slice_index, block_rows, block_cols, row_range=slice(None), col_range=slice(None), output=None, output_start_row_index=0, output_start_col_index=0, n_jobs=1):
