@@ -1,7 +1,6 @@
 '''Module containing different methods to turn voxels in a volume into feature vectors.'''
 
 import numpy as np
-import random
 import os
 import sys
 from asemi_segmenter.lib import regions
@@ -17,6 +16,13 @@ class Featuriser(object):
     def __init__(self):
         '''Empty constructor.'''
         pass
+    
+    #########################################
+    def regenerate(self):
+        '''
+        Regenerate missing parameters with random values.
+        '''
+        raise NotImplementedError()
     
     #########################################
     def get_feature_size(self):
@@ -162,6 +168,13 @@ class VoxelFeaturiser(Featuriser):
         pass
     
     #########################################
+    def regenerate(self):
+        '''
+        Regenerate missing parameters with random values.
+        '''
+        pass
+    
+    #########################################
     def get_feature_size(self):
         '''
         Get the number of elements in the feature vector.
@@ -242,33 +255,52 @@ class HistogramFeaturiser(Featuriser):
     '''
     
     #########################################
-    @classmethod
-    def create_random(cls, num_scales_available, rand=random.Random()):
-        '''
-        Create a random histogram featuriser object.
-        
-        :return: The featuriser object.
-        :rtype: HistogramFeaturiser
-        '''
-        return HistogramFeaturiser(
-            rand.randrange(1, 128+1),
-            rand.randrange(0, num_scales_available+1),
-            rand.randrange(2, 64+1),
-            )
-    
-    #########################################
     def __init__(self, radius, scale, num_bins):
         '''
         Constructor.
         
-        :param int radius: The neighbourhood radius.
-        :param int scale: The scale of the volume from which to extract this neighbourhood.
-        :param int num_bins: num_bins is the number of bins in the histogram.
+        :param radius: The neighbourhood radius or a function that generates it.
+        :type radius: int or callable
+        :param scale: The scale of the volume from which to extract this neighbourhood or a function that generates it.
+        :type scale: int or callable
+        :param num_bins: num_bins is the number of bins in the histogram or a function that generates it.
+        :type num_bins: int or callable
         '''
-        self.radius = radius
-        self.scale = scale
-        self.num_bins = num_bins
+        self.radius = radius if isinstance(radius, int) else None
+        self.scale = scale if isinstance(scale, int) else None
+        self.num_bins = num_bins if isinstance(scale, int) else None
         
+        if isinstance(radius, int):
+            self.radius_generator = lambda:radius
+        elif callable(radius):
+            self.radius_generator = radius
+        else:
+            raise ValueError('radius must be int or callable.')
+        
+        if isinstance(scale, int):
+            self.scale_generator = lambda:scale
+        elif callable(scale):
+            self.scale_generator = scale
+        else:
+            raise ValueError('scale must be int or callable.')
+        
+        if isinstance(num_bins, int):
+            self.num_bins_generator = lambda:num_bins
+        elif callable(num_bins):
+            self.num_bins_generator = num_bins
+        else:
+            raise ValueError('num_bins must be int or callable.')
+        
+        
+    #########################################
+    def regenerate(self):
+        '''
+        Regenerate missing parameters with random values.
+        '''
+        self.radius = self.radius_generator()
+        self.scale = self.scale_generator()
+        self.num_bins = self.num_bins_generator()
+    
     #########################################
     def get_feature_size(self):
         '''
@@ -377,22 +409,6 @@ class CompositeFeaturiser(Featuriser):
     '''Combine several featurisers into one with the feature vectors being concatenated.'''
     
     #########################################
-    @classmethod
-    def create_random(cls, max_num_histograms, num_scales_available, rand=random.Random()):
-        '''
-        Create a random composite featuriser object.
-        
-        :return: The featuriser object.
-        :rtype: CompositeFeaturiser
-        '''
-        featuriser_list = []
-        if rand.choice([True, False]):
-            featuriser_list.append(VoxelFeaturiser())
-        for _ in range(rand.randrange(1, max_num_histograms+1)):
-            featuriser_list.append(HistogramFeaturiser.create_random(num_scales_available, rand))
-        return CompositeFeaturiser(featuriser_list)
-    
-    #########################################
     def __init__(self, featuriser_list):
         '''
         Constructor.
@@ -400,6 +416,14 @@ class CompositeFeaturiser(Featuriser):
         :param list featuriser_list: List of featuriser objects to combine.
         '''
         self.featuriser_list = featuriser_list
+    
+    #########################################
+    def regenerate(self):
+        '''
+        Regenerate missing parameters with random values.
+        '''
+        for featuriser in self.featuriser_list:
+            featuriser.regenerate()
     
     #########################################
     def get_feature_size(self):
