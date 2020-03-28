@@ -20,7 +20,7 @@ class Featuriser(object):
     #########################################
     def regenerate(self):
         '''
-        Regenerate missing parameters with random values.
+        Regenerate parameters with value generators provided.
         '''
         raise NotImplementedError()
     
@@ -170,7 +170,7 @@ class VoxelFeaturiser(Featuriser):
     #########################################
     def regenerate(self):
         '''
-        Regenerate missing parameters with random values.
+        Regenerate parameters with value generators provided.
         '''
         pass
     
@@ -295,7 +295,7 @@ class HistogramFeaturiser(Featuriser):
     #########################################
     def regenerate(self):
         '''
-        Regenerate missing parameters with random values.
+        Regenerate parameters with value generators provided.
         '''
         self.radius = self.radius_generator()
         self.scale = self.scale_generator()
@@ -420,7 +420,7 @@ class CompositeFeaturiser(Featuriser):
     #########################################
     def regenerate(self):
         '''
-        Regenerate missing parameters with random values.
+        Regenerate parameters with value generators provided.
         '''
         for featuriser in self.featuriser_list:
             featuriser.regenerate()

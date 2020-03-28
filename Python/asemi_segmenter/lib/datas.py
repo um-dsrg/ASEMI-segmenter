@@ -1216,6 +1216,303 @@ def load_train_config_data(config_data, full_volume=None):
 
 
 #########################################
+def load_tune_config_file(config_fullfname):
+    '''
+    Load and validate a tune configuration JSON file and return it as usable objects.
+
+    :param str config_fullfname: Full file name (with path) to the configuration file. See user
+        guide for description of the tune configuration.
+    :return: A tuple containing the following elements in order:
+        * The dictionary configuration data.
+        * The loaded feauteriser object (featurisers.Featuriser) mentioned in the configuration.
+        * The loaded classifier object (sklearn classifier) configuration.
+    :rtype: tuple
+    '''
+    with open(config_fullfname, 'r', encoding='utf-8') as f:
+        raw_config = json.load(f)
+    return load_tune_config_data(raw_config)
+
+
+#########################################
+def load_tune_config_data(config_data):
+    '''
+    Load and validate a tune configuration dictionary and return it as usable objects.
+
+    :param dict config_data: The tune configuration dictionary. See user guide for description
+        of the tune configuration.
+    :return: A tuple containing the following elements in order:
+        * The dictionary configuration data.
+        * The loaded feauteriser object (featurisers.Featuriser) mentioned in the configuration.
+        * The loaded classifier object (sklearn classifier) configuration.
+    :rtype: tuple
+    '''
+    rand = random.Random(0)
+    
+    if not isinstance(config_data, dict):
+        raise DataException('Configuration is invalid as it is not in dictionary format.')
+    if set(config_data.keys()) != {'featuriser', 'classifier', 'training_set'}:
+        raise DataException(
+            'Configuration is invalid as it does not have the expected key values.'
+            )
+
+    if True:  # pylint: disable=using-constant-test
+        
+        def get_featuriser(featuriser_config):
+            '''Create a featuriser object from configuration (recurive).'''
+            if not isinstance(featuriser_config, dict):
+                raise DataException('Configuration is invalid as featuriser is not in dictionary format.')
+            if set(featuriser_config.keys()) != {'type', 'params'}:
+                raise DataException(
+                    'Configuration is invalid as featuriser does not have the expected key values.'
+                    )
+            
+            if not isinstance(featuriser_config['type'], str):
+                raise DataException('Configuration is invalid as featuriser type is not a string.')
+            if featuriser_config['type'] not in AVAILABLE_FEATURISERS:
+                raise DataException(
+                    'Configuration is invalid as it declares an unexpected featuriser type.'
+                    )
+
+            if not isinstance(featuriser_config['params'], dict):
+                raise DataException(
+                    'Configuration is invalid as featuriser params is not in dictionary format.'
+                    )
+            
+            if featuriser_config['type'] == 'voxel':
+                if (
+                        set(featuriser_config['params'].keys()) != set()
+                    ):
+                    raise DataException(
+                        'Configuration is invalid as featuriser params does not have the ' \
+                        'expected key values for a featuriser type of {}.'.format(
+                            featuriser_config['type']
+                            )
+                        )
+                return featurisers.VoxelFeaturiser()
+                
+            elif featuriser_config['type'] == 'histogram':
+                if (
+                        set(featuriser_config['params'].keys()) != \
+                        {'radius', 'scale', 'num_bins'}
+                    ):
+                    raise DataException(
+                        'Configuration is invalid as featuriser params does not have the ' \
+                        'expected key values for a featuriser type of {}.'.format(
+                            featuriser_config['type']
+                            )
+                        )
+
+                radius = None
+                if isinstance(featuriser_config['params']['radius'], int):
+                    radius = featuriser_config['params']['radius']
+                elif isinstance(featuriser_config['params']['radius'], dict):
+                    if set(featuriser_config['params']['radius'].keys()) != {'max', 'min'}:
+                        raise DataException(
+                            'Configuration is invalid as featuriser params radius does not ' \
+                            'have the expected key values.'
+                            )
+                    if not isinstance(featuriser_config['params']['radius']['max'], int):
+                        raise DataException(
+                            'Configuration is invalid as featuriser params radius max' \
+                            'is not an integer.'
+                            )
+                    if not isinstance(featuriser_config['params']['radius']['min'], int):
+                        raise DataException(
+                            'Configuration is invalid as featuriser params radius min' \
+                            'is not an integer.'
+                            )
+                    if (
+                            featuriser_config['params']['radius']['min'] >= \
+                            featuriser_config['params']['radius']['max']
+                        ):
+                        raise DataException(
+                            'Configuration is invalid as featuriser params radius min' \
+                            'is not less than featuriser params radius max.'
+                            )
+                    radius = lambda:rand.randrange(
+                        featuriser_config['params']['radius']['min'],
+                        featuriser_config['params']['radius']['max'] + 1
+                        )
+                
+                scale = None
+                if isinstance(featuriser_config['params']['scale'], int):
+                    scale = featuriser_config['params']['scale']
+                elif isinstance(featuriser_config['params']['scale'], dict):
+                    if set(featuriser_config['params']['scale'].keys()) != {'max', 'min'}:
+                        raise DataException(
+                            'Configuration is invalid as featuriser params scale does not ' \
+                            'have the expected key values.'
+                            )
+                    if not isinstance(featuriser_config['params']['scale']['max'], int):
+                        raise DataException(
+                            'Configuration is invalid as featuriser params scale max' \
+                            'is not an integer.'
+                            )
+                    if not isinstance(featuriser_config['params']['scale']['min'], int):
+                        raise DataException(
+                            'Configuration is invalid as featuriser params scale min' \
+                            'is not an integer.'
+                            )
+                    if (
+                            featuriser_config['params']['scale']['min'] >= \
+                            featuriser_config['params']['scale']['max']
+                        ):
+                        raise DataException(
+                            'Configuration is invalid as featuriser params scale min' \
+                            'is not less than featuriser params scale max.'
+                            )
+                    scale = lambda:rand.randrange(
+                        featuriser_config['params']['scale']['min'],
+                        featuriser_config['params']['scale']['max'] + 1
+                        )
+                
+                num_bins = None
+                if isinstance(featuriser_config['params']['num_bins'], int):
+                    num_bins = featuriser_config['params']['num_bins']
+                elif isinstance(featuriser_config['params']['num_bins'], dict):
+                    if set(featuriser_config['params']['num_bins'].keys()) != {'max', 'min'}:
+                        raise DataException(
+                            'Configuration is invalid as featuriser params num_bins does not ' \
+                            'have the expected key values.'
+                            )
+                    if not isinstance(featuriser_config['params']['num_bins']['max'], int):
+                        raise DataException(
+                            'Configuration is invalid as featuriser params num_bins max' \
+                            'is not an integer.'
+                            )
+                    if not isinstance(featuriser_config['params']['num_bins']['min'], int):
+                        raise DataException(
+                            'Configuration is invalid as featuriser params num_bins min' \
+                            'is not an integer.'
+                            )
+                    if (
+                            featuriser_config['params']['num_bins']['min'] >= \
+                            featuriser_config['params']['num_bins']['max']
+                        ):
+                        raise DataException(
+                            'Configuration is invalid as featuriser params num_bins min' \
+                            'is not less than featuriser params num_bins max.'
+                            )
+                    num_bins = lambda:rand.randrange(
+                        featuriser_config['params']['num_bins']['min'],
+                        featuriser_config['params']['num_bins']['max'] + 1
+                        )
+
+                return featurisers.HistogramFeaturiser(radius, scale, num_bins)
+            
+            elif featuriser_config['type'] == 'composite':
+                if (set(featuriser_config['params'].keys()) != {'featuriser_list'}):
+                    raise DataException(
+                        'Configuration is invalid as featuriser params does not have the ' \
+                        'expected key values for a featuriser type of {}.'.format(
+                            featuriser_config['type']
+                            )
+                        )
+                
+                if not isinstance(featuriser_config['params']['featuriser_list'], list):
+                    raise DataException(
+                        'Configuration is invalid as featuriser params featuriser_list ' \
+                        'is not a list.'
+                        )
+                
+                return featurisers.CompositeFeaturiser(
+                    [get_featuriser(sub_featuriser_config) for sub_featuriser_config in featuriser_config['params']['featuriser_list']]
+                    )
+            
+            else:
+                raise NotImplementedError(
+                    'Featuriser {} is not implemented.'.format(featuriser_config['type'])
+                    )
+        
+        featuriser = get_featuriser(config_data['featuriser'])
+        
+    if not isinstance(config_data['classifier'], dict):
+        raise DataException('Configuration is invalid as classifier is not in dictionary format.')
+    if set(config_data['classifier'].keys()) != {'type', 'params'}:
+        raise DataException(
+            'Configuration is invalid as classifier does not have the expected key values.'
+            )
+    if True:  # pylint: disable=using-constant-test
+        if not isinstance(config_data['classifier']['type'], str):
+            raise DataException('Configuration is invalid as classifier type is not a string.')
+        if config_data['classifier']['type'] not in AVAILABLE_CLASSIFIERS:
+            raise DataException(
+                'Configuration is invalid as it declares an unexpected classifier type.'
+                )
+
+        if not isinstance(config_data['classifier']['params'], dict):
+            raise DataException(
+                'Configuration is invalid as classifier params is not in dictionary format.'
+                )
+        if config_data['classifier']['type'] == 'random_forest':
+            if (
+                    set(config_data['classifier']['params'].keys()) != \
+                    {'n_estimators', 'max_depth', 'min_samples_leaf'}
+                ):
+                raise DataException(
+                    'Configuration is invalid as classifier params does not have the expected ' \
+                    'key values for a classifier type of {}.'.format(
+                        config_data['classifier']['type']
+                        )
+                    )
+
+            if not isinstance(config_data['classifier']['params']['n_estimators'], int):
+                raise DataException(
+                    'Configuration is invalid as classifier params n_estimators is not an integer.'
+                    )
+
+            if not isinstance(config_data['classifier']['params']['max_depth'], int):
+                raise DataException(
+                    'Configuration is invalid as classifier params max_depth is not an integer.'
+                    )
+
+            if not isinstance(config_data['classifier']['params']['min_samples_leaf'], int):
+                raise DataException(
+                    'Configuration is invalid as classifier params min_samples_leaf is not an ' \
+                    'integer.'
+                    )
+        else:
+            raise NotImplementedError(
+                'Classifier {} is not implemented.'.format(
+                    config_data['classifier']['type']
+                    )
+                )
+
+    if not isinstance(config_data['training_set'], dict):
+        raise DataException(
+            'Configuration is invalid as training_set is not in dictionary format.'
+            )
+    if set(config_data['training_set'].keys()) != {'sample_size_per_label'}:
+        raise DataException(
+            'Configuration is invalid as training_set does not have the expected key values.'
+            )
+    if True:  # pylint: disable=using-constant-test
+        if not isinstance(config_data['training_set']['sample_size_per_label'], int):
+            raise DataException(
+                'Configuration is invalid as training_set sample_size_per_label is not an integer.'
+                )
+        if (
+                config_data['training_set']['sample_size_per_label'] == 0 or
+                config_data['training_set']['sample_size_per_label'] < -1
+            ):
+            raise DataException(
+                'Configuration is invalid as training_set sample_size_per_label is 0 or a ' \
+                'negative number other than -1.'
+                )
+
+    classifier = {
+        'random_forest': sklearn.ensemble.RandomForestClassifier(
+            **config_data['classifier']['params'],
+            random_state=0
+            ),
+        }[
+            config_data['classifier']['type']
+            ]
+
+    return (config_data, featuriser, classifier)
+    
+    
+#########################################
 def load_segment_config_file(config_fullfname):
     '''
     Load and validate a segment configuration JSON file.
