@@ -151,104 +151,6 @@ class Featuriser(object):
 
 
 #########################################
-class CompositeFeaturiser(Featuriser):
-    '''Combine several featurisers into one with the feature vectors being concatenated.'''
-    
-    #########################################
-    @classmethod
-    def create_random(cls, max_num_histograms, num_scales_available, rand=random.Random()):
-        '''
-        Create a random composite featuriser object.
-        
-        :return: The featuriser object.
-        :rtype: CompositeFeaturiser
-        '''
-        featuriser_list = []
-        if rand.choice([True, False]):
-            featuriser_list.append(VoxelFeaturiser())
-        for _ in range(rand.randrange(1, max_num_histograms+1)):
-            featuriser_list.append(HistogramFeaturiser.create_random(num_scales_available, rand))
-        return CompositeFeaturiser(featuriser_list)
-    
-    #########################################
-    def __init__(self, featuriser_list):
-        '''
-        Constructor.
-        
-        :param list featuriser_list: List of featuriser objects to combine.
-        '''
-        self.featuriser_list = featuriser_list
-    
-    #########################################
-    def get_feature_size(self):
-        '''
-        Get the number of elements in the feature vector.
-        
-        :return: The feature vector size.
-        :rtype: int
-        '''
-        return sum(featuriser.get_feature_size() for featuriser in self.featuriser_list)
-    
-    #########################################
-    def get_context_needed(self):
-        '''
-        Get the maximum amount of context needed around a voxel to generate a feature vector.
-        
-        :return: The context size.
-        :rtype: int
-        '''
-        return max(featuriser.get_context_needed() for featuriser in self.featuriser_list)
-    
-    #########################################
-    def get_scales_needed(self):
-        '''
-        Get the different volume scales needed to generate a feature vector.
-        
-        :return: The scales needed.
-        :rtype: set
-        '''
-        return set.union(*(featuriser.get_scales_needed() for featuriser in self.featuriser_list))
-    
-    #########################################
-    def get_config(self):
-        '''
-        Get the dictionary configuration of the featuriser's parameters.
-        
-        :return: The dictionary configuration.
-        :rtype: dict
-        '''
-        return {'type': 'composite', 'params': {'featuriser_list': [sub_featuriser.get_config() for sub_featuriser in self.featuriser_list]}}
-    
-    #########################################
-    def featurise(self, data_scales, slice_index, block_rows, block_cols, row_range=slice(None), col_range=slice(None), output=None, output_start_row_index=0, output_start_col_index=0, n_jobs=1):
-        '''
-        Turn a slice from a volume into a matrix of feature vectors.
-
-        See super class for more information.
-        
-        :param dict data_scales: As described in the super class.
-        :param int slice_index: As described in the super class.
-        :param int block_rows: As described in the super class.
-        :param int block_cols: As described in the super class.
-        :param slice row_range: As described in the super class.
-        :param slice col_range: As described in the super class.
-        :param numpy.ndarray output: As described in the super class.
-        :param int output_start_row_index: As described in the super class.
-        :param int output_start_col_index: As described in the super class.
-        :param int n_jobs: As described in the super class.
-        :return: As described in the super class.
-        :rtype: numpy.ndarray
-        '''
-        (output_rows_needed, output_cols_needed, row_range, col_range, output) = self._prepare_featurise(data_scales, row_range, col_range, output, output_start_row_index, output_start_col_index)
-        
-        for featuriser in self.featuriser_list:
-            featuriser.featurise(data_scales, slice_index, block_rows, block_cols, row_range, col_range, output, output_start_row_index, output_start_col_index, n_jobs)
-            output_start_col_index += featuriser.get_feature_size()
-        
-        return output
-
-
-#########################################
 class VoxelFeaturiser(Featuriser):
     '''Just treat the voxel values as features.'''
     
@@ -468,3 +370,101 @@ class HistogramFeaturiser(Featuriser):
             n_jobs=n_jobs,
             extra_params=(self.radius, self.scale, self.num_bins, (row_range, col_range), output_start_row_index, output_start_col_index),
             )
+
+
+#########################################
+class CompositeFeaturiser(Featuriser):
+    '''Combine several featurisers into one with the feature vectors being concatenated.'''
+    
+    #########################################
+    @classmethod
+    def create_random(cls, max_num_histograms, num_scales_available, rand=random.Random()):
+        '''
+        Create a random composite featuriser object.
+        
+        :return: The featuriser object.
+        :rtype: CompositeFeaturiser
+        '''
+        featuriser_list = []
+        if rand.choice([True, False]):
+            featuriser_list.append(VoxelFeaturiser())
+        for _ in range(rand.randrange(1, max_num_histograms+1)):
+            featuriser_list.append(HistogramFeaturiser.create_random(num_scales_available, rand))
+        return CompositeFeaturiser(featuriser_list)
+    
+    #########################################
+    def __init__(self, featuriser_list):
+        '''
+        Constructor.
+        
+        :param list featuriser_list: List of featuriser objects to combine.
+        '''
+        self.featuriser_list = featuriser_list
+    
+    #########################################
+    def get_feature_size(self):
+        '''
+        Get the number of elements in the feature vector.
+        
+        :return: The feature vector size.
+        :rtype: int
+        '''
+        return sum(featuriser.get_feature_size() for featuriser in self.featuriser_list)
+    
+    #########################################
+    def get_context_needed(self):
+        '''
+        Get the maximum amount of context needed around a voxel to generate a feature vector.
+        
+        :return: The context size.
+        :rtype: int
+        '''
+        return max(featuriser.get_context_needed() for featuriser in self.featuriser_list)
+    
+    #########################################
+    def get_scales_needed(self):
+        '''
+        Get the different volume scales needed to generate a feature vector.
+        
+        :return: The scales needed.
+        :rtype: set
+        '''
+        return set.union(*(featuriser.get_scales_needed() for featuriser in self.featuriser_list))
+    
+    #########################################
+    def get_config(self):
+        '''
+        Get the dictionary configuration of the featuriser's parameters.
+        
+        :return: The dictionary configuration.
+        :rtype: dict
+        '''
+        return {'type': 'composite', 'params': {'featuriser_list': [sub_featuriser.get_config() for sub_featuriser in self.featuriser_list]}}
+    
+    #########################################
+    def featurise(self, data_scales, slice_index, block_rows, block_cols, row_range=slice(None), col_range=slice(None), output=None, output_start_row_index=0, output_start_col_index=0, n_jobs=1):
+        '''
+        Turn a slice from a volume into a matrix of feature vectors.
+
+        See super class for more information.
+        
+        :param dict data_scales: As described in the super class.
+        :param int slice_index: As described in the super class.
+        :param int block_rows: As described in the super class.
+        :param int block_cols: As described in the super class.
+        :param slice row_range: As described in the super class.
+        :param slice col_range: As described in the super class.
+        :param numpy.ndarray output: As described in the super class.
+        :param int output_start_row_index: As described in the super class.
+        :param int output_start_col_index: As described in the super class.
+        :param int n_jobs: As described in the super class.
+        :return: As described in the super class.
+        :rtype: numpy.ndarray
+        '''
+        (output_rows_needed, output_cols_needed, row_range, col_range, output) = self._prepare_featurise(data_scales, row_range, col_range, output, output_start_row_index, output_start_col_index)
+        
+        for featuriser in self.featuriser_list:
+            featuriser.featurise(data_scales, slice_index, block_rows, block_cols, row_range, col_range, output, output_start_row_index, output_start_col_index, n_jobs)
+            output_start_col_index += featuriser.get_feature_size()
+        
+        return output
