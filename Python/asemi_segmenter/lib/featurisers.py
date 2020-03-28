@@ -1,6 +1,7 @@
 '''Module containing different methods to turn voxels in a volume into feature vectors.'''
 
 import numpy as np
+import random
 import os
 import sys
 from asemi_segmenter.lib import regions
@@ -152,6 +153,22 @@ class Featuriser(object):
 #########################################
 class CompositeFeaturiser(Featuriser):
     '''Combine several featurisers into one with the feature vectors being concatenated.'''
+    
+    #########################################
+    @classmethod
+    def create_random(cls, max_num_histograms, num_scales_available, rand=random.Random()):
+        '''
+        Create a random composite featuriser object.
+        
+        :return: The featuriser object.
+        :rtype: CompositeFeaturiser
+        '''
+        featuriser_list = []
+        if rand.choice([True, False]):
+            featuriser_list.append(VoxelFeaturiser())
+        for _ in range(rand.randrange(1, max_num_histograms+1)):
+            featuriser_list.append(HistogramFeaturiser.create_random(num_scales_available, rand))
+        return CompositeFeaturiser(featuriser_list)
     
     #########################################
     def __init__(self, featuriser_list):
@@ -321,6 +338,21 @@ class HistogramFeaturiser(Featuriser):
     scale centered on the voxel. The number of bins in each histogram is controllable but the range
     of the bins is always uniformly divided between 0 and 2^16-1.
     '''
+    
+    #########################################
+    @classmethod
+    def create_random(cls, num_scales_available, rand=random.Random()):
+        '''
+        Create a random histogram featuriser object.
+        
+        :return: The featuriser object.
+        :rtype: HistogramFeaturiser
+        '''
+        return HistogramFeaturiser(
+            rand.randrange(1, 128+1),
+            rand.randrange(0, num_scales_available+1),
+            rand.randrange(2, 64+1),
+            )
     
     #########################################
     def __init__(self, radius, scale, num_bins):
