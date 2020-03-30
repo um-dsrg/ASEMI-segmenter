@@ -483,6 +483,54 @@ class EvaluationResultsFile(object):
 
 
 #########################################
+class TuningResultsFile(object):
+    '''Results file interface for the tune command.'''
+
+    #########################################
+    def __init__(self, results_fullfname):
+        '''
+        Create a tune results file object.
+
+        :param results_fullfname: The full file name (with path) of the results text file. If
+            None then no file will be saved and all inputs are ignored.
+        :type results_fullfname: str or None
+        '''
+        self.results_fullfname = results_fullfname
+
+    #########################################
+    def create(self, labels):
+        '''
+        Create the results text file.
+
+        :param list labels: The list of labels used in the segmenter.
+        '''
+        if self.results_fullfname is not None:
+            with open(self.results_fullfname, 'w', encoding='utf-8') as f:
+                print(
+                    'json_config', *['{}_iou'.format(label) for label in labels], 'mean_iou', 'min_iou',
+                    sep='\t', file=f
+                    )
+
+    #########################################
+    def append(self, config, average_ious):
+        '''
+        Add a new slice's result to the file.
+
+        :param dict config: The configuation dictionary used to produce these results.
+        :param list ious: The list of average (over slices) intersection-over-union scores for each label.
+        '''
+        if self.results_fullfname is not None:
+            with open(self.results_fullfname, 'a', encoding='utf-8') as f:
+                print(
+                    json.dumps(config),
+                    *['{:.3%}'.format(iou) for iou in average_ious],
+                    '{:.3%}'.format(np.mean(average_ious).tolist()),
+                    '{:.3%}'.format(np.min(average_ious).tolist()),
+                    sep='\t', file=f
+                    )
+
+
+#########################################
 class VolumeData(object):
     '''Struct for volume meta data.'''
 
@@ -1250,7 +1298,7 @@ def load_tune_config_data(config_data):
     
     if not isinstance(config_data, dict):
         raise DataException('Configuration is invalid as it is not in dictionary format.')
-    if set(config_data.keys()) != {'featuriser', 'classifier', 'training_set'}:
+    if set(config_data.keys()) != {'featuriser', 'classifier', 'training_set', 'tuning'}:
         raise DataException(
             'Configuration is invalid as it does not have the expected key values.'
             )
@@ -1499,6 +1547,24 @@ def load_tune_config_data(config_data):
                 'Configuration is invalid as training_set sample_size_per_label is 0 or a ' \
                 'negative number other than -1.'
                 )
+    
+    if not isinstance(config_data['tuning'], dict):
+        raise DataException(
+            'Configuration is invalid as tuning is not in dictionary format.'
+            )
+    if set(config_data['tuning'].keys()) != {'num_iterations'}:
+        raise DataException(
+            'Configuration is invalid as tuning does not have the expected key values.'
+            )
+    if True:  # pylint: disable=using-constant-test
+        if not isinstance(config_data['tuning']['num_iterations'], int):
+            raise DataException(
+                'Configuration is invalid as tuning num_iterations is not an integer.'
+                )
+        if config_data['tuning']['num_iterations'] <= 0:
+            raise DataException(
+                'Configuration is invalid as tuning num_iterations is not a positive integer.'
+                )
 
     classifier = {
         'random_forest': sklearn.ensemble.RandomForestClassifier(
@@ -1738,7 +1804,29 @@ def check_evaluation_results_filename(evaluation_results_fullfname, must_exist=F
     * that the file name ends with .txt, and
     * that the file exists if must_exist is true.
 
-    :param str data_fullfname: The full file name (with path) to the text file.
+    :param str evaluation_results_fullfname: The full file name (with path) to the text file.
+    :param bool must_exist: Whether the file should already exist or not.
+    '''
+    dir_path = os.path.split(evaluation_results_fullfname)[0]
+    if dir_path != '' and not files.fexists(dir_path):
+        raise DataException('Result file\'s directory does not exist.')
+    if not evaluation_results_fullfname.endswith('.txt'):
+        raise DataException('Result file\'s file name does not end with .txt.')
+    if must_exist and not files.fexists(evaluation_results_fullfname):
+        raise DataException('Result file does not exist.')
+
+
+#########################################
+def check_tune_results_filename(tune_results_fullfname, must_exist=False):
+    '''
+    Check that the file name for the results text file is valid.
+
+    Validation consists of checking:
+    * that the directory to the file exists,
+    * that the file name ends with .txt, and
+    * that the file exists if must_exist is true.
+
+    :param str tune_results_fullfname: The full file name (with path) to the text file.
     :param bool must_exist: Whether the file should already exist or not.
     '''
     dir_path = os.path.split(evaluation_results_fullfname)[0]

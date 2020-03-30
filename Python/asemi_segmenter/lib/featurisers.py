@@ -65,6 +65,16 @@ class Featuriser(object):
         raise NotImplementedError()
     
     #########################################
+    def get_params(self):
+        '''
+        Get the featuriser's parameters as nested tuples.
+        
+        :return: The parameters.
+        :rtype: tuple
+        '''
+        raise NotImplementedError()
+    
+    #########################################
     def _fix_ranges(self, data_scales, row_range, col_range):
         '''
         (Protected method) Replace None in the row and column ranges with actual numbers.
@@ -215,6 +225,16 @@ class VoxelFeaturiser(Featuriser):
         return {'type': 'voxel', 'params': dict()}
     
     #########################################
+    def get_params(self):
+        '''
+        Get the featuriser's parameters as nested tuples.
+        
+        :return: The parameters.
+        :rtype: tuple
+        '''
+        return tuple()
+    
+    #########################################
     def featurise(self, data_scales, slice_index, block_rows, block_cols, row_range=slice(None), col_range=slice(None), output=None, output_start_row_index=0, output_start_col_index=0, n_jobs=1):
         '''
         Turn a slice from a volume into a matrix of feature vectors.
@@ -342,6 +362,16 @@ class HistogramFeaturiser(Featuriser):
         return {'type': 'histogram', 'params': {'radius': self.radius, 'scale': self.scale, 'num_bins': self.num_bins}}
     
     #########################################
+    def get_params(self):
+        '''
+        Get the featuriser's parameters as nested tuples.
+        
+        :return: The parameters.
+        :rtype: tuple
+        '''
+        return (self.radius, self.scale, self.num_bins)
+        
+    #########################################
     def featurise(self, data_scales, slice_index, block_rows, block_cols, row_range=slice(None), col_range=slice(None), output=None, output_start_row_index=0, output_start_col_index=0, n_jobs=1):
         '''
         Turn a slice from a volume into a matrix of feature vectors.
@@ -464,6 +494,16 @@ class CompositeFeaturiser(Featuriser):
         :rtype: dict
         '''
         return {'type': 'composite', 'params': {'featuriser_list': [sub_featuriser.get_config() for sub_featuriser in self.featuriser_list]}}
+    
+    #########################################
+    def get_params(self):
+        '''
+        Get the featuriser's parameters as nested tuples.
+        
+        :return: The parameters.
+        :rtype: tuple
+        '''
+        return tuple(sub_featuriser.get_params() for sub_featuriser in self.featuriser_list)
     
     #########################################
     def featurise(self, data_scales, slice_index, block_rows, block_cols, row_range=slice(None), col_range=slice(None), output=None, output_start_row_index=0, output_start_col_index=0, n_jobs=1):

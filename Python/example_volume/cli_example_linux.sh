@@ -5,6 +5,21 @@ python ../bin/preprocess.py \
     --max_processes 2 \
     --max_batch_memory 0.1
 
+python ../bin/tune.py \
+    --preproc_volume_fullfname "preprocess/volume.hdf" \
+    --train_subvolume_dir "tune/train/subvolume" \
+    --train_label_dirs \
+        "tune/train/labels/air" \
+        "tune/train/labels/terracotta" \
+    --eval_subvolume_dir "tune/eval/subvolume" \
+    --eval_label_dirs \
+        "tune/eval/labels/air" \
+        "tune/eval/labels/terracotta" \
+    --config_fullfname "tune_config.json" \
+    --results_fullfname "tune/results.txt" \
+    --max_processes 2 \
+    --max_batch_memory 0.1
+
 python ../bin/train.py \
     --preproc_volume_fullfname "preprocess/volume.hdf" \
     --subvolume_dir "train/subvolume" \

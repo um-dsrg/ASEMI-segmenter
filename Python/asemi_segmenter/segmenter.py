@@ -2,6 +2,7 @@
 
 import math
 import os
+import json
 import numpy as np
 from asemi_segmenter.lib import datas
 from asemi_segmenter.lib import files
@@ -291,6 +292,327 @@ def preprocess(
         listener.overall_progress_end()
     except datas.DataException as ex:
         listener.error_output(str(ex))
+    finally:
+        if full_volume is not None:
+            full_volume.close()
+
+
+#########################################
+def tune(
+        preproc_volume_fullfname, train_subvolume_dir, train_label_dirs,
+        eval_subvolume_dir, eval_label_dirs, config,
+        results_fullfname, checkpoint_fullfname, restart_checkpoint,
+        max_processes, max_batch_memory, listener=ProgressListener()
+    ):
+    '''
+    Find Train a classifier model to segment volumes based on manually labelled slices.
+
+    :param str preproc_volume_fullfname: The full file name (with path) to the preprocessed
+        volume HDF file.
+    :param str train_subvolume_dir: The path to the directory containing copies from the full
+        volume slices that were labelled for training.
+    :param list train_label_dirs: A list of paths to the directories containing labelled
+        slices for training with the number of labels being equal to the number of directories and
+        the number of images in each directory being equal to the number of train subvolume
+        images.
+    :param str eval_subvolume_dir: The path to the directory containing copies from the full
+        volume slices that were labelled for evaluation.
+    :param list eval_label_dirs: A list of paths to the directories containing labelled
+        slices for evaluation with the number of labels being equal to the number of directories
+        and the number of images in each directory being equal to the number of eval subvolume
+        images.
+    :param config: The configuration to use when tuning (can be either a path to a
+        json file containing the configuration or a dictionary specifying the configuration
+        directly). See user guide for description of the eval configuration.
+    :type config: str or dict
+    :param results_fullfname: Full file name (with path) to the text file to create. If None
+        then results will be returned instead of saved.
+    :type results_fullfname: str or None
+    :param str checkpoint_fullfname: Full file name (with path) to checkpoint pickle.
+    :param checkpoint_fullfname: Full file name (with path) to checkpoint pickle. If None then no
+        checkpointing is used.
+    :type checkpoint_fullfname: str or None
+    :param bool restart_checkpoint: Whether to ignore checkpoint and start process from beginning.
+    :param int max_processes: The maximum number of processes to use concurrently.
+    :param float max_batch_memory: The maximum number of gigabytes to use between all processes.
+    :param ProgressListener listener: The command's progress listener.
+    '''
+    full_volume = None
+    try:
+        with times.Timer() as full_timer:
+            listener.overall_progress_start(4)
+
+            listener.log_output('Starting tuning process.')
+            listener.log_output('')
+
+            ###################
+
+            listener.overall_progress_update(1, 'Loading data')
+            listener.log_output(times.get_timestamp())
+            listener.log_output('Loading data...')
+            with times.Timer() as timer:
+                listener.log_output('> Loading full volume data file.')
+                datas.check_preprocessed_filename(preproc_volume_fullfname)
+                full_volume = datas.FullVolume(preproc_volume_fullfname)
+                full_volume.load()
+                (_, _, _, hash_function) = full_volume.get_config()
+
+                listener.log_output('> Loading train subvolume directory.')
+                train_subvolume_data = datas.load_volume_dir(train_subvolume_dir)
+
+                listener.log_output('> Loading train labels.')
+                train_labels_data = []
+                for (i, label_dir) in enumerate(train_label_dirs):
+                    listener.log_output('>> Loading label {} directory.'.format(i+1))
+                    label_data = datas.load_label_dir(label_dir)
+                    train_labels_data.append(label_data)
+
+                listener.log_output('> Loading eval subvolume directory.')
+                eval_subvolume_data = datas.load_volume_dir(eval_subvolume_dir)
+
+                listener.log_output('> Loading eval labels.')
+                eval_labels_data = []
+                for (i, label_dir) in enumerate(eval_label_dirs):
+                    listener.log_output('>> Loading label {} directory.'.format(i+1))
+                    label_data = datas.load_label_dir(label_dir)
+                    eval_labels_data.append(label_data)
+
+                listener.log_output('> Loading config file.')
+                if isinstance(config, str):
+                    (config_data, featuriser, classifier) = \
+                        datas.load_tune_config_file(config)
+                else:
+                    (config_data, featuriser, classifier) = \
+                        datas.load_tune_config_data(config)
+                classifier.n_jobs = max_processes
+
+                listener.log_output('> Checking result file name.')
+                if results_fullfname is not None:
+                    datas.check_evaluation_results_filename(results_fullfname)
+
+                listener.log_output('> Checking checkpoint file name.')
+                if checkpoint_fullfname is not None:
+                    datas.check_checkpoint_filename(checkpoint_fullfname)
+
+                listener.log_output('> Initialising.')
+                datas.validate_annotation_data(full_volume, train_subvolume_data, train_labels_data)
+                datas.validate_annotation_data(full_volume, eval_subvolume_data, eval_labels_data)
+                slice_shape = full_volume.get_shape()[1:]
+                slice_size = slice_shape[0]*slice_shape[1]
+                train_subvolume_fullfnames = train_subvolume_data.fullfnames
+                train_labels = sorted(label_data.name for label_data in train_labels_data)
+                eval_subvolume_fullfnames = eval_subvolume_data.fullfnames
+                eval_labels = sorted(label_data.name for label_data in eval_labels_data)
+                if train_labels != eval_labels:
+                    raise DataException(
+                        'Train labels and eval labels are not the same '
+                        '(train=[{}], eval=[{}]).'.format(train_labels, eval_labels)
+                        )
+                labels = train_labels
+                del train_labels
+                del eval_labels
+                hash_function.init(slice_shape, seed=0)
+                checkpoint = datas.CheckpointManager(
+                    'tune',
+                    checkpoint_fullfname,
+                    restart_checkpoint
+                    )
+                training_set = datas.TrainingSet(None)
+                tuning_results_file = datas.TuningResultsFile(results_fullfname)
+                sample_size_per_label = config_data['training_set']['sample_size_per_label']
+                train_subvolume_slice_labels = datas.load_labels(train_labels_data)
+                eval_subvolume_slice_labels = datas.load_labels(eval_labels_data)
+                for (i, fullfname) in enumerate(eval_subvolume_fullfnames):
+                    labels_in_slice = {
+                        label for label in np.unique(
+                            eval_subvolume_slice_labels[i*slice_size:(i+1)*slice_size]
+                            ).tolist()
+                        if label < datas.FIRST_CONTROL_LABEL
+                        }
+                    if len(labels_in_slice) != len(labels):
+                        raise DataException(
+                            'Eval labels of slice {} do not cover all labels '
+                            '(missing labels = [{}]).'.format(fullfname, set(labels) - labels_in_slice)
+                            )
+
+                del train_labels_data
+                del eval_labels_data
+                del train_subvolume_data
+                del eval_subvolume_data
+            listener.log_output('Input loaded.')
+            listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
+            listener.log_output('')
+
+            ###################
+
+            listener.overall_progress_update(2, 'Hashing train subvolume slices')
+            listener.log_output(times.get_timestamp())
+            listener.log_output('Hashing train subvolume slices...')
+            with times.Timer() as timer:
+                train_subvolume_hashes = np.empty(
+                    (len(train_subvolume_fullfnames), hash_function.hash_size),
+                    full_volume.get_hashes_dtype())
+                for (i, fullfname) in enumerate(train_subvolume_fullfnames):
+                    img_data = datas.load_image(fullfname)
+                    train_subvolume_hashes[i, :] = hash_function.apply(img_data)
+                volume_slice_indexes_in_train_subvolume = datas.get_volume_slice_indexes_in_subvolume(
+                    full_volume.get_hashes_array()[:], train_subvolume_hashes  #Load the hashes eagerly.
+                    )
+                listener.log_output('> Train subvolume to volume file name mapping found:')
+                for (subvolume_index, volume_index) in enumerate(
+                        volume_slice_indexes_in_train_subvolume
+                    ):
+                    listener.log_output('>> {} -> volume slice #{}'.format(
+                        train_subvolume_fullfnames[subvolume_index], volume_index+1
+                        ))
+            listener.log_output('Slices hashed.')
+            listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
+            listener.log_output('')
+
+            ###################
+            
+            listener.overall_progress_update(3, 'Hashing eval subvolume slices')
+            listener.log_output(times.get_timestamp())
+            listener.log_output('Hashing eval subvolume slices...')
+            with times.Timer() as timer:
+                eval_subvolume_hashes = np.empty(
+                    (len(eval_subvolume_fullfnames), hash_function.hash_size),
+                    full_volume.get_hashes_dtype())
+                for (i, fullfname) in enumerate(eval_subvolume_fullfnames):
+                    img_data = datas.load_image(fullfname)
+                    eval_subvolume_hashes[i, :] = hash_function.apply(img_data)
+                volume_slice_indexes_in_eval_subvolume = datas.get_volume_slice_indexes_in_subvolume(
+                    full_volume.get_hashes_array()[:], eval_subvolume_hashes  #Load the hashes eagerly.
+                    )
+                listener.log_output('> Eval subvolume to volume file name mapping found:')
+                for (subvolume_index, volume_index) in enumerate(
+                        volume_slice_indexes_in_eval_subvolume
+                    ):
+                    listener.log_output('>> {} -> volume slice #{}'.format(
+                        eval_subvolume_fullfnames[subvolume_index], volume_index+1
+                        ))
+            listener.log_output('Slices hashed.')
+            listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
+            listener.log_output('')
+            del hash_function
+            
+            ###################
+            
+            listener.overall_progress_update(4, 'Tuning')
+            listener.log_output(times.get_timestamp())
+            listener.log_output('Tuning...')
+            with times.Timer() as timer:
+                parameters_visited = set()
+                with checkpoint.apply('create_results_file') as skip:
+                    if skip is not None:
+                        listener.log_output('> Continuing use of existing results file.')
+                        raise skip
+                    tuning_results_file.create(labels)
+                with checkpoint.apply('tune') as skip:
+                    if skip is not None:
+                        raise skip
+                    start = checkpoint.get_next_to_process('tune_prog')
+                    for iteration in range(1, config_data['tuning']['num_iterations'] + 1):
+                        while True:
+                            featuriser.regenerate()
+                            params = featuriser.get_params()
+                            if params not in parameters_visited:
+                                parameters_visited.add(params)
+                                break
+                        if iteration < start:
+                            continue
+                        with checkpoint.apply('tune_prog'):
+                            if iteration > 1:
+                                listener.log_output('-')
+                            with times.Timer() as sub_timer:
+                                feature_size = featuriser.get_feature_size()
+                                context_needed = featuriser.get_context_needed()
+                                
+                                listener.log_output('> Iteration {}'.format(iteration))
+                                listener.log_output('>> {}'.format(json.dumps(featuriser.get_config())))
+                                
+                                training_set.create(slice_size*len(train_subvolume_fullfnames), feature_size)
+                            
+                                training_set.get_labels_array()[:] = train_subvolume_slice_labels
+
+                                best_block_shape = arrayprocs.get_optimal_block_size(
+                                    slice_shape,
+                                    full_volume.get_dtype(),
+                                    context_needed,
+                                    max_processes,
+                                    max_batch_memory,
+                                    implicit_depth=True
+                                    )
+                                for (i, volume_slice_index) in enumerate(volume_slice_indexes_in_train_subvolume):
+                                    featuriser.featurise(
+                                        full_volume.get_scale_arrays(featuriser.get_scales_needed()),
+                                        slice_index=volume_slice_index,
+                                        block_rows=best_block_shape[0],
+                                        block_cols=best_block_shape[0],
+                                        output=training_set.get_features_array(),
+                                        output_start_row_index=i*slice_size,
+                                        n_jobs=max_processes
+                                        )
+                                
+                                if sample_size_per_label == -1:
+                                    mask = datas.get_subvolume_slice_label_mask(training_set.get_labels_array())
+                                    classifier.fit(
+                                        training_set.get_features_array()[mask],
+                                        training_set.get_labels_array()[mask]
+                                        )
+                                else:
+                                    new_training_set = training_set.get_sample(sample_size_per_label, seed=0)
+                                    classifier.fit(
+                                        new_training_set.get_features_array(),
+                                        new_training_set.get_labels_array()
+                                        )
+                                
+                                total_ious = [0 for _ in range(len(labels))]
+                                for (i, (subvolume_fullfname, volume_slice_index)) in enumerate(
+                                        zip(eval_subvolume_fullfnames, volume_slice_indexes_in_eval_subvolume)
+                                    ):
+                                    slice_features = featuriser.featurise(
+                                        full_volume.get_scale_arrays(featuriser.get_scales_needed()),
+                                        slice_index=volume_slice_index,
+                                        block_rows=best_block_shape[0],
+                                        block_cols=best_block_shape[0],
+                                        n_jobs=max_processes
+                                        )
+
+                                    prediction = classifier.predict_proba(slice_features)
+                                    prediction = np.argmax(prediction, axis=1)
+                                    del slice_features
+                                    prediction = prediction.reshape(slice_shape)
+
+                                    slice_labels = eval_subvolume_slice_labels[i*slice_size:(i+1)*slice_size]
+                                    slice_labels = slice_labels.reshape(slice_shape)
+
+                                    ious = evaluations.get_intersection_over_union(
+                                        prediction, slice_labels, len(labels)
+                                        )
+                                    for label_index in range(len(labels)):
+                                        total_ious[label_index] += ious[label_index]
+                                
+                                listener.log_output('>> Results:')
+                                average_ious = [total_iou/len(eval_subvolume_fullfnames) for total_iou in total_ious]
+                                for (label, iou) in zip(labels, average_ious):
+                                    listener.log_output('>>> {}: {:.3%}'.format(label, iou))
+                                tuning_results_file.append(featuriser.get_config(), ious)
+                            listener.log_output('> Duration: {}'.format(times.get_readable_duration(sub_timer.duration)))
+            
+            listener.log_output('Tuned.')
+            listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
+            listener.log_output('')
+
+        listener.log_output('Done.')
+        listener.log_output('Entire process duration: {}'.format(
+            times.get_readable_duration(full_timer.duration)
+            ))
+        listener.log_output(times.get_timestamp())
+
+        listener.overall_progress_end()
+    except datas.DataException as e:
+        listener.error_output(str(e))
     finally:
         if full_volume is not None:
             full_volume.close()

@@ -37,5 +37,8 @@
     },
     "training_set": {
         "sample_size_per_label": 10
+    },
+    "tuning": {
+        "num_iterations": 5
     }
 }

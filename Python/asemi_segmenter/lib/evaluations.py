@@ -73,7 +73,7 @@ def get_intersection_over_union(predicted_labels, true_labels, num_labels):
         predicted_labels = np.reshape(predicted_labels, (1,) + predicted_labels.shape)
     if len(true_labels.shape) == 2:
         true_labels = np.reshape(true_labels, (1,) + true_labels.shape)
-    accuracies = list()
+    iou = list()
     for label_index in range(num_labels):
         intersection = 0
         union = 0
@@ -85,7 +85,7 @@ def get_intersection_over_union(predicted_labels, true_labels, num_labels):
             intersection += np.sum(trues*preds)
             union += np.sum(trues + preds)
         if num_trues == 0:
-            accuracies.append(None)
+            iou.append(None)
         else:
-            accuracies.append(intersection/union)
-    return accuracies
+            iou.append(intersection/union)
+    return iou
