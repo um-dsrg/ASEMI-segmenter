@@ -13,7 +13,7 @@ setuptools.setup(
                 'joblib',
                 'loky',
                 'numpy',
-                'scikit-image',
+                'Pillow',
                 'scikit-learn',
                 'scipy',
                 'tqdm',
