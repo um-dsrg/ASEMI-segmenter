@@ -49,6 +49,7 @@ class HashFunction(object):
         '''
         raise NotImplementedError()
 
+
 #########################################
 class RandomIndexingHashFunction(HashFunction):
     '''Random indexing (https://en.wikipedia.org/wiki/Random_indexing).'''
@@ -73,7 +74,7 @@ class RandomIndexingHashFunction(HashFunction):
         :param int seed: The seed of the random matrix.
         '''
         rand = np.random.RandomState(seed)
-        tmp = 2*rand.random(size=[ np.prod(input_shape), self.hash_size ]) - 1
+        tmp = 2*rand.random_sample(size=[ np.prod(input_shape), self.hash_size ]) - 1
         self.indexer = (
                 np.where(tmp < -0.95, np.array(-1, np.int8), np.array(0, np.int8)) +
                 np.where(tmp > 0.95, np.array(1, np.int8), np.array(0, np.int8))
