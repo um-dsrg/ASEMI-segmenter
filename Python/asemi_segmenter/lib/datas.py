@@ -798,8 +798,10 @@ def load_label_dir(label_dir):
     '''
     if not files.fexists(label_dir):
         raise DataException('Label directory does not exist.')
-
+    
     label_name = os.path.split(label_dir)[1]
+    if label_name == '':  #If directory ends with a / then label name will be an empty string.
+        label_name = os.path.split(label_dir[:-1])[1]
 
     label_fullfnames = []
     with os.scandir(label_dir) as it:
