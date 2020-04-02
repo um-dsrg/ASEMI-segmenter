@@ -1265,13 +1265,14 @@ def segment(
                                     os.path.join(
                                         results_dir,
                                         label,
-                                        '{}_{:0>{}}.png'.format(
+                                        '{}_{:0>{}}.tiff'.format(
                                             label,
                                             volume_slice_index+1,
                                             num_digits_in_filename
                                             )
                                         ),
-                                    prediction[:, :, label_index]
+                                    prediction[:, :, label_index],
+                                    compress=True
                                     )
                             del prediction
                         listener.current_progress_update(volume_slice_index+1)
