@@ -1,0 +1,14 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "segment.json",
+    
+    "type": "object",
+    "properties": {
+        "soft_segmentation": {
+            "type": "string",
+            "enum": ["yes", "no"]
+        }
+    },
+    "required": ["soft_segmentation"],
+    "additionalProperties": false
+}

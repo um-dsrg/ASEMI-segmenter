@@ -1,0 +1,16 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "preprocess.json",
+    
+    "type": "object",
+    "properties": {
+        "num_downsamples": {
+            "type": "integer",
+            "minimum": 0
+        },
+        "downsample_filter": { "$ref": "downsample_filter.json#" },
+        "hash_function": { "$ref": "hash_function.json#" }
+    },
+    "required": ["num_downsamples", "downsample_filter", "hash_function"],
+    "additionalProperties": false
+}

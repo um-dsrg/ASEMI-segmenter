@@ -17,6 +17,8 @@ setuptools.setup(
                 'scikit-learn',
                 'scipy',
                 'tqdm',
-                'psutil'
+                'psutil',
+                'jsonschema',
+                'jsonref'
             ]
     )
