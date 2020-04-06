@@ -423,6 +423,22 @@ class TrainingSet(object):
         return new_trainingset
 
     #########################################
+    def without_control_labels(self):
+        '''
+        Get a version of the training set without the control labels.
+
+        :return The sub training set.
+        :rtype: TrainingSet
+        '''
+        mask = self.data['labels'] < FIRST_CONTROL_LABEL
+        new_trainingset = TrainingSet(None)
+        new_trainingset.create(np.sum(mask), self.data['features'].shape[1])
+        new_trainingset.get_labels_array()[:] = self.data['labels'][mask]
+        new_trainingset.get_features_array()[:] = self.data['features'][mask, :]
+
+        return new_trainingset
+    
+    #########################################
     def close(self):
         '''Close the HDF file (if used and open).'''
         if self.data is not None:
@@ -708,7 +724,7 @@ def get_subvolume_slice_label_mask(subvolume_slice_labels):
         (>= FIRST_CONTROL_LABEL).
     :rtype: numpy.ndarray
     '''
-    return subvolume_slice_labels >= FIRST_CONTROL_LABEL
+    return subvolume_slice_labels < FIRST_CONTROL_LABEL
 
 
 #########################################

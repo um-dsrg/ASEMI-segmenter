@@ -1,12 +1,84 @@
 '''Module containing different methods to turn voxels in a volume into feature vectors.'''
 
+import random
 import numpy as np
-import os
-import sys
-from asemi_segmenter.lib import regions
 from asemi_segmenter.lib import histograms
 from asemi_segmenter.lib import downscales
 from asemi_segmenter.lib import arrayprocs
+from asemi_segmenter.lib import validations
+
+
+#########################################
+def load_featuriser_from_config(config, allow_random=False):
+    '''
+    Load a featuriser from a configuration dictionary.
+    
+    :param dict config: Configuration of the featuriser.
+    :return: A featuriser object.
+    :rtype: Featuriser
+    '''
+    validations.validate_json_with_schema_file(config, 'featuriser.json')
+    rand = random.Random(0)
+    
+    def recursive(config):
+        if config['type'] == 'voxel':
+            return VoxelFeaturiser()
+            
+        elif config['type'] == 'histogram':
+            radius = None
+            scale = None
+            num_bins = None
+            
+            if isinstance(config['params']['radius'], dict):
+                if not allow_random:
+                    raise ValueError('radius must be a constant not a range.')
+                if (config['params']['radius']['min'] >= config['params']['radius']['max']):
+                    raise ValueError('radius min is not less than radius max.')
+                radius = lambda:rand.randrange(
+                    config['params']['radius']['min'],
+                    config['params']['radius']['max'] + 1
+                    )
+            else:
+                radius = config['params']['radius']
+            
+            if isinstance(config['params']['scale'], dict):
+                if not allow_random:
+                    raise ValueError('scale must be a constant not a range.')
+                if (config['params']['scale']['min'] >= config['params']['scale']['max']):
+                    raise ValueError('scale min is not less than scale max.')
+                scale = lambda:rand.randrange(
+                    config['params']['scale']['min'],
+                    config['params']['scale']['max'] + 1
+                    )
+            else:
+                scale = config['params']['scale']
+            
+            if isinstance(config['params']['num_bins'], dict):
+                if not allow_random:
+                    raise ValueError('num_bins must be a constant not a range.')
+                if (config['params']['num_bins']['min'] >= config['params']['num_bins']['max']):
+                    raise ValueError('num_bins min is not less than num_bins max.')
+                num_bins = lambda:rand.randrange(
+                    config['params']['num_bins']['min'],
+                    config['params']['num_bins']['max'] + 1
+                    )
+            else:
+                num_bins = config['params']['num_bins']
+            
+            return HistogramFeaturiser(radius, scale, num_bins)
+        
+        elif config['type'] == 'composite':
+            return CompositeFeaturiser(
+                [recursive(sub_config) for sub_config in config['params']['featuriser_list']]
+                )
+        
+        else:
+            raise NotImplementedError(
+                'Featuriser {} is not implemented.'.format(config['type'])
+                )
+    
+    return recursive(config)
+
 
 #########################################
 class Featuriser(object):
@@ -359,7 +431,14 @@ class HistogramFeaturiser(Featuriser):
         :return: The dictionary configuration.
         :rtype: dict
         '''
-        return {'type': 'histogram', 'params': {'radius': self.radius, 'scale': self.scale, 'num_bins': self.num_bins}}
+        return {
+            'type': 'histogram',
+            'params': {
+                'radius': self.radius,
+                'scale': self.scale,
+                'num_bins': self.num_bins
+                }
+            }
     
     #########################################
     def get_params(self):

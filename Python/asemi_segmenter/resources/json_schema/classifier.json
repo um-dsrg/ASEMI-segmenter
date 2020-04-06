@@ -11,16 +11,73 @@
                     "type": "object",
                     "properties": {
                         "n_estimators": {
-                            "type": "integer",
-                            "minimum": 1
+                            "oneOf": [
+                                {
+                                    "type": "integer",
+                                    "minimum": 1
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "min": {
+                                            "type": "integer",
+                                            "minimum": 1
+                                        },
+                                        "max": {
+                                            "type": "integer",
+                                            "minimum": 1
+                                        }
+                                    },
+                                    "required": ["min", "max"],
+                                    "additionalProperties": false
+                                }
+                            ]
                         },
                         "max_depth": {
-                            "type": "integer",
-                            "minimum": 1
+                            "oneOf": [
+                                {
+                                    "type": "integer",
+                                    "minimum": 1
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "min": {
+                                            "type": "integer",
+                                            "minimum": 1
+                                        },
+                                        "max": {
+                                            "type": "integer",
+                                            "minimum": 1
+                                        }
+                                    },
+                                    "required": ["min", "max"],
+                                    "additionalProperties": false
+                                }
+                            ]
                         },
                         "min_samples_leaf": {
-                            "type": "integer",
-                            "minimum": 1
+                            "oneOf": [
+                                {
+                                    "type": "integer",
+                                    "minimum": 1
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "min": {
+                                            "type": "integer",
+                                            "minimum": 1
+                                        },
+                                        "max": {
+                                            "type": "integer",
+                                            "minimum": 1
+                                        }
+                                    },
+                                    "required": ["min", "max"],
+                                    "additionalProperties": false
+                                }
+                            ]
                         }
                     },
                     "required": [],

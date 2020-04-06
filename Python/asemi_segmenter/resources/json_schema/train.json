@@ -11,7 +11,7 @@
             "properties": {
                 "sample_size_per_label": {
                     "type": "integer",
-                    "minimum": 1
+                    "minimum": -1
                 }
             },
             "required": ["sample_size_per_label"],

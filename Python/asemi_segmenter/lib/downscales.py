@@ -19,6 +19,24 @@ import numpy as np
 import scipy
 import scipy.ndimage
 from asemi_segmenter.lib import arrayprocs
+from asemi_segmenter.lib import validations
+
+
+#########################################
+def load_downsamplekernel_from_config(config):
+    '''
+    Load a downsample kernel from a configuration dictionary.
+    
+    :param dict config: Configuration of the downsample kernel.
+    :return: A downsample kernel object.
+    :rtype: DownsampleKernel
+    '''
+    validations.validate_json_with_schema_file(config, 'downsample_filter.json')
+    
+    if config['type'] == 'gaussian':
+        sigma = config['params']['sigma']
+        return GaussianDownsampleKernel(sigma)
+
 
 #########################################
 class DownsampleKernel(object):
@@ -62,6 +80,7 @@ class DownsampleKernel(object):
         '''
         raise NotImplementedError()
 
+
 #########################################
 class NullDownsampleKernel(DownsampleKernel):
     '''A downsample kernel that does nothing and exists only as a baseline.'''
@@ -100,6 +119,7 @@ class NullDownsampleKernel(DownsampleKernel):
         :rtype: numpy.ndarray
         '''
         return np.ones([1]*ndims, np.float32)
+
 
 #########################################
 class GaussianDownsampleKernel(DownsampleKernel):
@@ -183,6 +203,7 @@ class GaussianDownsampleKernel(DownsampleKernel):
         else:
             return np.ones([1]*ndims, np.float32)
 
+
 #########################################
 def downscale_pos(position, scale):
     '''
@@ -205,6 +226,7 @@ def downscale_pos(position, scale):
     else:
         return position//scale_factor
 
+
 #########################################
 def downscale_slice(slice_, scale):
     '''
@@ -221,6 +243,7 @@ def downscale_slice(slice_, scale):
             (slice_.stop-1)//scale_factor+1 if slice_.stop is not None else None
         )
 
+
 #########################################
 def predict_new_shape(shape, scale):
     '''
@@ -236,6 +259,7 @@ def predict_new_shape(shape, scale):
         return tuple(l//scale_factor + (l%scale_factor > 0) for l in shape)
     else:
         return shape
+
 
 #########################################
 def downscale(in_array, downsample_kernel, scale, remove_pad=False, trim_front=None):
@@ -278,6 +302,7 @@ def downscale(in_array, downsample_kernel, scale, remove_pad=False, trim_front=N
         return downsampled
     else:
         return in_array
+
 
 #########################################
 def downscale_in_blocks(in_array, out_array, block_shape, downsample_kernel, scale, n_jobs=1, progress_listener=lambda num_ready, num_new:None):
@@ -331,6 +356,7 @@ def downscale_in_blocks(in_array, out_array, block_shape, downsample_kernel, sca
             extra_params=(downsample_kernel, scale),
             progress_listener=progress_listener
         )
+
 
 #########################################
 def grow_array(array, scale, axises=None, orig_shape=None):

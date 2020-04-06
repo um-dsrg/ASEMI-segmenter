@@ -12,6 +12,24 @@ formats.
 import numpy as np
 import os
 import sys
+from asemi_segmenter.lib import validations
+
+
+#########################################
+def load_hashfunction_from_config(config):
+    '''
+    Load a hash function from a configuration dictionary.
+    
+    :param dict config: Configuration of the hash function.
+    :return: A hash function object.
+    :rtype: HashFunction
+    '''
+    validations.validate_json_with_schema_file(config, 'hash_function.json')
+    
+    if config['type'] == 'random_indexing':
+        hash_size = config['params']['hash_size']
+        return RandomIndexingHashFunction(hash_size)
+
 
 #########################################
 class HashFunction(object):
