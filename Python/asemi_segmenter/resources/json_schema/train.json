@@ -1,11 +1,7 @@
 {
     "$schema": "http://json-schema.org/draft-07/schema#",
     "$id": "train.json",
-    
-    "type": "object",
-    "properties": {
-        "featuriser": { "$ref": "featuriser.json#" },
-        "classifier": { "$ref": "classifier.json#" },
+    "definitions": {
         "training_set": {
             "type": "object",
             "properties": {
@@ -17,6 +13,13 @@
             "required": ["sample_size_per_label"],
             "additionalProperties": false
         }
+    },
+    
+    "type": "object",
+    "properties": {
+        "featuriser": { "$ref": "featuriser.json#" },
+        "classifier": { "$ref": "classifier.json#" },
+        "training_set": { "$ref": "#definitions/training_set" }
     },
     "required": ["featuriser", "classifier", "training_set"],
     "additionalProperties": false

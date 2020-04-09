@@ -4,7 +4,7 @@ import sys
 import psutil
 import _interfaces
 from asemi_segmenter.lib import arrayprocs
-from asemi_segmenter import segmenter
+from asemi_segmenter import evaluate
 
 parser = argparse.ArgumentParser(
         description='Evaluate the performance of a trained segmentation model using the intersection-over-union metric.'
@@ -90,6 +90,6 @@ if params is not None:
         if params['max_batch_memory'] <= 0:
             params['max_batch_memory'] = psutil.virtual_memory().available/(1024**3)
     params['listener'].log_output('='*100)
-    segmenter.evaluate(**params)
+    evaluate.main(**params)
     params['listener'].log_output('')
     params['listener'].log_output('')

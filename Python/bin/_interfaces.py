@@ -3,13 +3,13 @@ import textwrap
 import os
 import sys
 from asemi_segmenter.lib import times
-from asemi_segmenter import segmenter
+from asemi_segmenter import listener
 
 #########################################
 TEXT_WIDTH = 100
 
 #########################################
-class CliProgressListener(segmenter.ProgressListener):
+class CliProgressListener(listener.ProgressListener):
     
     #########################################
     def __init__(self, log_file_fullfname):

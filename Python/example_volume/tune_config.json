@@ -11,17 +11,17 @@
                     {
                         "type": "histogram",
                         "params": {
-                            "radius": 1,
+                            "radius": { "min": 2, "max": 32 },
                             "scale": 0,
-                            "num_bins": { "min": 1, "max": 64 }
+                            "num_bins": { "min": 2, "max": 32 }
                         }
                     },
                     {
                         "type": "histogram",
                         "params": {
-                            "radius": { "min": 2, "max": 64 },
+                            "radius": { "min": 2, "max": 32 },
                             "scale": { "min": 0, "max": 4 },
-                            "num_bins": { "min": 2, "max": 64 }
+                            "num_bins": { "min": 2, "max": 32 }
                         }
                     }
                 ]
@@ -30,9 +30,9 @@
     "classifier": {
         "type": "random_forest",
         "params": {
-            "n_estimators": 32,
-            "max_depth": 10,
-            "min_samples_leaf": 1
+            "n_estimators": { "min": 1, "max": 32 },
+            "max_depth": { "min": 1, "max": 32 },
+            "min_samples_leaf": { "min": 1, "max": 32 }
         }
     },
     "training_set": {

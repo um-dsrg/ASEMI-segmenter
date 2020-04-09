@@ -1,6 +1,7 @@
 '''Module with functions related to saving results iteratively.'''
 
 import json
+import numpy as np
 
 
 #########################################

@@ -3,6 +3,7 @@
 import random
 import h5py
 import numpy as np
+from asemi_segmenter.lib import volumes
 
 
 #########################################
@@ -90,7 +91,7 @@ class TrainingSet(object):
         '''
         label_locations = dict()
         for (i, label) in enumerate(self.data['labels'][:].tolist()):
-            if label < FIRST_CONTROL_LABEL:
+            if label < volumes.FIRST_CONTROL_LABEL:
                 if label not in label_locations:
                     label_locations[label] = list()
                 label_locations[label].append(i)

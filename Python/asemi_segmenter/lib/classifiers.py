@@ -228,7 +228,9 @@ class RandomForestClassifier(Classifier):
         super().__init__(
             labels,
             (
-                sklearn.ensemble.RandomForestClassifier(
+                model
+                if model is not None
+                else sklearn.ensemble.RandomForestClassifier(
                     n_estimators=n_estimators,
                     max_depth=max_depth,
                     min_samples_leaf=min_samples_leaf,

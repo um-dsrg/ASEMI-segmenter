@@ -1,0 +1,22 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "train.json",
+    
+    "type": "object",
+    "properties": {
+        "featuriser": { "$ref": "featuriser.json#" },
+        "classifier": { "$ref": "classifier.json#" },
+        "training_set": { "$ref": "train.json#definitions/training_set" },
+        "tuning": {
+            "type": "object",
+            "properties": {
+                "num_iterations": {
+                    "type": "integer",
+                    "minimum": 1
+                }
+            }
+        }
+    },
+    "required": ["featuriser", "classifier", "training_set", "tuning"],
+    "additionalProperties": false
+}

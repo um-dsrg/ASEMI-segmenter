@@ -7,7 +7,7 @@ from asemi_segmenter.lib import validations
 
 
 #########################################
-def load_segmenter(pickle_data, full_volume, allow_random=False):
+def load_segmenter_from_pickle_data(pickle_data, full_volume, allow_random=False):
     '''
     Load a segmenter from pickled data.
     
@@ -23,7 +23,7 @@ def load_segmenter(pickle_data, full_volume, allow_random=False):
         if not isinstance(entry, str):
             raise ValueError('Pickle is invalid as label entry {} is not a string.'.format(i))
     
-    return Segmenter(pickle_data['labels'], full_volume, pickle_data['train_config'], pickle_data['model'], allow_random)
+    return Segmenter(pickle_data['labels'], full_volume, pickle_data['config'], pickle_data['model'], allow_random)
 
 
 #########################################
@@ -58,17 +58,19 @@ class Segmenter(object):
                         )
                     )
 
-        if not featuriser.get_scales_needed() <= full_volume.get_scales():
+        scales_needed = featuriser.get_scales_needed()
+        if None not in scales_needed and not scales_needed <= full_volume.get_scales():
             raise ValueError(
                 'Featuriser requires scales that are not included in preprocessed volume ' \
                 '(missing scales=[{}]).'.format(
-                    ', '.join(sorted(featuriser.get_scales_needed() - full_volume.get_scales()))
+                    ', '.join(sorted(scales_needed - full_volume.get_scales()))
                     )
                 )
-        
+
         self.train_config = train_config
         self.featuriser = featuriser
         self.classifier = classifier
+        self.full_volume = full_volume
     
     #########################################
     def regenerate(self):
@@ -77,6 +79,15 @@ class Segmenter(object):
         '''
         self.featuriser.regenerate()
         self.classifier.regenerate()
+        
+        scales_needed = self.featuriser.get_scales_needed()
+        if not scales_needed <= self.full_volume.get_scales():
+            raise ValueError(
+                'Featuriser requires scales that are not included in preprocessed volume ' \
+                '(missing scales=[{}]).'.format(
+                    ', '.join(sorted(scales_needed - self.full_volume.get_scales()))
+                    )
+                )
     
     #########################################
     def train(self, training_set, n_jobs=1):
@@ -163,8 +174,8 @@ class Segmenter(object):
         :param str fname: The full file name (with path) of the pickle file.
         '''
         pickle_data = {
-            'model': self.model,
-            'labels': self.labels,
+            'model': self.classifier.model,
+            'labels': self.classifier.labels,
             'config': self.get_config()
             }
         with open(fname, 'wb') as f:

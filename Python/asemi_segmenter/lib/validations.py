@@ -1,11 +1,12 @@
 '''Validation related functions.'''
 
+import os
 import pkg_resources
 import json
 import jsonref
 import jsonschema
-from asemi_segmenters.lib import files
-from asemi_segmenters.lib import volumes
+from asemi_segmenter.lib import files
+from asemi_segmenter.lib import volumes
 
 #########################################
 def validate_json_with_schema_file(loaded_json, schema_name):

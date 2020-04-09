@@ -4,7 +4,7 @@ import sys
 import psutil
 import _interfaces
 from asemi_segmenter.lib import arrayprocs
-from asemi_segmenter import segmenter
+from asemi_segmenter import preprocess
 
 parser = argparse.ArgumentParser(
         description='Preprocess a folder of slice images into a single volume file that can be used by the other commands.'
@@ -77,6 +77,6 @@ if params is not None:
         if params['max_batch_memory'] <= 0:
             params['max_batch_memory'] = psutil.virtual_memory().available/(1024**3)
     params['listener'].log_output('='*100)
-    segmenter.preprocess(**params)
+    preprocess.main(**params)
     params['listener'].log_output('')
     params['listener'].log_output('')

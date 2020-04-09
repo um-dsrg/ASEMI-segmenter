@@ -1,11 +1,13 @@
 '''Module for volume voxel/label related functions.'''
 
 import os
+import json
 import PIL.Image
 import h5py
 import numpy as np
 from asemi_segmenter.lib import files
 from asemi_segmenter.lib import images
+from asemi_segmenter.lib import downscales
 
 
 #Control label indexes.
@@ -243,7 +245,7 @@ def load_labels(labels_data):
     for i in range(num_slices):
         slice_labels = np.full([slice_size], UNINIT_LABEL, np.uint8)
         for (label_index, label) in enumerate(labels):
-            label_img = load_image(label_fullfnames[label][i]).reshape([-1])
+            label_img = images.load_image(label_fullfnames[label][i]).reshape([-1])
             label_flags = label_img > np.min(label_img)
 
             slice_labels = np.where(

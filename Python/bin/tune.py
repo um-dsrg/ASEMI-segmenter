@@ -4,7 +4,7 @@ import sys
 import psutil
 import _interfaces
 from asemi_segmenter.lib import arrayprocs
-from asemi_segmenter import segmenter
+from asemi_segmenter import tune
 
 parser = argparse.ArgumentParser(
         description='Tune the parameters of a featuriser to be used during training.'
@@ -99,6 +99,6 @@ if params is not None:
         if params['max_batch_memory'] <= 0:
             params['max_batch_memory'] = psutil.virtual_memory().available/(1024**3)
     params['listener'].log_output('='*100)
-    segmenter.tune(**params)
+    tune.main(**params)
     params['listener'].log_output('')
     params['listener'].log_output('')
