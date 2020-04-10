@@ -84,19 +84,19 @@ class TuningResultsFile(object):
                     )
 
     #########################################
-    def append(self, config, average_ious):
+    def append(self, config, ious):
         '''
         Add a new slice's result to the file.
 
         :param dict config: The configuation dictionary used to produce these results.
-        :param list ious: The list of average (over slices) intersection-over-union scores for each label.
+        :param list ious: The list of intersection-over-union scores for each label.
         '''
         if self.results_fullfname is not None:
             with open(self.results_fullfname, 'a', encoding='utf-8') as f:
                 print(
                     json.dumps(config),
-                    *['{:.3%}'.format(iou) for iou in average_ious],
-                    '{:.3%}'.format(np.mean(average_ious).tolist()),
-                    '{:.3%}'.format(np.min(average_ious).tolist()),
+                    *['{:.3%}'.format(iou) for iou in ious],
+                    '{:.3%}'.format(np.mean(ious).tolist()),
+                    '{:.3%}'.format(np.min(ious).tolist()),
                     sep='\t', file=f
                     )

@@ -36,7 +36,9 @@ def _loading_data(
     
     listener.log_output('> Train subvolume directory')
     train_subvolume_data = volumes.load_volume_dir(train_subvolume_dir)
-    train_subvolume_fullfnames = train_subvolume_data.fullfnames
+    if len(train_subvolume_data.fullfnames) != 1:
+        raise ValueError('Train subvolume must consist of exactly one slice.')
+    train_subvolume_fullfname = train_subvolume_data.fullfnames[0]
 
     listener.log_output('> Train labels')
     train_labels_data = []
@@ -51,6 +53,9 @@ def _loading_data(
 
     listener.log_output('> Eval subvolume directory')
     eval_subvolume_data = volumes.load_volume_dir(eval_subvolume_dir)
+    if len(eval_subvolume_data.fullfnames) != 1:
+        raise ValueError('Eval subvolume must consist of exactly one slice.')
+    eval_subvolume_fullfname = eval_subvolume_data.fullfnames[0]
 
     listener.log_output('> Eval labels')
     eval_labels_data = []
@@ -59,7 +64,6 @@ def _loading_data(
         label_data = volumes.load_label_dir(label_dir)
         eval_labels_data.append(label_data)
         listener.log_output('>>> {}'.format(label_data.name))
-    eval_subvolume_fullfnames = eval_subvolume_data.fullfnames
     eval_labels = sorted(label_data.name for label_data in eval_labels_data)
     if train_labels != eval_labels:
         raise ValueError(
@@ -69,18 +73,6 @@ def _loading_data(
     labels = train_labels
     eval_subvolume_slice_labels = volumes.load_labels(eval_labels_data)
     validations.validate_annotation_data(full_volume, eval_subvolume_data, eval_labels_data)
-    for (i, fullfname) in enumerate(eval_subvolume_fullfnames):
-        labels_in_slice = {
-            label for label in np.unique(
-                eval_subvolume_slice_labels[i*slice_size:(i+1)*slice_size]
-                ).tolist()
-            if label < volumes.FIRST_CONTROL_LABEL
-            }
-        if len(labels_in_slice) != len(labels):
-            raise ValueError(
-                'Eval labels of slice {} do not cover all labels '
-                '(missing labels = [{}]).'.format(fullfname, set(labels) - labels_in_slice)
-                )
 
     listener.log_output('> Config file')
     if isinstance(config, str):
@@ -119,62 +111,54 @@ def _loading_data(
     hash_function.init(slice_shape, seed=0)
     training_set = trainingsets.TrainingSet(None)
     
-    return (config_data, full_volume, slice_shape, slice_size, segmenter, train_subvolume_fullfnames, train_subvolume_slice_labels, eval_subvolume_fullfnames, eval_subvolume_slice_labels, training_set, hash_function, tuning_results_file, checkpoint)
+    return (config_data, full_volume, slice_shape, slice_size, segmenter, train_subvolume_fullfname, train_subvolume_slice_labels, eval_subvolume_fullfname, eval_subvolume_slice_labels, training_set, hash_function, tuning_results_file, checkpoint)
     
     
 #########################################
 def _hashing_train_subvolume_slices(
-        full_volume, train_subvolume_fullfnames, hash_function, listener
+        full_volume, train_subvolume_fullfname, hash_function, listener
     ):
     '''Hashing train subvolume slices stage.'''
     train_subvolume_hashes = np.empty(
-        (len(train_subvolume_fullfnames), hash_function.hash_size),
+        (1, hash_function.hash_size),
         full_volume.get_hashes_dtype())
-    for (i, fullfname) in enumerate(train_subvolume_fullfnames):
-        img_data = images.load_image(fullfname)
-        train_subvolume_hashes[i, :] = hash_function.apply(img_data)
-    volume_slice_indexes_in_train_subvolume = volumes.get_volume_slice_indexes_in_subvolume(
+    img_data = images.load_image(train_subvolume_fullfname)
+    train_subvolume_hashes[0, :] = hash_function.apply(img_data)
+    volume_slice_index_in_train_subvolume = volumes.get_volume_slice_indexes_in_subvolume(
         full_volume.get_hashes_array()[:], train_subvolume_hashes  #Load the hashes eagerly.
-        )
+        )[0]
     listener.log_output('> Train subvolume to volume file name mapping found:')
-    for (subvolume_index, volume_index) in enumerate(
-            volume_slice_indexes_in_train_subvolume
-        ):
-        listener.log_output('>> {} -> volume slice #{}'.format(
-            train_subvolume_fullfnames[subvolume_index], volume_index+1
-            ))
+    listener.log_output('>> {} -> volume slice #{}'.format(
+        train_subvolume_fullfname, volume_slice_index_in_train_subvolume+1
+        ))
     
-    return (volume_slice_indexes_in_train_subvolume,)
+    return (volume_slice_index_in_train_subvolume,)
 
 
 #########################################
 def _hashing_eval_subvolume_slices(
-        full_volume, eval_subvolume_fullfnames, hash_function, listener
+        full_volume, eval_subvolume_fullfname, hash_function, listener
     ):
     '''Hashing eval subvolume slices stage.'''
     eval_subvolume_hashes = np.empty(
-        (len(eval_subvolume_fullfnames), hash_function.hash_size),
+        (1, hash_function.hash_size),
         full_volume.get_hashes_dtype())
-    for (i, fullfname) in enumerate(eval_subvolume_fullfnames):
-        img_data = images.load_image(fullfname)
-        eval_subvolume_hashes[i, :] = hash_function.apply(img_data)
-    volume_slice_indexes_in_eval_subvolume = volumes.get_volume_slice_indexes_in_subvolume(
+    img_data = images.load_image(eval_subvolume_fullfname)
+    eval_subvolume_hashes[0, :] = hash_function.apply(img_data)
+    volume_slice_index_in_eval_subvolume = volumes.get_volume_slice_indexes_in_subvolume(
         full_volume.get_hashes_array()[:], eval_subvolume_hashes  #Load the hashes eagerly.
-        )
+        )[0]
     listener.log_output('> Eval subvolume to volume file name mapping found:')
-    for (subvolume_index, volume_index) in enumerate(
-            volume_slice_indexes_in_eval_subvolume
-        ):
-        listener.log_output('>> {} -> volume slice #{}'.format(
-            eval_subvolume_fullfnames[subvolume_index], volume_index+1
-            ))
+    listener.log_output('>> {} -> volume slice #{}'.format(
+        eval_subvolume_fullfname, volume_slice_index_in_eval_subvolume+1
+        ))
     
-    return (volume_slice_indexes_in_eval_subvolume,)
+    return (volume_slice_index_in_eval_subvolume,)
 
 
 #########################################
 def _tuning(
-        config_data, segmenter, slice_shape, slice_size, full_volume, train_subvolume_fullfnames, train_subvolume_slice_labels, volume_slice_indexes_in_train_subvolume, eval_subvolume_fullfnames, eval_subvolume_slice_labels, volume_slice_indexes_in_eval_subvolume, training_set, tuning_results_file, checkpoint, max_processes, max_batch_memory, listener
+        config_data, segmenter, slice_shape, slice_size, full_volume, train_subvolume_slice_labels, volume_slice_index_in_train_subvolume, eval_subvolume_slice_labels, volume_slice_index_in_eval_subvolume, training_set, tuning_results_file, checkpoint, max_processes, max_batch_memory, listener
     ):
     '''Tuning stage.'''
     parameters_visited = set()
@@ -203,7 +187,7 @@ def _tuning(
                     listener.log_output('> Iteration {}'.format(iteration))
                     listener.log_output('>> {}'.format(json.dumps(segmenter.get_config())))
                     
-                    training_set.create(slice_size*len(train_subvolume_fullfnames), segmenter.featuriser.get_feature_size())
+                    training_set.create(slice_size, segmenter.featuriser.get_feature_size())
                 
                     training_set.get_labels_array()[:] = train_subvolume_slice_labels
 
@@ -215,44 +199,35 @@ def _tuning(
                         max_batch_memory,
                         implicit_depth=True
                         )
-                    for (i, volume_slice_index) in enumerate(volume_slice_indexes_in_train_subvolume):
-                        segmenter.featuriser.featurise(
-                            full_volume.get_scale_arrays(segmenter.featuriser.get_scales_needed()),
-                            slice_index=volume_slice_index,
-                            block_rows=best_block_shape[0],
-                            block_cols=best_block_shape[0],
-                            output=training_set.get_features_array(),
-                            output_start_row_index=i*slice_size,
-                            n_jobs=max_processes
-                            )
+                    training_set.get_features_array()[:] = segmenter.featuriser.featurise(
+                        full_volume.get_scale_arrays(segmenter.featuriser.get_scales_needed()),
+                        slice_index=volume_slice_index_in_train_subvolume,
+                        block_rows=best_block_shape[0],
+                        block_cols=best_block_shape[1],
+                        n_jobs=max_processes
+                        )
                     
                     segmenter.train(training_set, max_processes)
                     
-                    total_ious = [0 for _ in range(len(segmenter.classifier.labels))]
-                    for (i, volume_slice_index) in enumerate(volume_slice_indexes_in_eval_subvolume):
-                        slice_features = segmenter.featuriser.featurise(
-                            full_volume.get_scale_arrays(segmenter.featuriser.get_scales_needed()),
-                            slice_index=volume_slice_index,
-                            block_rows=best_block_shape[0],
-                            block_cols=best_block_shape[0],
-                            n_jobs=max_processes
-                            )
+                    slice_features = segmenter.featuriser.featurise(
+                        full_volume.get_scale_arrays(segmenter.featuriser.get_scales_needed()),
+                        slice_index=volume_slice_index_in_eval_subvolume,
+                        block_rows=best_block_shape[0],
+                        block_cols=best_block_shape[1],
+                        n_jobs=max_processes
+                        )
 
-                        prediction = segmenter.segment_to_label_indexes(slice_features, max_processes)
-                        prediction = prediction.reshape(slice_shape)
+                    prediction = segmenter.segment_to_label_indexes(slice_features, max_processes)
+                    prediction = prediction.reshape(slice_shape)
 
-                        slice_labels = eval_subvolume_slice_labels[i*slice_size:(i+1)*slice_size]
-                        slice_labels = slice_labels.reshape(slice_shape)
+                    slice_labels = eval_subvolume_slice_labels.reshape(slice_shape)
 
-                        ious = evaluations.get_intersection_over_union(
-                            prediction, slice_labels, len(segmenter.classifier.labels)
-                            )
-                        for label_index in range(len(segmenter.classifier.labels)):
-                            total_ious[label_index] += ious[label_index]
+                    ious = evaluations.get_intersection_over_union(
+                        prediction, slice_labels, len(segmenter.classifier.labels)
+                        )
                     
                     listener.log_output('>> Results:')
-                    average_ious = [total_iou/len(eval_subvolume_fullfnames) for total_iou in total_ious]
-                    for (label, iou) in zip(segmenter.classifier.labels, average_ious):
+                    for (label, iou) in zip(segmenter.classifier.labels, ious):
                         listener.log_output('>>> {}: {:.3%}'.format(label, iou))
                     tuning_results_file.append(segmenter.get_config(), ious)
                 listener.log_output('> Duration: {}'.format(times.get_readable_duration(sub_timer.duration)))
@@ -313,7 +288,7 @@ def main(
             listener.log_output(times.get_timestamp())
             listener.log_output('Loading data')
             with times.Timer() as timer:
-                (config_data, full_volume, slice_shape, slice_size, segmenter, train_subvolume_fullfnames, train_subvolume_slice_labels, eval_subvolume_fullfnames, eval_subvolume_slice_labels, training_set, hash_function, tuning_results_file, checkpoint) = _loading_data(
+                (config_data, full_volume, slice_shape, slice_size, segmenter, train_subvolume_fullfname, train_subvolume_slice_labels, eval_subvolume_fullfname, eval_subvolume_slice_labels, training_set, hash_function, tuning_results_file, checkpoint) = _loading_data(
                     preproc_volume_fullfname, train_subvolume_dir, train_label_dirs,
                     eval_subvolume_dir, eval_label_dirs, config,
                     results_fullfname, checkpoint_fullfname, restart_checkpoint,
@@ -329,7 +304,7 @@ def main(
             listener.log_output(times.get_timestamp())
             listener.log_output('Hashing train subvolume slices')
             with times.Timer() as timer:
-                (volume_slice_indexes_in_train_subvolume,) = _hashing_train_subvolume_slices(full_volume, train_subvolume_fullfnames, hash_function, listener)
+                (volume_slice_index_in_train_subvolume,) = _hashing_train_subvolume_slices(full_volume, train_subvolume_fullfname, hash_function, listener)
             listener.log_output('Slices hashed')
             listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
             listener.log_output('')
@@ -340,7 +315,7 @@ def main(
             listener.log_output(times.get_timestamp())
             listener.log_output('Hashing eval subvolume slices')
             with times.Timer() as timer:
-                (volume_slice_indexes_in_eval_subvolume,) = _hashing_eval_subvolume_slices(full_volume, eval_subvolume_fullfnames, hash_function, listener)
+                (volume_slice_index_in_eval_subvolume,) = _hashing_eval_subvolume_slices(full_volume, eval_subvolume_fullfname, hash_function, listener)
             listener.log_output('Slices hashed')
             listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
             listener.log_output('')
@@ -351,7 +326,7 @@ def main(
             listener.log_output(times.get_timestamp())
             listener.log_output('Tuning')
             with times.Timer() as timer:
-                () = _tuning(config_data, segmenter, slice_shape, slice_size, full_volume, train_subvolume_fullfnames, train_subvolume_slice_labels, volume_slice_indexes_in_train_subvolume, eval_subvolume_fullfnames, eval_subvolume_slice_labels, volume_slice_indexes_in_eval_subvolume, training_set, tuning_results_file, checkpoint, max_processes, max_batch_memory, listener)
+                () = _tuning(config_data, segmenter, slice_shape, slice_size, full_volume, train_subvolume_slice_labels, volume_slice_index_in_train_subvolume, eval_subvolume_slice_labels, volume_slice_index_in_eval_subvolume, training_set, tuning_results_file, checkpoint, max_processes, max_batch_memory, listener)
             listener.log_output('Tuned')
             listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
             listener.log_output('')
