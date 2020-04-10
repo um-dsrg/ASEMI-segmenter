@@ -165,6 +165,16 @@ class Segmenter(object):
             }
     
     #########################################
+    def get_params(self):
+        '''
+        Get the parameters of the featuriser and classifier as nested tuples.
+        
+        :return: The parameters.
+        :rtype: tuple
+        '''
+        return (self.featuriser.get_params(), self.classifier.get_params())
+    
+    #########################################
     def save(self, fname):
         '''
         Save the model to a pickle file.

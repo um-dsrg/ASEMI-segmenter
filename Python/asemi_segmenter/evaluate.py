@@ -150,7 +150,7 @@ def _evaluating(
                         full_volume.get_scale_arrays(segmenter.featuriser.get_scales_needed()),
                         slice_index=volume_slice_index,
                         block_rows=best_block_shape[0],
-                        block_cols=best_block_shape[0],
+                        block_cols=best_block_shape[1],
                         n_jobs=max_processes
                         )
 

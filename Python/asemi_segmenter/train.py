@@ -161,7 +161,7 @@ def _constructing_trainingset(
                     full_volume.get_scale_arrays(segmenter.featuriser.get_scales_needed()),
                     slice_index=volume_slice_index,
                     block_rows=best_block_shape[0],
-                    block_cols=best_block_shape[0],
+                    block_cols=best_block_shape[1],
                     output=training_set.get_features_array(),
                     output_start_row_index=i*slice_size,
                     n_jobs=max_processes

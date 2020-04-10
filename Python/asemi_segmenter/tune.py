@@ -1,6 +1,7 @@
 '''Tune command.'''
 
 import json
+import memory_profiler
 import numpy as np
 from asemi_segmenter.listener import ProgressListener
 from asemi_segmenter.lib import arrayprocs
@@ -174,7 +175,7 @@ def _tuning(
         for iteration in range(1, config_data['tuning']['num_iterations'] + 1):
             while True:
                 segmenter.regenerate()
-                params = segmenter.featuriser.get_params()
+                params = segmenter.get_params()
                 if params not in parameters_visited:
                     parameters_visited.add(params)
                     break
@@ -207,29 +208,43 @@ def _tuning(
                         n_jobs=max_processes
                         )
                     
-                    segmenter.train(training_set, max_processes)
-                    
-                    slice_features = segmenter.featuriser.featurise(
-                        full_volume.get_scale_arrays(segmenter.featuriser.get_scales_needed()),
-                        slice_index=volume_slice_index_in_eval_subvolume,
-                        block_rows=best_block_shape[0],
-                        block_cols=best_block_shape[1],
-                        n_jobs=max_processes
-                        )
+                    def memory_scope(result):
+                        segmenter.train(training_set, max_processes)
+                        
+                        with times.Timer() as featuriser_timer:
+                            slice_features = segmenter.featuriser.featurise(
+                                full_volume.get_scale_arrays(segmenter.featuriser.get_scales_needed()),
+                                slice_index=volume_slice_index_in_eval_subvolume,
+                                block_rows=best_block_shape[0],
+                                block_cols=best_block_shape[1],
+                                n_jobs=max_processes
+                                )
+                        result['featuriser_time'] = featuriser_timer.duration
 
-                    prediction = segmenter.segment_to_label_indexes(slice_features, max_processes)
-                    prediction = prediction.reshape(slice_shape)
+                        with times.Timer() as classifier_timer:
+                            prediction = segmenter.segment_to_label_indexes(slice_features, max_processes)
+                        result['classifier_time'] = classifier_timer.duration
+                        
+                        prediction = prediction.reshape(slice_shape)
+                        slice_labels = eval_subvolume_slice_labels.reshape(slice_shape)
 
-                    slice_labels = eval_subvolume_slice_labels.reshape(slice_shape)
-
-                    ious = evaluations.get_intersection_over_union(
-                        prediction, slice_labels, len(segmenter.classifier.labels)
-                        )
+                        ious = evaluations.get_intersection_over_union(
+                            prediction, slice_labels, len(segmenter.classifier.labels)
+                            )
+                        result['ious'] = ious
+                    result = dict()
+                    max_memory_mb = max(memory_profiler.memory_usage((memory_scope, (result,)), interval=0))
                     
                     listener.log_output('>> Results:')
-                    for (label, iou) in zip(segmenter.classifier.labels, ious):
+                    for (label, iou) in zip(segmenter.classifier.labels, result['ious']):
                         listener.log_output('>>> {}: {:.3%}'.format(label, iou))
-                    tuning_results_file.append(segmenter.get_config(), ious)
+                    tuning_results_file.append(
+                        segmenter.get_config(),
+                        result['ious'],
+                        result['featuriser_time'],
+                        result['classifier_time'],
+                        max_memory_mb
+                        )
                 listener.log_output('> Duration: {}'.format(times.get_readable_duration(sub_timer.duration)))
     
     return ()
