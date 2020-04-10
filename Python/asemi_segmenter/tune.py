@@ -180,7 +180,7 @@ def _tuning(
     parameters_visited = set()
     with checkpoint.apply('create_results_file') as skip:
         if skip is not None:
-            listener.log_output('> Continuing use of existing results file')
+            listener.log_output('> Continuing use of checkpointed results file')
             raise skip
         tuning_results_file.create(segmenter.classifier.labels)
     with checkpoint.apply('tune') as skip:

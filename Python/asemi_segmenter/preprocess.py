@@ -62,7 +62,7 @@ def _creating_empty_data_file(
     '''Creating empty data file stage.'''
     with checkpoint.apply('empty_data_file') as skip:
         if skip is not None:
-            listener.log_output('> Skipped as was found ready')
+            listener.log_output('> Skipped as was found checkpointed')
             raise skip
         volume_shape = (len(volume_fullfnames), *slice_shape)
         full_volume.create(config_data, volume_shape)
@@ -78,7 +78,7 @@ def _dumping_slices_into_data_file(
     '''Dumping slices into data file stage.'''
     with checkpoint.apply('dump_slices') as skip:
         if skip is not None:
-            listener.log_output('> Skipped as was found ready')
+            listener.log_output('> Skipped as was found checkpointed')
             raise skip
         listener.current_progress_start(0, len(volume_fullfnames))
 
@@ -116,7 +116,7 @@ def _downscaling_volume(
         listener.log_output('> Downscaling volume to scale {}'.format(scale))
         with checkpoint.apply('downscale_{}'.format(scale)) as skip:
             if skip is not None:
-                listener.log_output('>> Skipped as was found ready')
+                listener.log_output('>> Skipped as was found checkpointed')
                 raise skip
             best_block_shape = arrayprocs.get_optimal_block_size(
                 full_volume.get_scale_array(scale-1).shape,
@@ -155,7 +155,7 @@ def _hashing_volume_slices(
     '''Hashing volume slices stage.'''
     with checkpoint.apply('hashing_slices') as skip:
         if skip is not None:
-            listener.log_output('> Skipped as was found ready')
+            listener.log_output('> Skipped as was found checkpointed')
             raise skip
         listener.current_progress_start(0, len(volume_fullfnames))
         for volume_slice_index in range(len(volume_fullfnames)):

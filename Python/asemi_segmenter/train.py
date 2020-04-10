@@ -88,7 +88,7 @@ def _reserving_trainingset_space(
     if training_set.data_fullfname is not None:
         with checkpoint.apply('reserving_trainingset') as skip:
             if skip is not None:
-                listener.log_output('> Continuing use of existing training set')
+                listener.log_output('> Continuing use of checkpointed training set')
                 raise skip
             training_set.create(slice_size*len(subvolume_fullfnames), feature_size)
         training_set.load()
@@ -134,7 +134,7 @@ def _constructing_trainingset(
     listener.log_output('> Constructing labels')
     with checkpoint.apply('contructing_labels') as skip:
         if skip is not None:
-            listener.log_output('> Skipped as was found ready')
+            listener.log_output('> Skipped as was found checkpointed')
             raise skip
         training_set.get_labels_array()[:] = volumes.load_labels(labels_data)
 
@@ -149,7 +149,7 @@ def _constructing_trainingset(
         )
     with checkpoint.apply('constructing_features') as skip:
         if skip is not None:
-            listener.log_output('> Skipped as was found ready')
+            listener.log_output('> Skipped as was found checkpointed')
             raise skip
         start = checkpoint.get_next_to_process('constructing_features_prog')
         listener.current_progress_start(start, len(subvolume_fullfnames))

@@ -121,7 +121,7 @@ def _evaluating(
     output_result = dict()
     with checkpoint.apply('create_results_file') as skip:
         if skip is not None:
-            listener.log_output('> Continuing use of existing results file')
+            listener.log_output('> Continuing use of checkpointed results file')
             listener.log_output('-')
             raise skip
         evaluation_results_file.create(segmenter.classifier.labels)
@@ -141,7 +141,7 @@ def _evaluating(
             ))
         with checkpoint.apply('evaluating_{}'.format(volume_slice_index)) as skip:
             if skip is not None:
-                listener.log_output('>> Skipped as was found ready')
+                listener.log_output('>> Skipped as was found checkpointed')
                 listener.log_output('-')
                 raise skip
             with times.Timer() as sub_timer:
