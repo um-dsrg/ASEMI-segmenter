@@ -46,6 +46,7 @@ def _loading_data(
         listener.log_output('>> Loading label {} directory'.format(i+1))
         label_data = volumes.load_label_dir(label_dir)
         labels_data.append(label_data)
+        listener.log_output('>>> {}'.format(label_data.name))
     evaluation_labels = sorted(label_data.name for label_data in labels_data)
     if evaluation_labels != segmenter.classifier.labels:
         raise ValueError('Labels in evaluation directory do not match labels in model')

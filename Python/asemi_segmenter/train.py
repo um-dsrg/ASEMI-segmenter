@@ -42,6 +42,7 @@ def _loading_data(
         listener.log_output('>> Loading label {} directory'.format(i+1))
         label_data = volumes.load_label_dir(label_dir)
         labels_data.append(label_data)
+        listener.log_output('>>> {}'.format(label_data.name))
     validations.validate_annotation_data(full_volume, subvolume_data, labels_data)
     labels = sorted(label_data.name for label_data in labels_data)
 
