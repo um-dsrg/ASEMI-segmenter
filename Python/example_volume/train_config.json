@@ -11,16 +11,19 @@
                     "type": "histogram",
                     "params": {
                         "radius": 29,
-                        "scale": 0,
-                        "num_bins": 14
+                        "scale": 3,
+                        "num_bins": 26
                     }
                 },
                 {
-                    "type": "histogram",
+                    "type": "lbp",
                     "params": {
-                        "radius": 26,
-                        "scale": 3,
-                        "num_bins": 3
+                        "neighbouring_dims": [
+                            1,
+                            2
+                        ],
+                        "radius": 30,
+                        "scale": 3
                     }
                 }
             ]

@@ -2,9 +2,11 @@
 
 import random
 import numpy as np
+import skimage.feature
 from asemi_segmenter.lib import histograms
 from asemi_segmenter.lib import downscales
 from asemi_segmenter.lib import arrayprocs
+from asemi_segmenter.lib import regions
 from asemi_segmenter.lib import validations
 
 
@@ -66,6 +68,37 @@ def load_featuriser_from_config(config, allow_random=False):
                 num_bins = config['params']['num_bins']
             
             return HistogramFeaturiser(radius, scale, num_bins)
+        
+        elif config['type'] == 'lbp':
+            neighbouring_dims = set(config['params']['neighbouring_dims'])
+            radius = None
+            scale = None
+            
+            if isinstance(config['params']['radius'], dict):
+                if not allow_random:
+                    raise ValueError('radius must be a constant not a range.')
+                if (config['params']['radius']['min'] >= config['params']['radius']['max']):
+                    raise ValueError('radius min is not less than radius max.')
+                radius = lambda:rand.randrange(
+                    config['params']['radius']['min'],
+                    config['params']['radius']['max'] + 1
+                    )
+            else:
+                radius = config['params']['radius']
+            
+            if isinstance(config['params']['scale'], dict):
+                if not allow_random:
+                    raise ValueError('scale must be a constant not a range.')
+                if (config['params']['scale']['min'] >= config['params']['scale']['max']):
+                    raise ValueError('scale min is not less than scale max.')
+                scale = lambda:rand.randrange(
+                    config['params']['scale']['min'],
+                    config['params']['scale']['max'] + 1
+                    )
+            else:
+                scale = config['params']['scale']
+            
+            return LocalBinaryPatternFeaturiser(neighbouring_dims, radius, scale)
         
         elif config['type'] == 'composite':
             return CompositeFeaturiser(
@@ -505,11 +538,199 @@ class HistogramFeaturiser(Featuriser):
             processor,
             block_shape=(block_rows, block_cols),
             slice_index=slice_index,
-            scales=sorted({0, self.scale}),
+            scales=self.get_scales_needed(),
             in_ranges=[row_range, col_range],
-            context_size=self.radius,
+            context_size=self.get_context_needed(),
             n_jobs=n_jobs,
             extra_params=(self.radius, self.scale, self.num_bins, (row_range, col_range), output_start_row_index, output_start_col_index),
+            )
+
+
+#########################################
+class LocalBinaryPatternFeaturiser(Featuriser):
+    '''
+    A featuriser that collects a histogram of LBP patterns at a plane around each voxel.
+    
+    The feature vector of a voxel consists of histograms of squares of a given size and
+    orientation and at a given scale centered on the voxel. The number of bins in each histogram
+    is 10, as the LBP algorithm used is uniform rotation invarient.
+    '''
+    
+    #########################################
+    def __init__(self, neighbouring_dims, radius, scale):
+        '''
+        Constructor.
+        
+        :param neighbouring_dims: The neighbourhood dimensions to keep or a function that generates it.
+        :type neighbouring_dims: set or callable
+        :param radius: The neighbourhood radius or a function that generates it.
+        :type radius: int or callable
+        :param scale: The scale of the volume from which to extract this neighbourhood or a function that generates it.
+        :type scale: int or callable
+        '''
+        self.neighbouring_dims = neighbouring_dims
+        self.radius = radius if isinstance(radius, int) else None
+        self.scale = scale if isinstance(scale, int) else None
+        
+        if isinstance(neighbouring_dims, set):
+            if len(neighbouring_dims) != 2 or not neighbouring_dims < {0,1,2}:
+                raise ValueError('neighbouring_dims must be {0,1}, {0,2}, or {1,2}.')
+            self.neighbouring_dims_generator = lambda:neighbouring_dims
+        else:
+            raise ValueError('neighbouring_dims must be a set.')
+        
+        if isinstance(radius, int):
+            self.radius_generator = lambda:radius
+        elif callable(radius):
+            self.radius_generator = radius
+        else:
+            raise ValueError('radius must be int or callable.')
+        
+        if isinstance(scale, int):
+            self.scale_generator = lambda:scale
+        elif callable(scale):
+            self.scale_generator = scale
+        else:
+            raise ValueError('scale must be int or callable.')
+        
+        
+    #########################################
+    def regenerate(self):
+        '''
+        Regenerate parameters with value generators provided.
+        '''
+        self.radius = self.radius_generator()
+        self.scale = self.scale_generator()
+    
+    #########################################
+    def get_feature_size(self):
+        '''
+        Get the number of elements in the feature vector.
+        
+        :return: The feature vector size.
+        :rtype: int
+        '''
+        return 10
+    
+    #########################################
+    def get_context_needed(self):
+        '''
+        Get the maximum amount of context needed around a voxel to generate a feature vector.
+        
+        :return: The context size.
+        :rtype: int
+        '''
+        return self.radius + 1
+    
+    #########################################
+    def get_scales_needed(self):
+        '''
+        Get the different volume scales needed to generate a feature vector.
+        
+        :return: The scales needed.
+        :rtype: set
+        '''
+        return { 0, self.scale }
+    
+    #########################################
+    def get_config(self):
+        '''
+        Get the dictionary configuration of the featuriser's parameters.
+        
+        :return: The dictionary configuration.
+        :rtype: dict
+        '''
+        return {
+            'type': 'lbp',
+            'params': {
+                'neighbouring_dims': sorted(self.neighbouring_dims),
+                'radius': self.radius,
+                'scale': self.scale
+                }
+            }
+    
+    #########################################
+    def get_params(self):
+        '''
+        Get the featuriser's parameters as nested tuples.
+        
+        :return: The parameters.
+        :rtype: tuple
+        '''
+        return (tuple(sorted(self.neighbouring_dims)), self.radius, self.scale)
+        
+    #########################################
+    def featurise(self, data_scales, slice_index, block_rows, block_cols, row_range=slice(None), col_range=slice(None), output=None, output_start_row_index=0, output_start_col_index=0, n_jobs=1):
+        '''
+        Turn a slice from a volume into a matrix of feature vectors.
+
+        See super class for more information.
+        
+        :param dict data_scales: As described in the super class.
+        :param int slice_index: As described in the super class.
+        :param int block_rows: As described in the super class.
+        :param int block_cols: As described in the super class.
+        :param slice row_range: As described in the super class.
+        :param slice col_range: As described in the super class.
+        :param numpy.ndarray output: As described in the super class.
+        :param int output_start_row_index: As described in the super class.
+        :param int output_start_col_index: As described in the super class.
+        :param int n_jobs: As described in the super class.
+        :param callable progress_listener: As described in the super class.
+        :return: As described in the super class.
+        :rtype: numpy.ndarray
+        '''
+        
+        def processor(params, neighbouring_dims, radius, scale, full_input_ranges, output_start_row_index, output_start_col_index):
+            '''Processor for process_array_in_blocks_single_slice.'''
+            [ num_rows_out, num_cols_out ] = params[0]['contextless_shape']
+            
+            lbp_codes = np.empty_like(params[scale]['block'])
+            if neighbouring_dims == {1,2}:
+                data_index = params[scale]['contextless_slices_wrt_block'][0]
+                lbp_codes[data_index, :, :] = skimage.feature.local_binary_pattern(params[scale]['block'][data_index,:,:], 8, 1, 'uniform')
+            else:
+                dim = ({0,1,2} - neighbouring_dims).pop()
+                index = [ slice(None), slice(None), slice(None) ]
+                for i in range(lbp_codes.shape[dim]):
+                    index[dim] = i
+                    index_ = tuple(index)
+                    lbp_codes[index_] = skimage.feature.local_binary_pattern(params[scale]['block'][index_], 8, 1, 'uniform')
+            
+            hists = histograms.apply_histogram_to_all_neighbourhoods_in_slice_3d(
+                lbp_codes,
+                params[scale]['contextless_slices_wrt_block'][0],
+                radius,
+                neighbouring_dims,
+                0, 10,
+                10,
+                row_slice=params[scale]['contextless_slices_wrt_block'][1], col_slice=params[scale]['contextless_slices_wrt_block'][2]
+                )
+            features = np.reshape(downscales.grow_array(hists, scale, [0, 1], params[0]['contextless_shape']), (-1, 10)).astype(np.float32)
+            
+            out_indexes = (
+                    [
+                        output_start_row_index + row*(full_input_ranges[1].stop - full_input_ranges[1].start) + col
+                        for row in range(params[0]['contextless_slices_wrt_range'][1].start, params[0]['contextless_slices_wrt_range'][1].stop)
+                        for col in range(params[0]['contextless_slices_wrt_range'][2].start, params[0]['contextless_slices_wrt_range'][2].stop)
+                    ],
+                    slice(output_start_col_index, output_start_col_index+10)
+                )
+            return (features, out_indexes)
+        
+        (output_rows_needed, output_cols_needed, row_range, col_range, output) = self._prepare_featurise(data_scales, row_range, col_range, output, output_start_row_index, output_start_col_index)
+        
+        return arrayprocs.process_array_in_blocks_single_slice(
+            data_scales,
+            output,
+            processor,
+            block_shape=(block_rows, block_cols),
+            slice_index=slice_index,
+            scales=self.get_scales_needed(),
+            in_ranges=[row_range, col_range],
+            context_size=self.get_context_needed(),
+            n_jobs=n_jobs,
+            extra_params=(self.neighbouring_dims, self.radius, self.scale, (row_range, col_range), output_start_row_index, output_start_col_index),
             )
 
 

@@ -15,6 +15,7 @@ setuptools.setup(
                 'numpy',
                 'Pillow',
                 'scikit-learn',
+                'scikit-image',
                 'scipy',
                 'tqdm',
                 'psutil',

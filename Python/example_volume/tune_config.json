@@ -12,16 +12,16 @@
                         "type": "histogram",
                         "params": {
                             "radius": { "min": 2, "max": 32 },
-                            "scale": 0,
+                            "scale": { "min": 0, "max": 4 },
                             "num_bins": { "min": 2, "max": 32 }
                         }
                     },
                     {
-                        "type": "histogram",
+                        "type": "lbp",
                         "params": {
+                            "neighbouring_dims": [1, 2],
                             "radius": { "min": 2, "max": 32 },
-                            "scale": { "min": 0, "max": 4 },
-                            "num_bins": { "min": 2, "max": 32 }
+                            "scale": { "min": 0, "max": 4 }
                         }
                     }
                 ]

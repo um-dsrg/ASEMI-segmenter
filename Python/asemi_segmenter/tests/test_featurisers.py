@@ -2,6 +2,7 @@ import unittest
 import numpy as np
 import os
 import sys
+import skimage.feature
 from asemi_segmenter.lib import featurisers
 from asemi_segmenter.lib import downscales
 from asemi_segmenter.lib import regions
@@ -48,6 +49,57 @@ class Features(unittest.TestCase):
                     expected_output[2:-2, :] = slice_features
                     slice_features = featuriser.featurise(scaled_data, slice_index, block_rows=batch_size, block_cols=batch_size, output=output, output_start_row_index=2, n_jobs=n_jobs)
                     np.testing.assert_equal(expected_output, slice_features, 'downsample_kernel={}, histogram_params={}, batch_size={}, n_jobs={}, slice_index={}'.format(downsample_kernel.name, (radius, scale, num_bins), batch_size, n_jobs, slice_index))
+
+    #########################################
+    def test_lbp_featuriser(self):
+        for downsample_kernel in [
+                downscales.NullDownsampleKernel(),
+                downscales.GaussianDownsampleKernel()
+            ]:
+            rand = np.random.RandomState(0)
+            #scaled_data = { 0: rand.randint(0, 2**16-1, (5,15,15), np.uint16) }
+            scaled_data = { 0: rand.randint(0, 2**16-1, (5,3,3), np.uint16) }
+            scaled_data[1] = downscales.downscale(scaled_data[0], downsample_kernel, 1)
+            for (neighbouring_dims, radius, scale, batch_size, n_jobs) in [
+                    ({0,1}, 2, 0, 12, 1),
+                    ({0,1}, 1, 1, 12, 1),
+                    ({0,1}, 2, 0, 200, 1),
+                    ({0,1}, 1, 1, 200, 1),
+                    ({0,1}, 1, 0, 10, 2),
+                    ({0,2}, 2, 0, 12, 1),
+                    ({0,2}, 1, 1, 12, 1),
+                    ({0,2}, 2, 0, 200, 1),
+                    ({0,2}, 1, 1, 200, 1),
+                    ({1,2}, 1, 0, 10, 2),
+                    ({1,2}, 2, 0, 12, 1),
+                    ({1,2}, 1, 1, 12, 1),
+                    ({1,2}, 2, 0, 200, 1),
+                    ({1,2}, 1, 1, 200, 1),
+                    ({1,2}, 1, 0, 10, 2),
+                ]:
+                featuriser = featurisers.LocalBinaryPatternFeaturiser(neighbouring_dims, radius, scale)
+                for slice_index in range(scaled_data[0].shape[0]):
+                    true_slice_features = [
+                            [
+                                []
+                                for col in range(scaled_data[0].shape[2])
+                            ] for row in range(scaled_data[0].shape[1])
+                        ]
+                    for row in range(scaled_data[0].shape[1]):
+                        for col in range(scaled_data[0].shape[2]):
+                            neighbourhood = regions.get_neighbourhood_array_3d(scaled_data[scale], (slice_index, row, col), radius+1, neighbouring_dims, scale=scale)
+                            lbp = skimage.feature.local_binary_pattern(neighbourhood, 8, 1, 'uniform')[1:-1,1:-1]
+                            true_slice_features[row][col].extend(histograms.histogram(lbp, 10, (0, 10)))
+                    true_slice_features = np.array(true_slice_features, np.float32).reshape([-1, len(true_slice_features[0][0])])
+                    
+                    slice_features = featuriser.featurise(scaled_data, slice_index, block_rows=batch_size, block_cols=batch_size, n_jobs=n_jobs)
+                    np.testing.assert_equal(true_slice_features, slice_features, 'downsample_kernel={}, histogram_params={}, batch_size={}, n_jobs={}, slice_index={}'.format(downsample_kernel.name, (neighbouring_dims, radius, scale), batch_size, n_jobs, slice_index))
+                    
+                    output = np.zeros([ slice_features.shape[0]+4, slice_features.shape[1] ], np.float32)
+                    expected_output = np.zeros_like(output)
+                    expected_output[2:-2, :] = slice_features
+                    slice_features = featuriser.featurise(scaled_data, slice_index, block_rows=batch_size, block_cols=batch_size, output=output, output_start_row_index=2, n_jobs=n_jobs)
+                    np.testing.assert_equal(expected_output, slice_features, 'downsample_kernel={}, histogram_params={}, batch_size={}, n_jobs={}, slice_index={}'.format(downsample_kernel.name, (neighbouring_dims, radius, scale), batch_size, n_jobs, slice_index))
 
     #########################################
     def test_voxel_featuriser(self):

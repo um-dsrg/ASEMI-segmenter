@@ -102,6 +102,78 @@
             "additionalProperties": false
         },
         
+        "lbp": {
+            "type": "object",
+            "properties": {
+                "type": { "const": "lbp" },
+                "params": {
+                    "type": "object",
+                    "properties": {
+                        "neighbouring_dims": {
+                            "type": "array",
+                            "items": {
+                                "type": "integer",
+                                "enum": [0, 1, 2]
+                            },
+                            "minItems": 2,
+                            "maxItems": 2,
+                            "uniqueItems": true
+                        },
+                        "radius": {
+                            "oneOf": [
+                                {
+                                    "type": "integer",
+                                    "minimum": 1
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "min": {
+                                            "type": "integer",
+                                            "minimum": 1
+                                        },
+                                        "max": {
+                                            "type": "integer",
+                                            "minimum": 1
+                                        }
+                                    },
+                                    "required": ["min", "max"],
+                                    "additionalProperties": false
+                                }
+                            ]
+                        },
+                        "scale": {
+                            "oneOf": [
+                                {
+                                    "type": "integer",
+                                    "minimum": 0
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "min": {
+                                            "type": "integer",
+                                            "minimum": 0
+                                        },
+                                        "max": {
+                                            "type": "integer",
+                                            "minimum": 0
+                                        }
+                                    },
+                                    "required": ["min", "max"],
+                                    "additionalProperties": false
+                                }
+                            ]
+                        }
+                    },
+                    "required": ["neighbouring_dims", "radius", "scale"],
+                    "additionalProperties": false
+                }
+            },
+            "required": ["type", "params"],
+            "additionalProperties": false
+        },
+        
         "composite": {
             "type": "object",
             "properties": {
@@ -114,7 +186,8 @@
                             "items": {
                                 "oneOf": [
                                     { "$ref": "#/definitions/voxel" },
-                                    { "$ref": "#/definitions/histogram" }
+                                    { "$ref": "#/definitions/histogram" },
+                                    { "$ref": "#/definitions/lbp" }
                                 ]
                             },
                             "minItems": 1
@@ -133,6 +206,7 @@
     "oneOf": [
         { "$ref": "#/definitions/voxel" },
         { "$ref": "#/definitions/histogram" },
+        { "$ref": "#/definitions/lbp" },
         { "$ref": "#/definitions/composite" }
     ]
 }
