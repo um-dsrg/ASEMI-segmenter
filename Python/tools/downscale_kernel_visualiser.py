@@ -5,7 +5,7 @@ import os
 import sys
 from asemi_segmenter.lib import downscales
 from asemi_segmenter.lib import regions
-from asemi_segmenter.lib import datas
+from asemi_segmenter.lib import volumes
 
 #########################################
 def visualise(in_array, sigma):
@@ -31,7 +31,7 @@ def visualise(in_array, sigma):
                     array[:,array.shape[1]//2,:],
                     array[:,:,array.shape[2]//2],
                 ][col])
-            img = regions.get_neighbourhood_array_2d(img, [img.shape[0]//2, img.shape[1]//2], 50, {1,2,3})
+            img = regions.get_neighbourhood_array_2d(img, [img.shape[0]//2, img.shape[1]//2], 50, {0,1,2})
             axs[row,col].matshow(img, cmap='gray', vmin=min_value, vmax=max_value)
             axs[row,col].set_xlabel([ 'row', 'slice', 'row' ][col])
             axs[row,col].set_ylabel([ 'column', 'column', 'slice' ][col])
@@ -43,7 +43,7 @@ def visualise(in_array, sigma):
 
 #########################################
 
-full_volume = datas.FullVolume(os.path.join('..', 'example_volume', 'preprocess', 'volume.hdf'))
+full_volume = volumes.FullVolume(os.path.join('..', 'example_volume', 'preprocess', 'volume.hdf'))
 full_volume.load()
 in_array = full_volume.get_scale_array(0)[:]
 

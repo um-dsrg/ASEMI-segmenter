@@ -36,8 +36,7 @@ def _loading_data(
     hash_function = hashfunctions.load_hashfunction_from_config(config_data['hash_function'])
     
     listener.log_output('> Result data file')
-    if result_data_fullfname is not None:
-        validations.check_directory(result_data_fullfname)
+    validations.check_filename(result_data_fullfname, '.hdf', False)
     full_volume = volumes.FullVolume(result_data_fullfname)
 
     listener.log_output('> Checkpoint')

@@ -40,7 +40,7 @@ def _loading_data(
     segmenter = segmenters.load_segmenter_from_pickle_data(pickled_data, full_volume, allow_random=False)
 
     listener.log_output('> Config file')
-    if isinstance(model, str):
+    if isinstance(config, str):
         validations.check_filename(config, '.json', True)
         with open(config, 'r', encoding='utf-8') as f:
             config_data = json.load(f)

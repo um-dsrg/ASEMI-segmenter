@@ -5,21 +5,26 @@ import shutil
 import os
 import sys
 from asemi_segmenter.lib import regions
-from asemi_segmenter.lib import datas
 from asemi_segmenter.lib import times
-from asemi_segmenter import segmenter
+from asemi_segmenter.lib import files
+from asemi_segmenter.lib import images
+from asemi_segmenter.lib import featurisers
+from asemi_segmenter import preprocess
+from asemi_segmenter import train
+from asemi_segmenter import segment
+from asemi_segmenter import listener
 
-class Listener(segmenter.ProgressListener):
+class Listener(listener.ProgressListener):
     def error_output(self, text):
         raise Exception(text)
 
 #########################################
 def measure(side_length, num_training_slices, num_labels, num_runs, train_config, max_processes, max_batch_memory, listener=lambda run, train_time, train_memory, segment_time, segment_memory:None):
-    (_, featuriser, _) = datas.load_train_config_data(train_config)
+    featuriser = featurisers.load_featuriser_from_config(train_config['featuriser'])
     preprocess_config = {
             'num_downsamples': max(featuriser.get_scales_needed()),
             'downsample_filter': {
-                    'type': 'null',
+                    'type': 'none',
                     'params': {
                         }
                 },
@@ -34,26 +39,26 @@ def measure(side_length, num_training_slices, num_labels, num_runs, train_config
     
     with tempfile.TemporaryDirectory() as temp_dir:
         print('Creating full volume slices')
-        os.mkdir(os.path.join(temp_dir, 'volume'))
+        files.mkdir(os.path.join(temp_dir, 'volume'))
         r = np.random.RandomState(0)
         for i in range(side_length):
-            datas.save_image(os.path.join(temp_dir, 'volume', '{}.tif'.format(i)), r.randint(0, 2**16, size=[side_length,side_length], dtype=np.uint16))
+            images.save_image(os.path.join(temp_dir, 'volume', '{}.tif'.format(i)), r.randint(0, 2**16, size=[side_length,side_length], dtype=np.uint16))
         
         print('Creating sub volume slices')
-        os.mkdir(os.path.join(temp_dir, 'subvolume'))
+        files.mkdir(os.path.join(temp_dir, 'subvolume'))
         for i in range(0, side_length-side_length%num_training_slices, side_length//num_training_slices):
             shutil.copy(os.path.join(temp_dir, 'volume', '{}.tif'.format(i)), os.path.join(temp_dir, 'subvolume', '{}.tif'.format(i)))
         
         print('Creating label slices')
-        os.mkdir(os.path.join(temp_dir, 'labels'))
+        files.mkdir(os.path.join(temp_dir, 'labels'))
         r = np.random.RandomState(0)
         for label in range(num_labels):
-            os.mkdir(os.path.join(temp_dir, 'labels', '_{}'.format(label)))
+            files.mkdir(os.path.join(temp_dir, 'labels', '_{}'.format(label)))
             for i in range(0, side_length-side_length%num_training_slices, side_length//num_training_slices):
-                datas.save_image(os.path.join(temp_dir, 'labels', '_{}'.format(label), '{}.tif'.format(i)), r.randint(0, 2, size=[side_length,side_length], dtype=np.uint16))
+                images.save_image(os.path.join(temp_dir, 'labels', '_{}'.format(label), '{}.tif'.format(i)), r.randint(0, 2, size=[side_length,side_length], dtype=np.uint16))
         
         print('Preprocessing volume')
-        segmenter.preprocess(
+        preprocess.main(
                 volume_dir=os.path.join(temp_dir, 'volume'),
                 config=preprocess_config,
                 result_data_fullfname=os.path.join(temp_dir, 'full_volume.hdf'),
@@ -64,7 +69,7 @@ def measure(side_length, num_training_slices, num_labels, num_runs, train_config
                 listener=Listener()
             )
         
-        os.mkdir(os.path.join(temp_dir, 'segmentation'))
+        files.mkdir(os.path.join(temp_dir, 'segmentation'))
         
         print('Starting measurements')
         for run in range(1, num_runs+1):
@@ -72,7 +77,7 @@ def measure(side_length, num_training_slices, num_labels, num_runs, train_config
             with times.Timer() as timer:
                 mem_usage = memory_profiler.memory_usage(
                     (
-                        segmenter.train,
+                        train.main,
                         [],
                         dict(
                             preproc_volume_fullfname=os.path.join(temp_dir, 'full_volume.hdf'),
@@ -96,15 +101,15 @@ def measure(side_length, num_training_slices, num_labels, num_runs, train_config
             with times.Timer() as timer:
                 mem_usage = memory_profiler.memory_usage(
                     (
-                        segmenter.segment,
+                        segment.main,
                         [],
                         dict(
                             model=os.path.join(temp_dir, 'model.pkl'),
                             preproc_volume_fullfname=os.path.join(temp_dir, 'full_volume.hdf'),
+                            config={'soft_segmentation': 'no'},
                             results_dir=os.path.join(temp_dir, 'segmentation'),
                             checkpoint_fullfname=None,
                             restart_checkpoint=False,
-                            soft_segmentation=True,
                             max_processes=max_processes,
                             max_batch_memory=max_batch_memory,
                             listener=Listener()
@@ -123,27 +128,44 @@ num_training_slices = 10
 num_labels = 5
 num_runs = 3
 train_config = {
-        'featuriser': {
-                'type': 'histograms',
-                'params': {
-                        'use_voxel_value': 'yes',
-                        'histograms': [
-                                { 'radius': 1, 'scale': 0, 'num_bins': 32 },
-                                { 'radius': 20, 'scale': 0, 'num_bins': 32 }
-                            ]
-                    }
-            },
-        'classifier': {
-                'type': 'random_forest',
-                'params': {
-                        'n_estimators': 32,
-                        'max_depth': 10,
-                        'min_samples_leaf': 1
-                    }
-            },
-        'training_set': {
-                'sample_size_per_label': -1
+    'featuriser': {
+        'type': 'composite',
+        'params': {
+            'featuriser_list': [
+                {
+                    'type': 'voxel',
+                    'params': {}
+                    },
+                {
+                    'type': 'histogram',
+                    'params': {
+                        'radius': 1,
+                        'scale': 0,
+                        'num_bins': 32
+                        }
+                    },
+                {
+                    'type': 'histogram',
+                    'params': {
+                        'radius': 20,
+                        'scale': 0,
+                        'num_bins': 32
+                        }
+                        }
+                ]
             }
+        },
+    'classifier': {
+            'type': 'random_forest',
+            'params': {
+                'n_estimators': 32,
+                'max_depth': 10,
+                'min_samples_leaf': 1
+                }
+        },
+    'training_set': {
+        'sample_size_per_label': -1
+        }
     }
 
 with open('results.txt', 'w', encoding='utf-8') as f:

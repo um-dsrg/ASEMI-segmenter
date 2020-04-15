@@ -6,7 +6,7 @@ from mpl_toolkits.mplot3d import Axes3D
 import os
 import sys
 from asemi_segmenter.lib import regions
-from asemi_segmenter.lib import datas
+from asemi_segmenter.lib import volumes
 
 matplotlib.use('TkAgg')
 
@@ -86,7 +86,7 @@ def display_volume(in_array, relative_intensities=True, cross_section=None):
 
 #########################################
 
-full_volume = datas.FullVolume(os.path.join('..', 'example_volume', 'preprocess', 'volume.hdf'))
+full_volume = volumes.FullVolume(os.path.join('..', 'example_volume', 'preprocess', 'volume.hdf'))
 full_volume.load()
 in_array = full_volume.get_scale_array(1)[:]
 

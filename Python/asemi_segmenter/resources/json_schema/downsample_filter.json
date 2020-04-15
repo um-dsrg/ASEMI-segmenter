@@ -3,6 +3,22 @@
     "$id": "downsample_filter.json",
     "definitions": {
         
+        "none": {
+            "type": "object",
+            "properties": {
+                "type": { "const": "none" },
+                "params": {
+                    "type": "object",
+                    "properties": {
+                    },
+                    "required": [],
+                    "additionalProperties": false
+                }
+            },
+            "required": ["type", "params"],
+            "additionalProperties": false
+        },
+        
         "gaussian": {
             "type": "object",
             "properties": {
@@ -26,6 +42,7 @@
     },
     
     "oneOf": [
+        { "$ref": "#/definitions/none" },
         { "$ref": "#/definitions/gaussian" }
     ]
 }

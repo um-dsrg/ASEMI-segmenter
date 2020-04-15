@@ -73,6 +73,20 @@ class TrainingSet(object):
         return self.data['features']
 
     #########################################
+    def without_control_labels(self):
+        '''
+        Get a copy of this training set without any items where the labels are control labels.
+        '''
+        valid_items_mask = self.data['labels'][:] < volumes.FIRST_CONTROL_LABEL
+        
+        new_trainingset = TrainingSet(None)
+        new_trainingset.create(np.sum(valid_items_mask), self.data['features'].shape[1])
+        new_trainingset.get_labels_array()[:] = self.data['labels'][valid_items_mask]
+        new_trainingset.get_features_array()[:] = self.data['features'][valid_items_mask, :]
+
+        return new_trainingset
+    
+    #########################################
     def get_sample(self, max_sample_size_per_label, seed=None):
         '''
         Get a random sample of the training set.

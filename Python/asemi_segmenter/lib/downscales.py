@@ -33,9 +33,12 @@ def load_downsamplekernel_from_config(config):
     '''
     validations.validate_json_with_schema_file(config, 'downsample_filter.json')
     
-    if config['type'] == 'gaussian':
+    if config['type'] == 'none':
+        return NullDownsampleKernel()
+    elif config['type'] == 'gaussian':
         sigma = config['params']['sigma']
         return GaussianDownsampleKernel(sigma)
+    
 
 
 #########################################
