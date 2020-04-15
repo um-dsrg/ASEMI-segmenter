@@ -1,8 +1,10 @@
 import argparse
 import os
 import sys
+import socket
 import psutil
 import _interfaces
+import asemi_segmenter
 from asemi_segmenter.lib import arrayprocs
 from asemi_segmenter import tune
 
@@ -100,6 +102,11 @@ if __name__ == '__main__':
             if params['max_batch_memory'] <= 0:
                 params['max_batch_memory'] = psutil.virtual_memory().available/(1024**3)
         params['listener'].log_output('='*100)
+        params['listener'].log_output('version: {}'.format(asemi_segmenter.__version__))
+        params['listener'].log_output('hostname: {}'.format(socket.gethostname()))
+        params['listener'].log_output('bin dir: {}'.format(os.path.dirname(os.path.realpath(__file__))))
+        params['listener'].log_output('-'*50)
+        params['listener'].log_output('')
         tune.main(**params)
         params['listener'].log_output('')
         params['listener'].log_output('')
