@@ -6,7 +6,12 @@ setuptools.setup(
         packages=[
                 'asemi_segmenter',
                 'asemi_segmenter.lib',
+                'asemi_segmenter.resources',
+                'asemi_segmenter.resources.json_schema'
             ],
+        package_data={
+                'asemi_segmenter': ['resources/json_schema/*.json']
+            },
         install_requires=[
                 'fast-histogram',
                 'h5py',
@@ -20,6 +25,7 @@ setuptools.setup(
                 'tqdm',
                 'psutil',
                 'jsonschema',
-                'jsonref'
+                'jsonref',
+                'memory_profiler'
             ]
     )
