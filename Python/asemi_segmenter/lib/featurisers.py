@@ -197,9 +197,45 @@ class Featuriser(object):
         return (row_range, col_range)
         
     #########################################
-    def _prepare_featurise(self, data_scales, row_range, col_range, output, output_start_row_index, output_start_col_index):
+    def _prepare_featurise_voxels(self, data_scales, indexes, output, output_start_row_index, output_start_col_index):
         '''
-        (Protected method) Fix any missing parameters sent to featurise method.
+        (Protected method) Fix any missing parameters sent to featurise_voxels method.
+        
+        :param dict data_scales: A dictionary of different scales of the volume.
+        :param list indexes: A list of tuples, each of which consists of (slice, row, column)
+            such that data_scales[0][(slice, row, column)] refers to the voxel to featurise.
+        :param numpy.ndarray output: The output dataset to contain the features (will be created
+            if None). Must be 2D.
+        :param int output_start_row_index: The row index in the output dataset to start putting
+            feature vectors in.
+        :param int output_start_col_index: The column index in the output dataset to start putting
+            feature vectors from.
+        :return: Tuple with fixed parameters (rows_needed, cols_needed, output).
+        :rtype: tuple
+        '''
+        feature_size = self.get_feature_size()
+        
+        if output is None:
+            output = np.empty((len(indexes), feature_size), np.float32)
+        if len(output.shape) != 2 or output.dtype != np.float32:
+            raise ValueError('Output array must be a float32 matrix.')
+        
+        rows_needed = len(indexes)
+        last_output_row_index = output_start_row_index + rows_needed - 1
+        if last_output_row_index >= output.shape[0]:
+            raise ValueError('Provided output array does not have enough rows to hold result in expected range (array rows = {}, rows needed = {}, last output row index = {}).'.format(output.shape[0], rows_needed, last_output_row_index))
+        
+        cols_needed = feature_size
+        last_output_col_index = output_start_col_index + cols_needed - 1
+        if last_output_col_index >= output.shape[1]:
+            raise ValueError('Provided output array does not have enough columns to hold result in expected range (array columns = {}, columns needed = {}, last output column index = {}).'.format(output.shape[1], cols_needed, last_output_col_index))
+        
+        return (rows_needed, cols_needed, output)
+    
+    #########################################
+    def _prepare_featurise_slice(self, data_scales, row_range, col_range, output, output_start_row_index, output_start_col_index):
+        '''
+        (Protected method) Fix any missing parameters sent to featurise_slice method.
         
         :param dict data_scales: A dictionary of different scales of the volume.
         :param slice row_range: The range of rows to featurise (if only a part of the slice is
@@ -238,7 +274,35 @@ class Featuriser(object):
         return (rows_needed, cols_needed, row_range, col_range, output)
     
     #########################################
-    def featurise(self, data_scales, slice_index, block_rows, block_cols, row_range=slice(None), col_range=slice(None), output=None, output_start_row_index=0, output_start_col_index=0, n_jobs=1):
+    def featurise_voxels(self, data_scales, indexes, output=None, output_start_row_index=0, output_start_col_index=0, n_jobs=1):
+        '''
+        Turn a set of voxels into a matrix of feature vectors.
+        
+        The matrix will have a row for every voxel and the number of columns is the
+        feature size. This function is made with creating a dataset in mind, that is, where the
+        feature vectors are to be presented as a list rather than in the same shape of the slice.
+        In order to be more memory efficient, the result can be placed in a reserved dataset
+        matrix that should contain the features of a number of slices. The position of the current
+        slice's features within this larger dataset can controlled using the output_start_row_index
+        and output_start_col_index parameters.
+        
+        :param dict data_scales: A dictionary of different scales of the volume.
+        :param list indexes: A list of tuples, each of which consists of (slice, row, column)
+            such that data_scales[0][(slice, row, column)] refers to the voxel to featurise.
+        :param numpy.ndarray output: The output dataset to contain the features (will be created
+            if None). Must be 2D.
+        :param int output_start_row_index: The row index in the output dataset to start putting
+            feature vectors in.
+        :param int output_start_col_index: The column index in the output dataset to start putting
+            feature vectors from.
+        :param int n_jobs: The number of concurrent processes to use.
+        :return: A reference to output.
+        :rtype: numpy.ndarray
+        '''
+        raise NotImplementedError()
+    
+    #########################################
+    def featurise_slice(self, data_scales, slice_index, block_rows, block_cols, row_range=slice(None), col_range=slice(None), output=None, output_start_row_index=0, output_start_col_index=0, n_jobs=1):
         '''
         Turn a slice from a volume into a matrix of feature vectors.
 
@@ -340,7 +404,39 @@ class VoxelFeaturiser(Featuriser):
         return tuple()
     
     #########################################
-    def featurise(self, data_scales, slice_index, block_rows, block_cols, row_range=slice(None), col_range=slice(None), output=None, output_start_row_index=0, output_start_col_index=0, n_jobs=1):
+    def featurise_voxels(self, data_scales, indexes, output=None, output_start_row_index=0, output_start_col_index=0, n_jobs=1):
+        '''
+        Turn a set of voxels into a matrix of feature vectors.
+
+        See super class for more information.
+        
+        :param dict data_scales: As described in the super class.
+        :param list indexes: As described in the super class.
+        :param numpy.ndarray output: As described in the super class.
+        :param int output_start_row_index: As described in the super class.
+        :param int output_start_col_index: As described in the super class.
+        :param int n_jobs: As described in the super class.
+        :param callable progress_listener: As described in the super class.
+        :return: As described in the super class.
+        :rtype: numpy.ndarray
+        '''
+        (output_rows_needed, output_cols_needed, output) = self._prepare_featurise_voxels(data_scales, indexes, output, output_start_row_index, output_start_col_index)
+        
+        output[
+            output_start_row_index:output_start_row_index+output_rows_needed,
+            output_start_col_index:output_start_col_index+output_cols_needed
+            ] = np.reshape(
+                data_scales[0][
+                    [slc for (slc, row, col) in indexes],
+                    [row for (slc, row, col) in indexes],
+                    [col for (slc, row, col) in indexes]
+                    ],
+                (-1, 1)
+                )
+        return output
+    
+    #########################################
+    def featurise_slice(self, data_scales, slice_index, block_rows, block_cols, row_range=slice(None), col_range=slice(None), output=None, output_start_row_index=0, output_start_col_index=0, n_jobs=1):
         '''
         Turn a slice from a volume into a matrix of feature vectors.
 
@@ -360,7 +456,7 @@ class VoxelFeaturiser(Featuriser):
         :return: As described in the super class.
         :rtype: numpy.ndarray
         '''
-        (output_rows_needed, output_cols_needed, row_range, col_range, output) = self._prepare_featurise(data_scales, row_range, col_range, output, output_start_row_index, output_start_col_index)
+        (output_rows_needed, output_cols_needed, row_range, col_range, output) = self._prepare_featurise_slice(data_scales, row_range, col_range, output, output_start_row_index, output_start_col_index)
         
         output[
             output_start_row_index:output_start_row_index+output_rows_needed,
@@ -482,9 +578,56 @@ class HistogramFeaturiser(Featuriser):
         :rtype: tuple
         '''
         return (self.radius, self.scale, self.num_bins)
-        
+    
     #########################################
-    def featurise(self, data_scales, slice_index, block_rows, block_cols, row_range=slice(None), col_range=slice(None), output=None, output_start_row_index=0, output_start_col_index=0, n_jobs=1):
+    def featurise_voxels(self, data_scales, indexes, output=None, output_start_row_index=0, output_start_col_index=0, n_jobs=1):
+        '''
+        Turn a set of voxels into a matrix of feature vectors.
+
+        See super class for more information.
+        
+        :param dict data_scales: As described in the super class.
+        :param list indexes: As described in the super class.
+        :param numpy.ndarray output: As described in the super class.
+        :param int output_start_row_index: As described in the super class.
+        :param int output_start_col_index: As described in the super class.
+        :param int n_jobs: As described in the super class.
+        :param callable progress_listener: As described in the super class.
+        :return: As described in the super class.
+        :rtype: numpy.ndarray
+        '''
+        (output_rows_needed, output_cols_needed, output) = self._prepare_featurise_voxels(data_scales, indexes, output, output_start_row_index, output_start_col_index)
+        
+        def processor(out_row, index, data, radius, scale, num_bins, output_start_row_index, output_start_col_index):
+            '''
+            Function defining what to do with each voxel.
+            '''
+            neighbourhood = regions.get_neighbourhood_array_3d(data, index, radius, {0,1,2}, scale=scale)
+            feature_vec = histograms.histogram(neighbourhood, num_bins, (0, 2**16))
+            return (out_row, feature_vec)
+        
+        def post_processor(result):
+            '''
+            Function defining what to do with the result of each processor.
+            '''
+            (out_row, feature_vec) = result
+            output[
+                out_row:out_row+output_rows_needed,
+                output_start_col_index:output_start_col_index+output_cols_needed
+                ] = feature_vec
+
+        arrayprocs.parallel_processer(
+            processor,
+            enumerate(indexes),
+            post_processor=post_processor,
+            n_jobs=n_jobs,
+            extra_params=(data_scales[self.scale], self.radius, self.scale, self.num_bins, output_start_row_index, output_start_col_index),
+            )
+        
+        return output
+    
+    #########################################
+    def featurise_slice(self, data_scales, slice_index, block_rows, block_cols, row_range=slice(None), col_range=slice(None), output=None, output_start_row_index=0, output_start_col_index=0, n_jobs=1):
         '''
         Turn a slice from a volume into a matrix of feature vectors.
 
@@ -504,6 +647,7 @@ class HistogramFeaturiser(Featuriser):
         :return: As described in the super class.
         :rtype: numpy.ndarray
         '''
+        (output_rows_needed, output_cols_needed, row_range, col_range, output) = self._prepare_featurise_slice(data_scales, row_range, col_range, output, output_start_row_index, output_start_col_index)
         
         def processor(params, radius, scale, num_bins, full_input_ranges, output_start_row_index, output_start_col_index):
             '''Processor for process_array_in_blocks_single_slice.'''
@@ -529,8 +673,6 @@ class HistogramFeaturiser(Featuriser):
                     slice(output_start_col_index, output_start_col_index+num_bins)
                 )
             return (features, out_indexes)
-        
-        (output_rows_needed, output_cols_needed, row_range, col_range, output) = self._prepare_featurise(data_scales, row_range, col_range, output, output_start_row_index, output_start_col_index)
         
         return arrayprocs.process_array_in_blocks_single_slice(
             data_scales,
@@ -658,9 +800,57 @@ class LocalBinaryPatternFeaturiser(Featuriser):
         :rtype: tuple
         '''
         return (tuple(sorted(self.neighbouring_dims)), self.radius, self.scale)
-        
+    
     #########################################
-    def featurise(self, data_scales, slice_index, block_rows, block_cols, row_range=slice(None), col_range=slice(None), output=None, output_start_row_index=0, output_start_col_index=0, n_jobs=1):
+    def featurise_voxels(self, data_scales, indexes, output=None, output_start_row_index=0, output_start_col_index=0, n_jobs=1):
+        '''
+        Turn a set of voxels into a matrix of feature vectors.
+
+        See super class for more information.
+        
+        :param dict data_scales: As described in the super class.
+        :param list indexes: As described in the super class.
+        :param numpy.ndarray output: As described in the super class.
+        :param int output_start_row_index: As described in the super class.
+        :param int output_start_col_index: As described in the super class.
+        :param int n_jobs: As described in the super class.
+        :param callable progress_listener: As described in the super class.
+        :return: As described in the super class.
+        :rtype: numpy.ndarray
+        '''
+        (output_rows_needed, output_cols_needed, output) = self._prepare_featurise_voxels(data_scales, indexes, output, output_start_row_index, output_start_col_index)
+        
+        def processor(out_row, index, data, neighbouring_dims, radius, scale, output_start_row_index, output_start_col_index):
+            '''
+            Function defining what to do with each voxel.
+            '''
+            neighbourhood = regions.get_neighbourhood_array_3d(data, index, radius + 1, neighbouring_dims, scale=scale)
+            lbp = skimage.feature.local_binary_pattern(neighbourhood, 8, 1, 'uniform')[1:-1,1:-1]
+            feature_vec = histograms.histogram(lbp, 10, (0, 10))
+            return (out_row, feature_vec)
+        
+        def post_processor(result):
+            '''
+            Function defining what to do with the result of each processor.
+            '''
+            (out_row, feature_vec) = result
+            output[
+                out_row:out_row+output_rows_needed,
+                output_start_col_index:output_start_col_index+output_cols_needed
+                ] = feature_vec
+
+        arrayprocs.parallel_processer(
+            processor,
+            enumerate(indexes),
+            post_processor=post_processor,
+            n_jobs=n_jobs,
+            extra_params=(data_scales[self.scale], self.neighbouring_dims, self.radius, self.scale, output_start_row_index, output_start_col_index),
+            )
+        
+        return output
+    
+    #########################################
+    def featurise_slice(self, data_scales, slice_index, block_rows, block_cols, row_range=slice(None), col_range=slice(None), output=None, output_start_row_index=0, output_start_col_index=0, n_jobs=1):
         '''
         Turn a slice from a volume into a matrix of feature vectors.
 
@@ -680,6 +870,7 @@ class LocalBinaryPatternFeaturiser(Featuriser):
         :return: As described in the super class.
         :rtype: numpy.ndarray
         '''
+        (output_rows_needed, output_cols_needed, row_range, col_range, output) = self._prepare_featurise_slice(data_scales, row_range, col_range, output, output_start_row_index, output_start_col_index)
         
         def processor(params, neighbouring_dims, radius, scale, full_input_ranges, output_start_row_index, output_start_col_index):
             '''Processor for process_array_in_blocks_single_slice.'''
@@ -717,8 +908,6 @@ class LocalBinaryPatternFeaturiser(Featuriser):
                     slice(output_start_col_index, output_start_col_index+10)
                 )
             return (features, out_indexes)
-        
-        (output_rows_needed, output_cols_needed, row_range, col_range, output) = self._prepare_featurise(data_scales, row_range, col_range, output, output_start_row_index, output_start_col_index)
         
         return arrayprocs.process_array_in_blocks_single_slice(
             data_scales,
@@ -806,7 +995,32 @@ class CompositeFeaturiser(Featuriser):
         return tuple(sub_featuriser.get_params() for sub_featuriser in self.featuriser_list)
     
     #########################################
-    def featurise(self, data_scales, slice_index, block_rows, block_cols, row_range=slice(None), col_range=slice(None), output=None, output_start_row_index=0, output_start_col_index=0, n_jobs=1):
+    def featurise_voxels(self, data_scales, indexes, output=None, output_start_row_index=0, output_start_col_index=0, n_jobs=1):
+        '''
+        Turn a set of voxels into a matrix of feature vectors.
+
+        See super class for more information.
+        
+        :param dict data_scales: As described in the super class.
+        :param list indexes: As described in the super class.
+        :param numpy.ndarray output: As described in the super class.
+        :param int output_start_row_index: As described in the super class.
+        :param int output_start_col_index: As described in the super class.
+        :param int n_jobs: As described in the super class.
+        :param callable progress_listener: As described in the super class.
+        :return: As described in the super class.
+        :rtype: numpy.ndarray
+        '''
+        (output_rows_needed, output_cols_needed, output) = self._prepare_featurise_voxels(data_scales, indexes, output, output_start_row_index, output_start_col_index)
+        
+        for featuriser in self.featuriser_list:
+            featuriser.featurise_voxels(data_scales, indexes, output, output_start_row_index, output_start_col_index, n_jobs)
+            output_start_col_index += featuriser.get_feature_size()
+        
+        return output
+    
+    #########################################
+    def featurise_slice(self, data_scales, slice_index, block_rows, block_cols, row_range=slice(None), col_range=slice(None), output=None, output_start_row_index=0, output_start_col_index=0, n_jobs=1):
         '''
         Turn a slice from a volume into a matrix of feature vectors.
 
@@ -825,10 +1039,10 @@ class CompositeFeaturiser(Featuriser):
         :return: As described in the super class.
         :rtype: numpy.ndarray
         '''
-        (output_rows_needed, output_cols_needed, row_range, col_range, output) = self._prepare_featurise(data_scales, row_range, col_range, output, output_start_row_index, output_start_col_index)
+        (output_rows_needed, output_cols_needed, row_range, col_range, output) = self._prepare_featurise_slice(data_scales, row_range, col_range, output, output_start_row_index, output_start_col_index)
         
         for featuriser in self.featuriser_list:
-            featuriser.featurise(data_scales, slice_index, block_rows, block_cols, row_range, col_range, output, output_start_row_index, output_start_col_index, n_jobs)
+            featuriser.featurise_slice(data_scales, slice_index, block_rows, block_cols, row_range, col_range, output, output_start_row_index, output_start_col_index, n_jobs)
             output_start_col_index += featuriser.get_feature_size()
         
         return output

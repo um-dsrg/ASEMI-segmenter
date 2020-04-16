@@ -146,7 +146,7 @@ def _evaluating(
                 raise skip
             with times.Timer() as sub_timer:
                 with times.Timer() as sub_timer_featuriser:
-                    slice_features = segmenter.featuriser.featurise(
+                    slice_features = segmenter.featuriser.featurise_slice(
                         full_volume.get_scale_arrays(segmenter.featuriser.get_scales_needed()),
                         slice_index=volume_slice_index,
                         block_rows=best_block_shape[0],

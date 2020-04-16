@@ -205,7 +205,7 @@ def _tuning(
                     training_set.get_labels_array()[:] = train_subvolume_slice_labels
                     
                     for (i, volume_slice_index) in enumerate(volume_slice_indexes_in_train_subvolume):
-                        segmenter.featuriser.featurise(
+                        segmenter.featuriser.featurise_slice(
                             full_volume.get_scale_arrays(segmenter.featuriser.get_scales_needed()),
                             slice_index=volume_slice_index,
                             block_rows=best_block_shape[0],
@@ -221,7 +221,7 @@ def _tuning(
                         iou_lists = [[] for _ in range(len(segmenter.classifier.labels))]
                         for (i, volume_slice_index) in enumerate(volume_slice_indexes_in_eval_subvolume):
                             with times.Timer() as featuriser_timer:
-                                slice_features = segmenter.featuriser.featurise(
+                                slice_features = segmenter.featuriser.featurise_slice(
                                     full_volume.get_scale_arrays(segmenter.featuriser.get_scales_needed()),
                                     slice_index=volume_slice_index,
                                     block_rows=best_block_shape[0],
