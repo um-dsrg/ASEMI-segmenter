@@ -8,43 +8,67 @@ from asemi_segmenter.lib import evaluations
 class Evaluations(unittest.TestCase):
     
     #########################################
-    def test_get_classification_accuracies(self):
+    def test_AccuracyEvaluation(self):
+        ev = evaluations.AccuracyEvaluation(2)
+        
         np.testing.assert_equal(
-                evaluations.get_classification_accuracies(
-                        predicted_labels=np.array([ 0, 0, 1, 1 ]),
-                        true_labels     =np.array([ 0, 1, 0, 1 ]),
-                        num_labels=2
-                    ),
-                [ 1/2, 1/2 ]
+            ev.evaluate(
+                predicted_labels=np.array([0, 0, 1, 1, 0]),
+                true_labels     =np.array([0, 1, 0, 1, 2])
+                ),
+            ([1/2, 1/2], 2/4)
+            )
+        np.testing.assert_equal(ev.label_freqs, [2, 2])
+        
+        np.testing.assert_equal(
+            ev.evaluate(
+                predicted_labels=np.array([0, 0, 0, 0, 1, 1, 0]),
+                true_labels     =np.array([0, 0, 0, 1, 0, 1, 2])
+                ),
+            ([3/4, 1/2], 4/6)
+            )
+        np.testing.assert_equal(ev.label_freqs, [6, 4])
+        
+        np.testing.assert_equal(
+            ev.get_global_result_per_label(),
+            [4/6, 2/4]
             )
         
         np.testing.assert_equal(
-                evaluations.get_classification_accuracies(
-                        predicted_labels=np.array([ 0, 0, 0, 0, 1, 1 ]),
-                        true_labels     =np.array([ 0, 0, 0, 1, 0, 1 ]),
-                        num_labels=2
-                    ),
-                [ 3/4, 1/2 ]
+            ev.get_global_result(),
+            6/10
             )
     
     #########################################
-    def test_get_intersection_over_union(self):
+    def test_IntersectionOverUnionEvaluation(self):
+        ev = evaluations.IntersectionOverUnionEvaluation(2)
+        
         np.testing.assert_equal(
-                evaluations.get_intersection_over_union(
-                        predicted_labels=np.array([ [ 0, 1 ], [ 0, 1 ] ]),
-                        true_labels     =np.array([ [ 0, 1 ], [ 1, 0 ] ]),
-                        num_labels=2
-                    ),
-                [ 1/3, 1/3 ]
+            ev.evaluate(
+                predicted_labels=np.array([0, 0, 1, 1, 0]),
+                true_labels     =np.array([0, 1, 0, 1, 2])
+                ),
+            ([1/3, 1/3], 2/4)
+            )
+        np.testing.assert_equal(ev.label_freqs, [2, 2])
+        
+        np.testing.assert_equal(
+            ev.evaluate(
+                predicted_labels=np.array([0, 0, 0, 0, 1, 1, 0]),
+                true_labels     =np.array([0, 0, 0, 1, 0, 1, 2])
+                ),
+            ([3/5, 1/3], 4/6)
+            )
+        np.testing.assert_equal(ev.label_freqs, [6, 4])
+        
+        np.testing.assert_equal(
+            ev.get_global_result_per_label(),
+            [4/8, 2/6]
             )
         
         np.testing.assert_equal(
-                evaluations.get_intersection_over_union(
-                        predicted_labels=np.array([ [ 1, 1 ], [ 0, 1 ] ]),
-                        true_labels     =np.array([ [ 0, 1 ], [ 1, 0 ] ]),
-                        num_labels=2
-                    ),
-                [ 0, 1/4 ]
+            ev.get_global_result(),
+            6/10
             )
     
     

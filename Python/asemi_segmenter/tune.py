@@ -105,10 +105,11 @@ def _loading_data(
         )
 
     listener.log_output('> Initialising')
+    evaluation = evaluations.IntersectionOverUnionEvaluation(len(segmenter.classifier.labels))
     hash_function.init(slice_shape, seed=0)
     training_set = trainingsets.TrainingSet(None)
     
-    return (config_data, full_volume, slice_shape, slice_size, segmenter, train_subvolume_fullfnames, train_subvolume_slice_labels, eval_subvolume_fullfnames, eval_subvolume_slice_labels, training_set, hash_function, tuning_results_file, checkpoint)
+    return (config_data, full_volume, slice_shape, slice_size, segmenter, train_subvolume_fullfnames, train_subvolume_slice_labels, eval_subvolume_fullfnames, eval_subvolume_slice_labels, training_set, hash_function, evaluation, tuning_results_file, checkpoint)
     
     
 #########################################
@@ -163,7 +164,7 @@ def _hashing_eval_subvolume_slices(
 
 #########################################
 def _tuning(
-        config_data, segmenter, slice_shape, slice_size, full_volume, train_subvolume_slice_labels, volume_slice_indexes_in_train_subvolume, eval_subvolume_slice_labels, volume_slice_indexes_in_eval_subvolume, training_set, tuning_results_file, checkpoint, max_processes, max_batch_memory, listener
+        config_data, segmenter, slice_shape, slice_size, full_volume, train_subvolume_slice_labels, volume_slice_indexes_in_train_subvolume, eval_subvolume_slice_labels, volume_slice_indexes_in_eval_subvolume, training_set, evaluation, tuning_results_file, checkpoint, max_processes, max_batch_memory, listener
     ):
     '''Tuning stage.'''
     parameters_visited = set()
@@ -171,12 +172,13 @@ def _tuning(
         if skip is not None:
             listener.log_output('> Continuing use of checkpointed results file')
             raise skip
-        tuning_results_file.create(segmenter.classifier.labels)
+        tuning_results_file.create(segmenter.classifier.labels, evaluation)
     with checkpoint.apply('tune') as skip:
         if skip is not None:
             raise skip
         start = checkpoint.get_next_to_process('tune_prog')
         for iteration in range(1, config_data['tuning']['num_iterations'] + 1):
+            evaluation.reset()
             while True:
                 segmenter.regenerate()
                 params = segmenter.get_params()
@@ -235,25 +237,21 @@ def _tuning(
                             prediction = prediction.reshape(slice_shape)
                             slice_labels = eval_subvolume_slice_labels.reshape(slice_shape)
                         
-                            ious = evaluations.get_intersection_over_union(
-                                prediction, slice_labels, len(segmenter.classifier.labels)
-                                )
-                            for (iou_list, iou) in zip(iou_lists, ious):
-                                if iou is not None:
-                                    iou_list.append(iou)
-                        
-                        result['ious'] = [np.mean(iou_list).tolist() for iou_list in iou_lists]
+                            evaluation.evaluate(prediction, slice_labels)
+                            
                         result['featuriser_time'] = featuriser_timer.duration
                         result['classifier_time'] = classifier_timer.duration
                     result = dict()
                     max_memory_mb = max(memory_profiler.memory_usage((memory_scope, (result,)), interval=0))
                     
                     listener.log_output('>> Results:')
-                    for (label, iou) in zip(segmenter.classifier.labels, result['ious']):
+                    ious = evaluation.get_global_result_per_label()
+                    global_iou = evaluation.get_global_result()
+                    for (label, iou) in zip(segmenter.classifier.labels, ious):
                         listener.log_output('>>> {}: {:.3%}'.format(label, iou))
-                    tuning_results_file.append(
+                    listener.log_output('>>> global: {:.3%}'.format(global_iou))
+                    tuning_results_file.add(
                         segmenter.get_config(),
-                        result['ious'],
                         result['featuriser_time'],
                         result['classifier_time'],
                         max_memory_mb
@@ -316,7 +314,7 @@ def main(
             listener.log_output(times.get_timestamp())
             listener.log_output('Loading data')
             with times.Timer() as timer:
-                (config_data, full_volume, slice_shape, slice_size, segmenter, train_subvolume_fullfnames, train_subvolume_slice_labels, eval_subvolume_fullfnames, eval_subvolume_slice_labels, training_set, hash_function, tuning_results_file, checkpoint) = _loading_data(
+                (config_data, full_volume, slice_shape, slice_size, segmenter, train_subvolume_fullfnames, train_subvolume_slice_labels, eval_subvolume_fullfnames, eval_subvolume_slice_labels, training_set, hash_function, evaluation, tuning_results_file, checkpoint) = _loading_data(
                     preproc_volume_fullfname, train_subvolume_dir, train_label_dirs,
                     eval_subvolume_dir, eval_label_dirs, config,
                     results_fullfname, checkpoint_fullfname, restart_checkpoint,
@@ -354,7 +352,7 @@ def main(
             listener.log_output(times.get_timestamp())
             listener.log_output('Tuning')
             with times.Timer() as timer:
-                () = _tuning(config_data, segmenter, slice_shape, slice_size, full_volume, train_subvolume_slice_labels, volume_slice_indexes_in_train_subvolume, eval_subvolume_slice_labels, volume_slice_indexes_in_eval_subvolume, training_set, tuning_results_file, checkpoint, max_processes, max_batch_memory, listener)
+                () = _tuning(config_data, segmenter, slice_shape, slice_size, full_volume, train_subvolume_slice_labels, volume_slice_indexes_in_train_subvolume, eval_subvolume_slice_labels, volume_slice_indexes_in_eval_subvolume, training_set, evaluation, tuning_results_file, checkpoint, max_processes, max_batch_memory, listener)
             listener.log_output('Tuned')
             listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
             listener.log_output('')

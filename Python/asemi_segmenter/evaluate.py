@@ -71,9 +71,10 @@ def _loading_data(
         )
     
     listener.log_output('> Initialising')
+    evaluation = evaluations.IntersectionOverUnionEvaluation(len(segmenter.classifier.labels))
     hash_function.init(slice_shape, seed=0)
     
-    return (full_volume, slice_shape, slice_size, segmenter, subvolume_fullfnames, labels_data, hash_function, evaluation_results_file, checkpoint)
+    return (full_volume, slice_shape, slice_size, segmenter, subvolume_fullfnames, labels_data, hash_function, evaluation, evaluation_results_file, checkpoint)
     
     
 #########################################
@@ -115,7 +116,7 @@ def _constructing_labels_dataset(
 
 #########################################
 def _evaluating(
-        full_volume, segmenter, slice_shape, slice_size, subvolume_fullfnames, volume_slice_indexes_in_subvolume, subvolume_slice_labels, checkpoint, evaluation_results_file, max_processes, max_batch_memory, listener
+        full_volume, segmenter, slice_shape, slice_size, subvolume_fullfnames, volume_slice_indexes_in_subvolume, subvolume_slice_labels, evaluation, checkpoint, evaluation_results_file, max_processes, max_batch_memory, listener
     ):
     '''Evaluating stage.'''
     output_result = dict()
@@ -124,7 +125,7 @@ def _evaluating(
             listener.log_output('> Continuing use of checkpointed results file')
             listener.log_output('-')
             raise skip
-        evaluation_results_file.create(segmenter.classifier.labels)
+        evaluation_results_file.create(segmenter.classifier.labels, evaluation)
     best_block_shape = arrayprocs.get_optimal_block_size(
         slice_shape,
         full_volume.get_dtype(),
@@ -161,18 +162,22 @@ def _evaluating(
                 slice_labels = subvolume_slice_labels[i*slice_size:(i+1)*slice_size]
                 slice_labels = slice_labels.reshape(slice_shape)
 
-                ious = evaluations.get_intersection_over_union(
-                    prediction, slice_labels, len(segmenter.classifier.labels)
-                    )
+                (ious, global_iou) = evaluation.evaluate(prediction, slice_labels)
                 for (label, iou) in zip(segmenter.classifier.labels, ious):
                     if iou is not None:
                         listener.log_output('>> {}: {:.3%}'.format(label, iou))
-                evaluation_results_file.append(
-                    subvolume_fullfname, ious,
-                    sub_timer_featuriser.duration, sub_timer_classifier.duration
+                if global_iou is not None:
+                    listener.log_output('>> global: {:.3%}'.format(global_iou))
+                evaluation_results_file.add(
+                    subvolume_fullfname,
+                    ious,
+                    global_iou,
+                    sub_timer_featuriser.duration,
+                    sub_timer_classifier.duration
                     )
                 output_result[subvolume_fullfname] = ious
 
+            evaluation_results_file.conclude()
             listener.log_output('   Duration: {} (featurisation: {}, ' \
                 'classification: {})'.format(
                     times.get_readable_duration(sub_timer.duration),
@@ -236,7 +241,7 @@ def main(
             listener.log_output(times.get_timestamp())
             listener.log_output('Loading data')
             with times.Timer() as timer:
-                (full_volume, slice_shape, slice_size, segmenter, subvolume_fullfnames, labels_data, hash_function, evaluation_results_file, checkpoint) = _loading_data(
+                (full_volume, slice_shape, slice_size, segmenter, subvolume_fullfnames, labels_data, hash_function, evaluation, evaluation_results_file, checkpoint) = _loading_data(
                     model, preproc_volume_fullfname, subvolume_dir, label_dirs, results_fullfname,
                     checkpoint_fullfname, restart_checkpoint, listener
                     )
@@ -273,7 +278,7 @@ def main(
             listener.log_output('Evaluating')
             listener.log_output('-')
             with times.Timer() as timer:
-                (output_result,) = _evaluating(full_volume, segmenter, slice_shape, slice_size, subvolume_fullfnames, volume_slice_indexes_in_subvolume, subvolume_slice_labels, checkpoint, evaluation_results_file, max_processes, max_batch_memory, listener)
+                (output_result,) = _evaluating(full_volume, segmenter, slice_shape, slice_size, subvolume_fullfnames, volume_slice_indexes_in_subvolume, subvolume_slice_labels, evaluation, checkpoint, evaluation_results_file, max_processes, max_batch_memory, listener)
             listener.log_output('Evaluated')
             listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
             listener.log_output('')

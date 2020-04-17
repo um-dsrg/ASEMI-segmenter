@@ -1,0 +1,42 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "evaluation.json",
+    "definitions": {
+        
+        "accuracy": {
+            "type": "object",
+            "properties": {
+                "type": { "const": "accuracy" },
+                "params": {
+                    "type": "object",
+                    "properties": {},
+                    "required": [],
+                    "additionalProperties": false
+                }
+            },
+            "required": ["type", "params"],
+            "additionalProperties": false
+        },
+        
+        "iou": {
+            "type": "object",
+            "properties": {
+                "type": { "const": "iou" },
+                "params": {
+                    "type": "object",
+                    "properties": {},
+                    "required": [],
+                    "additionalProperties": false
+                }
+            },
+            "required": ["type", "params"],
+            "additionalProperties": false
+        }
+        
+    },
+    
+    "oneOf": [
+        { "$ref": "#/definitions/accuracy" },
+        { "$ref": "#/definitions/iou" }
+    ]
+}
