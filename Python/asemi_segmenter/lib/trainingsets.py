@@ -95,7 +95,7 @@ class TrainingSet(object):
             
 
 #########################################
-def sample_voxels(loaded_labels, max_sample_size_per_label, num_labels, slice_shape, seed=None):
+def sample_voxels(loaded_labels, max_sample_size_per_label, num_labels, slice_shape, skip=0, seed=None):
     '''
     Get a balanced random sample of voxel indexes.
 
@@ -110,6 +110,9 @@ def sample_voxels(loaded_labels, max_sample_size_per_label, num_labels, slice_sh
     :param int num_labels: The number of labels to consider such that the last
         label index is num_labels-1.
     :param tuple slice_shape: Tuple with the numpy shape of each slice.
+    :param int skip: The number of voxels to skip before selecting. This is used
+        for when the same slices are used for separate datasets and you want
+        the second dataset to avoid the voxels that were selected for the first.
     :param int seed: The random number generator seed to use when randomly selecting training
         items.
     :return A tuple consisting of (indexes, labels). 'indexes' is a
@@ -130,8 +133,8 @@ def sample_voxels(loaded_labels, max_sample_size_per_label, num_labels, slice_sh
     label_segment_start = 0
     for label_index in range(num_labels):
         label_positions = all_positions[loaded_labels == label_index].tolist()
-        if len(label_positions) > max_sample_size_per_label:
-            label_positions = r.sample(label_positions, max_sample_size_per_label)
+        r.shuffle(label_positions)
+        label_positions = label_positions[skip:skip+max_sample_size_per_label]
         for pos in label_positions:
             slc = pos//slice_size
             pos -= slc*slice_size

@@ -38,7 +38,11 @@
     "training_set": {
         "sample_size_per_label": 10
     },
+    "evaluation_set": {
+        "sample_size_per_label": 10,
+        "same_as_train": false
+    },
     "tuning": {
-        "num_iterations": 5
+        "num_iterations": 1
     }
 }

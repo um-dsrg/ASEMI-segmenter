@@ -114,18 +114,18 @@ def _constructing_trainingset(
     '''Constructing training set stage.'''
     listener.log_output('> Sampling training items')
     loaded_labels = volumes.load_labels(labels_data)
-    sample_size_per_label = segmenter.train_config['training_set']['sample_size_per_label']
-    if sample_size_per_label != -1:
+    train_sample_size_per_label = segmenter.train_config['training_set']['sample_size_per_label']
+    if train_sample_size_per_label != -1:
         (voxel_indexes, label_positions) = trainingsets.sample_voxels(
             loaded_labels,
-            sample_size_per_label,
+            train_sample_size_per_label,
             len(segmenter.classifier.labels),
             slice_shape,
             seed=0
             )
     
     listener.log_output('> Creating empty training set')
-    if sample_size_per_label != -1:
+    if train_sample_size_per_label != -1:
         training_set.create(
             len(voxel_indexes),
             segmenter.featuriser.get_feature_size()
@@ -138,7 +138,7 @@ def _constructing_trainingset(
     training_set.load()
     
     listener.log_output('> Constructing labels')
-    if sample_size_per_label != -1:
+    if train_sample_size_per_label != -1:
         for (label_index, label_position) in enumerate(label_positions):
             training_set.get_labels_array()[label_position] = label_index
     else:
@@ -149,7 +149,7 @@ def _constructing_trainingset(
             training_set.get_labels_array()[:] = loaded_labels
 
     listener.log_output('> Constructing features')
-    if sample_size_per_label != -1:
+    if train_sample_size_per_label != -1:
         segmenter.featuriser.featurise_voxels(
             full_volume.get_scale_arrays(segmenter.featuriser.get_scales_needed()),
             voxel_indexes,
@@ -195,8 +195,8 @@ def _training_segmenter(
         segmenter, training_set, max_processes
     ):
     '''Training segmenter stage.'''
-    sample_size_per_label = segmenter.train_config['training_set']['sample_size_per_label']
-    if sample_size_per_label == -1:
+    train_sample_size_per_label = segmenter.train_config['training_set']['sample_size_per_label']
+    if train_sample_size_per_label == -1:
         training_set = training_set.without_control_labels()
     segmenter.train(training_set, max_processes)
     
@@ -332,8 +332,7 @@ def main(
             return segmenter
         return None
     except Exception as ex:
-        #listener.error_output(str(ex))
-        raise
+        listener.error_output(str(ex))
     finally:
         if full_volume is not None:
             full_volume.close()

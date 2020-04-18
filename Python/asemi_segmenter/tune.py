@@ -79,16 +79,10 @@ def _loading_data(
     else:
         config_data = config
     validations.validate_json_with_schema_file(config_data, 'tune.json')
-    segmenter = segmenters.Segmenter(
-        labels,
-        full_volume,
-        {
-            'featuriser': config_data['featuriser'],
-            'classifier': config_data['classifier'],
-            'training_set': config_data['training_set'],
-            },
-        allow_random=True
-        )
+    if config_data['evaluation_set']['sample_size_per_label'] == 0:
+        raise ValueError('Evaluation set configuration is invalid as sample_size_per_label cannot be 0.')
+    if config_data['evaluation_set']['same_as_train'] and config_data['training_set']['sample_size_per_label'] == -1:
+        raise ValueError('Evaluation set configuration is invalid as same_as_train can only be true if training_set sample_size_per_label is not -1.')
     
     listener.log_output('> Result file')
     if results_fullfname is not None:
@@ -105,6 +99,16 @@ def _loading_data(
         )
 
     listener.log_output('> Initialising')
+    segmenter = segmenters.Segmenter(
+        labels,
+        full_volume,
+        {
+            'featuriser': config_data['featuriser'],
+            'classifier': config_data['classifier'],
+            'training_set': config_data['training_set'],
+            },
+        allow_random=True
+        )
     evaluation = evaluations.IntersectionOverUnionEvaluation(len(segmenter.classifier.labels))
     hash_function.init(slice_shape, seed=0)
     training_set = trainingsets.TrainingSet(None)
@@ -167,14 +171,25 @@ def _tuning(
         config_data, segmenter, slice_shape, slice_size, full_volume, train_subvolume_slice_labels, volume_slice_indexes_in_train_subvolume, eval_subvolume_slice_labels, volume_slice_indexes_in_eval_subvolume, training_set, evaluation, tuning_results_file, checkpoint, max_processes, max_batch_memory, listener
     ):
     '''Tuning stage.'''
-    sample_size_per_label = segmenter.train_config['training_set']['sample_size_per_label']
+    train_sample_size_per_label = config_data['training_set']['sample_size_per_label']
+    eval_sample_size_per_label = config_data['evaluation_set']['sample_size_per_label']
+    eval_same_as_train = config_data['evaluation_set']['same_as_train']
     
-    if sample_size_per_label != -1:
-        (voxel_indexes, label_positions) = trainingsets.sample_voxels(
+    if train_sample_size_per_label != -1:
+        (train_voxel_indexes, train_label_positions) = trainingsets.sample_voxels(
             train_subvolume_slice_labels,
-            sample_size_per_label,
+            train_sample_size_per_label,
             len(segmenter.classifier.labels),
             slice_shape,
+            seed=0
+            )
+    if eval_sample_size_per_label != -1:
+        (eval_voxel_indexes, eval_label_positions) = trainingsets.sample_voxels(
+            eval_subvolume_slice_labels,
+            eval_sample_size_per_label,
+            len(segmenter.classifier.labels),
+            slice_shape,
+            skip=0 if not eval_same_as_train else train_sample_size_per_label,
             seed=0
             )
     
@@ -214,20 +229,19 @@ def _tuning(
                         implicit_depth=True
                         )
                     
-                    if sample_size_per_label != -1:
+                    if train_sample_size_per_label != -1:
                         training_set.create(
-                            len(voxel_indexes),
+                            len(train_voxel_indexes),
                             segmenter.featuriser.get_feature_size()
                             )
-                        for (label_index, label_position) in enumerate(label_positions):
+                        for (label_index, label_position) in enumerate(train_label_positions):
                             training_set.get_labels_array()[label_position] = label_index
                         segmenter.featuriser.featurise_voxels(
                             full_volume.get_scale_arrays(segmenter.featuriser.get_scales_needed()),
-                            voxel_indexes,
+                            train_voxel_indexes,
                             output=training_set.get_features_array(),
                             n_jobs=max_processes
                             )
-                        filtered_training_set = training_set
                     else:
                         training_set.create(
                             slice_size*len(volume_slice_indexes_in_train_subvolume),
@@ -250,23 +264,42 @@ def _tuning(
                         segmenter.train(training_set, max_processes)
                         
                         iou_lists = [[] for _ in range(len(segmenter.classifier.labels))]
-                        for (i, volume_slice_index) in enumerate(volume_slice_indexes_in_eval_subvolume):
+                        if eval_sample_size_per_label != -1:
+                            eval_set = trainingsets.TrainingSet(None)
+                            eval_set.create(
+                                len(eval_voxel_indexes),
+                                segmenter.featuriser.get_feature_size()
+                                )
+                            for (label_index, label_position) in enumerate(eval_label_positions):
+                                eval_set.get_labels_array()[label_position] = label_index
+                            
                             with times.Timer() as featuriser_timer:
-                                slice_features = segmenter.featuriser.featurise_slice(
+                                segmenter.featuriser.featurise_voxels(
                                     full_volume.get_scale_arrays(segmenter.featuriser.get_scales_needed()),
-                                    slice_index=volume_slice_index,
-                                    block_rows=best_block_shape[0],
-                                    block_cols=best_block_shape[1],
+                                    eval_voxel_indexes,
+                                    output=eval_set.get_features_array(),
                                     n_jobs=max_processes
                                     )
                             
                             with times.Timer() as classifier_timer:
-                                prediction = segmenter.segment_to_label_indexes(slice_features, max_processes)
-                            
-                            prediction = prediction.reshape(slice_shape)
-                            slice_labels = eval_subvolume_slice_labels.reshape(slice_shape)
+                                prediction = segmenter.segment_to_label_indexes(eval_set.get_features_array(), max_processes)
                         
-                            evaluation.evaluate(prediction, slice_labels)
+                            evaluation.evaluate(prediction, eval_set.get_labels_array())
+                        else:
+                            for (i, volume_slice_index) in enumerate(volume_slice_indexes_in_eval_subvolume):
+                                with times.Timer() as featuriser_timer:
+                                    slice_features = segmenter.featuriser.featurise_slice(
+                                        full_volume.get_scale_arrays(segmenter.featuriser.get_scales_needed()),
+                                        slice_index=volume_slice_index,
+                                        block_rows=best_block_shape[0],
+                                        block_cols=best_block_shape[1],
+                                        n_jobs=max_processes
+                                        )
+                                
+                                with times.Timer() as classifier_timer:
+                                    prediction = segmenter.segment_to_label_indexes(slice_features, max_processes)
+                            
+                                evaluation.evaluate(prediction, eval_subvolume_slice_labels)
                             
                         result['featuriser_time'] = featuriser_timer.duration
                         result['classifier_time'] = classifier_timer.duration
@@ -394,8 +427,7 @@ def main(
 
         listener.overall_progress_end()
     except Exception as ex:
-        #listener.error_output(str(ex))
-        raise
+        listener.error_output(str(ex))
     finally:
         if full_volume is not None:
             full_volume.close()
