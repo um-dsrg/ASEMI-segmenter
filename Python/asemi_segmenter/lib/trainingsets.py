@@ -85,49 +85,6 @@ class TrainingSet(object):
         new_trainingset.get_features_array()[:] = self.data['features'][valid_items_mask, :]
 
         return new_trainingset
-    
-    #########################################
-    def get_sample(self, max_sample_size_per_label, seed=None):
-        '''
-        Get a random sample of the training set.
-
-        Sample is always kept in memory and the training set will be balanced among labels
-        provided that there are enough of each label (otherwise all the items of a label
-        will be returned).
-
-        :param int max_sample_size_per_label: The number of items from each label to
-            return in the new training set. If there are less items than this then all the items
-            are returned.
-        :param int seed: The random number generator seed to use when randomly selecting training
-            items.
-        :return The sub training set.
-        :rtype: TrainingSet
-        '''
-        label_locations = dict()
-        for (i, label) in enumerate(self.data['labels'][:].tolist()):
-            if label < volumes.FIRST_CONTROL_LABEL:
-                if label not in label_locations:
-                    label_locations[label] = list()
-                label_locations[label].append(i)
-        num_labels = len(label_locations)
-
-        for label in range(num_labels):
-            r = random.Random(seed)
-            r.shuffle(label_locations[label])
-
-        all_locations = [
-            location
-            for label in range(num_labels)
-            for location in label_locations[label][:max_sample_size_per_label]]
-        all_locations.sort()
-        total_items_samples = len(all_locations)
-
-        new_trainingset = TrainingSet(None)
-        new_trainingset.create(total_items_samples, self.data['features'].shape[1])
-        new_trainingset.get_labels_array()[:] = self.data['labels'][all_locations]
-        new_trainingset.get_features_array()[:] = self.data['features'][all_locations, :]
-
-        return new_trainingset
 
     #########################################
     def close(self):
@@ -135,3 +92,53 @@ class TrainingSet(object):
         if self.data is not None:
             self.data.close()
             self.data = None
+            
+
+#########################################
+def sample_voxels(loaded_labels, max_sample_size_per_label, num_labels, slice_shape, seed=None):
+    '''
+    Get a balanced random sample of voxel indexes.
+
+    Sample is balanced among labels provided that there are enough
+    of each label (otherwise all the items of a label will be returned).
+
+    :param numpy.ndarray loaded_labels: 1D numpy array of label indexes
+        from a number of full slices.
+    :param int max_sample_size_per_label: The number of items from each label to
+        return in the new training set. If there are less items than this then all the items
+        are returned.
+    :param int num_labels: The number of labels to consider such that the last
+        label index is num_labels-1.
+    :param tuple slice_shape: Tuple with the numpy shape of each slice.
+    :param int seed: The random number generator seed to use when randomly selecting training
+        items.
+    :return A tuple consisting of (indexes, labels). 'indexes' is a
+        list of voxel indexes sorted by corresponding label index. Each
+        index is a tuple consisting of (slice, row, column) indexes of a
+        given voxel. 'labels' is a list of Python slices such that
+        indexes[labels[i]] gives all the indexes of the ith label.
+    :rtype: tuple
+    '''
+    (num_rows, num_cols) = slice_shape
+    slice_size = num_rows*num_cols
+    num_slcs = loaded_labels.size//slice_size
+    
+    all_positions = np.arange(loaded_labels.size)
+    r = random.Random(seed)
+    positions_result = list()
+    labels_result = list()
+    label_segment_start = 0
+    for label_index in range(num_labels):
+        label_positions = all_positions[loaded_labels == label_index].tolist()
+        if len(label_positions) > max_sample_size_per_label:
+            label_positions = r.sample(label_positions, max_sample_size_per_label)
+        for pos in label_positions:
+            slc = pos//slice_size
+            pos -= slc*slice_size
+            row = pos//num_cols
+            pos -= row*num_cols
+            col = pos
+            positions_result.append((slc, row, col))
+        labels_result.append(slice(label_segment_start, label_segment_start+len(label_positions)))
+        label_segment_start += len(label_positions)
+    return (positions_result, labels_result)

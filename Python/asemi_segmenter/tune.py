@@ -167,6 +167,17 @@ def _tuning(
         config_data, segmenter, slice_shape, slice_size, full_volume, train_subvolume_slice_labels, volume_slice_indexes_in_train_subvolume, eval_subvolume_slice_labels, volume_slice_indexes_in_eval_subvolume, training_set, evaluation, tuning_results_file, checkpoint, max_processes, max_batch_memory, listener
     ):
     '''Tuning stage.'''
+    sample_size_per_label = segmenter.train_config['training_set']['sample_size_per_label']
+    
+    if sample_size_per_label != -1:
+        (voxel_indexes, label_positions) = trainingsets.sample_voxels(
+            train_subvolume_slice_labels,
+            sample_size_per_label,
+            len(segmenter.classifier.labels),
+            slice_shape,
+            seed=0
+            )
+    
     parameters_visited = set()
     with checkpoint.apply('create_results_file') as skip:
         if skip is not None:
@@ -202,20 +213,38 @@ def _tuning(
                         max_batch_memory,
                         implicit_depth=True
                         )
-                    training_set.create(slice_size*len(volume_slice_indexes_in_train_subvolume), segmenter.featuriser.get_feature_size())
-                
-                    training_set.get_labels_array()[:] = train_subvolume_slice_labels
                     
-                    for (i, volume_slice_index) in enumerate(volume_slice_indexes_in_train_subvolume):
-                        segmenter.featuriser.featurise_slice(
+                    if sample_size_per_label != -1:
+                        training_set.create(
+                            len(voxel_indexes),
+                            segmenter.featuriser.get_feature_size()
+                            )
+                        for (label_index, label_position) in enumerate(label_positions):
+                            training_set.get_labels_array()[label_position] = label_index
+                        segmenter.featuriser.featurise_voxels(
                             full_volume.get_scale_arrays(segmenter.featuriser.get_scales_needed()),
-                            slice_index=volume_slice_index,
-                            block_rows=best_block_shape[0],
-                            block_cols=best_block_shape[1],
+                            voxel_indexes,
                             output=training_set.get_features_array(),
-                            output_start_row_index=i*slice_size,
                             n_jobs=max_processes
                             )
+                        filtered_training_set = training_set
+                    else:
+                        training_set.create(
+                            slice_size*len(volume_slice_indexes_in_train_subvolume),
+                            segmenter.featuriser.get_feature_size()
+                            )
+                        training_set.get_labels_array()[:] = train_subvolume_slice_labels
+                        for (i, volume_slice_index) in enumerate(volume_slice_indexes_in_train_subvolume):
+                            segmenter.featuriser.featurise_slice(
+                                full_volume.get_scale_arrays(segmenter.featuriser.get_scales_needed()),
+                                slice_index=volume_slice_index,
+                                block_rows=best_block_shape[0],
+                                block_cols=best_block_shape[1],
+                                output=training_set.get_features_array(),
+                                output_start_row_index=i*slice_size,
+                                n_jobs=max_processes
+                                )
+                        training_set = training_set.without_control_labels()
                     
                     def memory_scope(result):
                         segmenter.train(training_set, max_processes)

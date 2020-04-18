@@ -72,7 +72,7 @@ class FullVolume(object):
         self.data = None
         if self.data_fullfname is None:
             raise NotImplementedError('Non-file preprocessed data method not implemented.')
-
+    
     #########################################
     def create(self, config_data, volume_shape):
         '''

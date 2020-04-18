@@ -80,25 +80,6 @@ def _loading_data(
 
 
 #########################################
-def _reserving_trainingset_space(
-        slice_size, subvolume_fullfnames, segmenter, training_set, checkpoint, listener
-    ):
-    '''Reserving training set space stage.'''
-    feature_size = segmenter.featuriser.get_feature_size()
-    if training_set.data_fullfname is not None:
-        with checkpoint.apply('reserving_trainingset') as skip:
-            if skip is not None:
-                listener.log_output('> Continuing use of checkpointed training set')
-                raise skip
-            training_set.create(slice_size*len(subvolume_fullfnames), feature_size)
-        training_set.load()
-    else:
-        training_set.create(slice_size*len(subvolume_fullfnames), feature_size)
-
-    return ()
-
-
-#########################################
 def _hashing_subvolume_slices(
         full_volume, subvolume_fullfnames, hash_function, listener
     ):
@@ -131,44 +112,81 @@ def _constructing_trainingset(
         full_volume, subvolume_fullfnames, volume_slice_indexes_in_subvolume, labels_data, slice_shape, slice_size, segmenter, training_set, checkpoint, max_processes, max_batch_memory, listener
     ):
     '''Constructing training set stage.'''
+    listener.log_output('> Sampling training items')
+    loaded_labels = volumes.load_labels(labels_data)
+    sample_size_per_label = segmenter.train_config['training_set']['sample_size_per_label']
+    if sample_size_per_label != -1:
+        (voxel_indexes, label_positions) = trainingsets.sample_voxels(
+            loaded_labels,
+            sample_size_per_label,
+            len(segmenter.classifier.labels),
+            slice_shape,
+            seed=0
+            )
+    
+    listener.log_output('> Creating empty training set')
+    if sample_size_per_label != -1:
+        training_set.create(
+            len(voxel_indexes),
+            segmenter.featuriser.get_feature_size()
+            )
+    else:
+        training_set.create(
+            loaded_labels.size,
+            segmenter.featuriser.get_feature_size()
+            )
+    training_set.load()
+    
     listener.log_output('> Constructing labels')
-    with checkpoint.apply('contructing_labels') as skip:
-        if skip is not None:
-            listener.log_output('> Skipped as was found checkpointed')
-            raise skip
-        training_set.get_labels_array()[:] = volumes.load_labels(labels_data)
+    if sample_size_per_label != -1:
+        for (label_index, label_position) in enumerate(label_positions):
+            training_set.get_labels_array()[label_position] = label_index
+    else:
+        with checkpoint.apply('contructing_labels') as skip:
+            if skip is not None:
+                listener.log_output('> Skipped as was found checkpointed')
+                raise skip
+            training_set.get_labels_array()[:] = loaded_labels
 
     listener.log_output('> Constructing features')
-    best_block_shape = arrayprocs.get_optimal_block_size(
-        slice_shape,
-        full_volume.get_dtype(),
-        segmenter.featuriser.get_context_needed(),
-        max_processes,
-        max_batch_memory,
-        implicit_depth=True
-        )
-    with checkpoint.apply('constructing_features') as skip:
-        if skip is not None:
-            listener.log_output('> Skipped as was found checkpointed')
-            raise skip
-        start = checkpoint.get_next_to_process('constructing_features_prog')
-        listener.current_progress_start(start, len(subvolume_fullfnames))
-        for (i, volume_slice_index) in enumerate(volume_slice_indexes_in_subvolume):
-            if i < start:
-                continue
-            with checkpoint.apply('constructing_features_prog'):
-                segmenter.featuriser.featurise_slice(
-                    full_volume.get_scale_arrays(segmenter.featuriser.get_scales_needed()),
-                    slice_index=volume_slice_index,
-                    block_rows=best_block_shape[0],
-                    block_cols=best_block_shape[1],
-                    output=training_set.get_features_array(),
-                    output_start_row_index=i*slice_size,
-                    n_jobs=max_processes
-                    )
-            listener.current_progress_update(i+1)
-        listener.current_progress_end()
-        
+    if sample_size_per_label != -1:
+        segmenter.featuriser.featurise_voxels(
+            full_volume.get_scale_arrays(segmenter.featuriser.get_scales_needed()),
+            voxel_indexes,
+            output=training_set.get_features_array(),
+            n_jobs=max_processes
+            )
+    else:
+        best_block_shape = arrayprocs.get_optimal_block_size(
+            slice_shape,
+            full_volume.get_dtype(),
+            segmenter.featuriser.get_context_needed(),
+            max_processes,
+            max_batch_memory,
+            implicit_depth=True
+            )
+        with checkpoint.apply('constructing_features') as skip:
+            if skip is not None:
+                listener.log_output('> Skipped as was found checkpointed')
+                raise skip
+            start = checkpoint.get_next_to_process('constructing_features_prog')
+            listener.current_progress_start(start, len(subvolume_fullfnames))
+            for (i, volume_slice_index) in enumerate(volume_slice_indexes_in_subvolume):
+                if i < start:
+                    continue
+                with checkpoint.apply('constructing_features_prog'):
+                    segmenter.featuriser.featurise_slice(
+                        full_volume.get_scale_arrays(segmenter.featuriser.get_scales_needed()),
+                        slice_index=volume_slice_index,
+                        block_rows=best_block_shape[0],
+                        block_cols=best_block_shape[1],
+                        output=training_set.get_features_array(),
+                        output_start_row_index=i*slice_size,
+                        n_jobs=max_processes
+                        )
+                listener.current_progress_update(i+1)
+            listener.current_progress_end()
+            
     return ()
 
 
@@ -177,6 +195,9 @@ def _training_segmenter(
         segmenter, training_set, max_processes
     ):
     '''Training segmenter stage.'''
+    sample_size_per_label = segmenter.train_config['training_set']['sample_size_per_label']
+    if sample_size_per_label == -1:
+        training_set = training_set.without_control_labels()
     segmenter.train(training_set, max_processes)
     
     return ()
@@ -234,7 +255,7 @@ def main(
     training_set = None
     try:
         with times.Timer() as full_timer:
-            listener.overall_progress_start(6)
+            listener.overall_progress_start(5)
 
             listener.log_output('Starting training process')
             listener.log_output('')
@@ -257,18 +278,7 @@ def main(
 
             ###################
 
-            listener.overall_progress_update(2, 'Reserving training set space')
-            listener.log_output(times.get_timestamp())
-            listener.log_output('Reserving training set space')
-            with times.Timer() as timer:
-                () = _reserving_trainingset_space(slice_size, subvolume_fullfnames, segmenter, training_set, checkpoint, listener)
-            listener.log_output('Training set space reserved')
-            listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
-            listener.log_output('')
-
-            ###################
-
-            listener.overall_progress_update(3, 'Hashing subvolume slices')
+            listener.overall_progress_update(2, 'Hashing subvolume slices')
             listener.log_output(times.get_timestamp())
             listener.log_output('Hashing subvolume slices')
             with times.Timer() as timer:
@@ -279,7 +289,7 @@ def main(
 
             ###################
 
-            listener.overall_progress_update(4, 'Constructing training set')
+            listener.overall_progress_update(3, 'Constructing training set')
             listener.log_output(times.get_timestamp())
             listener.log_output('Constructing training set')
             with times.Timer() as timer:
@@ -290,7 +300,7 @@ def main(
 
             ###################
 
-            listener.overall_progress_update(5, 'Training segmenter')
+            listener.overall_progress_update(4, 'Training segmenter')
             listener.log_output(times.get_timestamp())
             listener.log_output('Training segmenter')
             with times.Timer() as timer:
@@ -301,7 +311,7 @@ def main(
 
             ###################
 
-            listener.overall_progress_update(6, 'Saving model')
+            listener.overall_progress_update(5, 'Saving model')
             listener.log_output(times.get_timestamp())
             listener.log_output('Saving model')
             with times.Timer() as timer:
@@ -322,7 +332,8 @@ def main(
             return segmenter
         return None
     except Exception as ex:
-        listener.error_output(str(ex))
+        #listener.error_output(str(ex))
+        raise
     finally:
         if full_volume is not None:
             full_volume.close()

@@ -102,13 +102,7 @@ class Segmenter(object):
             object.
         :param int n_jobs: Number of processes to use.
         '''
-        sample_size_per_label = self.train_config['training_set']['sample_size_per_label']
-        new_training_set = None
-        if sample_size_per_label == -1:
-            new_training_set = training_set.without_control_labels()
-        else:
-            new_training_set = training_set.get_sample(sample_size_per_label, seed=0)
-        self.classifier.train(new_training_set, n_jobs)
+        self.classifier.train(training_set, n_jobs)
     
     #########################################
     def segment_to_label_indexes(self, features, n_jobs=1):

@@ -422,17 +422,12 @@ class VoxelFeaturiser(Featuriser):
         '''
         (output_rows_needed, output_cols_needed, output) = self._prepare_featurise_voxels(data_scales, indexes, output, output_start_row_index, output_start_col_index)
         
-        output[
-            output_start_row_index:output_start_row_index+output_rows_needed,
-            output_start_col_index:output_start_col_index+output_cols_needed
-            ] = np.reshape(
-                data_scales[0][
-                    [slc for (slc, row, col) in indexes],
-                    [row for (slc, row, col) in indexes],
-                    [col for (slc, row, col) in indexes]
-                    ],
-                (-1, 1)
-                )
+        for (out_row, index) in enumerate(indexes):
+            output[
+                out_row:out_row+output_rows_needed,
+                output_start_col_index:output_start_col_index+output_cols_needed
+                ] = data_scales[0][index]
+        
         return output
     
     #########################################
@@ -598,31 +593,14 @@ class HistogramFeaturiser(Featuriser):
         '''
         (output_rows_needed, output_cols_needed, output) = self._prepare_featurise_voxels(data_scales, indexes, output, output_start_row_index, output_start_col_index)
         
-        def processor(out_row, index, data, radius, scale, num_bins, output_start_row_index, output_start_col_index):
-            '''
-            Function defining what to do with each voxel.
-            '''
-            neighbourhood = regions.get_neighbourhood_array_3d(data, index, radius, {0,1,2}, scale=scale)
-            feature_vec = histograms.histogram(neighbourhood, num_bins, (0, 2**16))
-            return (out_row, feature_vec)
-        
-        def post_processor(result):
-            '''
-            Function defining what to do with the result of each processor.
-            '''
-            (out_row, feature_vec) = result
+        for (out_row, index) in enumerate(indexes):
+            neighbourhood = regions.get_neighbourhood_array_3d(data_scales[self.scale], index, self.radius, {0,1,2}, scale=self.scale)
+            feature_vec = histograms.histogram(neighbourhood, self.num_bins, (0, 2**16))
+            
             output[
-                out_row:out_row+output_rows_needed,
+                out_row,
                 output_start_col_index:output_start_col_index+output_cols_needed
                 ] = feature_vec
-
-        arrayprocs.parallel_processer(
-            processor,
-            enumerate(indexes),
-            post_processor=post_processor,
-            n_jobs=n_jobs,
-            extra_params=(data_scales[self.scale], self.radius, self.scale, self.num_bins, output_start_row_index, output_start_col_index),
-            )
         
         return output
     
@@ -820,32 +798,15 @@ class LocalBinaryPatternFeaturiser(Featuriser):
         '''
         (output_rows_needed, output_cols_needed, output) = self._prepare_featurise_voxels(data_scales, indexes, output, output_start_row_index, output_start_col_index)
         
-        def processor(out_row, index, data, neighbouring_dims, radius, scale, output_start_row_index, output_start_col_index):
-            '''
-            Function defining what to do with each voxel.
-            '''
-            neighbourhood = regions.get_neighbourhood_array_3d(data, index, radius + 1, neighbouring_dims, scale=scale)
+        for (out_row, index) in enumerate(indexes):
+            neighbourhood = regions.get_neighbourhood_array_3d(data_scales[self.scale], index, self.radius + 1, self.neighbouring_dims, scale=self.scale)
             lbp = skimage.feature.local_binary_pattern(neighbourhood, 8, 1, 'uniform')[1:-1,1:-1]
             feature_vec = histograms.histogram(lbp, 10, (0, 10))
-            return (out_row, feature_vec)
-        
-        def post_processor(result):
-            '''
-            Function defining what to do with the result of each processor.
-            '''
-            (out_row, feature_vec) = result
+            
             output[
-                out_row:out_row+output_rows_needed,
+                out_row,
                 output_start_col_index:output_start_col_index+output_cols_needed
                 ] = feature_vec
-
-        arrayprocs.parallel_processer(
-            processor,
-            enumerate(indexes),
-            post_processor=post_processor,
-            n_jobs=n_jobs,
-            extra_params=(data_scales[self.scale], self.neighbouring_dims, self.radius, self.scale, output_start_row_index, output_start_col_index),
-            )
         
         return output
     
