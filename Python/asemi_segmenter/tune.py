@@ -87,7 +87,8 @@ def _loading_data(
     listener.log_output('> Result file')
     if results_fullfname is not None:
         validations.check_filename(results_fullfname, '.txt', False)
-    tuning_results_file = results.TuningResultsFile(results_fullfname)
+    evaluation = evaluations.IntersectionOverUnionEvaluation(len(labels))
+    tuning_results_file = results.TuningResultsFile(results_fullfname, evaluation)
 
     listener.log_output('> Checkpoint')
     if checkpoint_fullfname is not None:
@@ -109,7 +110,6 @@ def _loading_data(
             },
         allow_random=True
         )
-    evaluation = evaluations.IntersectionOverUnionEvaluation(len(segmenter.classifier.labels))
     hash_function.init(slice_shape, seed=0)
     training_set = trainingsets.TrainingSet(None)
     
@@ -175,6 +175,7 @@ def _tuning(
     eval_sample_size_per_label = config_data['evaluation_set']['sample_size_per_label']
     eval_same_as_train = config_data['evaluation_set']['same_as_train']
     
+    listener.log_output('> Train label sizes:')
     if train_sample_size_per_label != -1:
         (train_voxel_indexes, train_label_positions) = trainingsets.sample_voxels(
             train_subvolume_slice_labels,
@@ -183,6 +184,13 @@ def _tuning(
             slice_shape,
             seed=0
             )
+        for (label, label_slice) in zip(segmenter.classifier.labels, train_label_positions):
+            listener.log_output('>> {}: {}'.format(label, label_slice.stop - label_slice.start))
+    else:
+        for (label_index, label) in enumerate(segmenter.classifier.labels):
+            listener.log_output('>> {}: {}'.format(label, np.sum(train_subvolume_slice_labels == label_index)))
+    
+    listener.log_output('> Eval label sizes:')
     if eval_sample_size_per_label != -1:
         (eval_voxel_indexes, eval_label_positions) = trainingsets.sample_voxels(
             eval_subvolume_slice_labels,
@@ -192,13 +200,18 @@ def _tuning(
             skip=0 if not eval_same_as_train else train_sample_size_per_label,
             seed=0
             )
-    
+        for (label, label_slice) in zip(segmenter.classifier.labels, eval_label_positions):
+            listener.log_output('>> {}: {}'.format(label, label_slice.stop - label_slice.start))
+    else:
+        for (label_index, label) in enumerate(segmenter.classifier.labels):
+            listener.log_output('>> {}: {}'.format(label, np.sum(eval_subvolume_slice_labels == label_index)))
+        
     parameters_visited = set()
     with checkpoint.apply('create_results_file') as skip:
         if skip is not None:
             listener.log_output('> Continuing use of checkpointed results file')
             raise skip
-        tuning_results_file.create(segmenter.classifier.labels, evaluation)
+        tuning_results_file.create(segmenter.classifier.labels)
     with checkpoint.apply('tune') as skip:
         if skip is not None:
             raise skip
@@ -310,7 +323,8 @@ def _tuning(
                     ious = evaluation.get_global_result_per_label()
                     global_iou = evaluation.get_global_result()
                     for (label, iou) in zip(segmenter.classifier.labels, ious):
-                        listener.log_output('>>> {}: {:.3%}'.format(label, iou))
+                        if iou is not None:
+                            listener.log_output('>>> {}: {:.3%}'.format(label, iou))
                     listener.log_output('>>> global: {:.3%}'.format(global_iou))
                     tuning_results_file.add(
                         segmenter.get_config(),

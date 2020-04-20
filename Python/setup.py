@@ -17,7 +17,7 @@ setuptools.setup(
             },
         install_requires=[
                 'fast-histogram==0.7',
-                'h5py===2.10.0',
+                'h5py==2.10.0',
                 'joblib==0.14.0',
                 'jsonref==0.2',
                 'jsonschema==3.2.0',

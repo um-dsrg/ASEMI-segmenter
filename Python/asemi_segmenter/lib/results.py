@@ -9,41 +9,41 @@ class EvaluationResultsFile(object):
     '''Results file interface for the evaluate command.'''
 
     #########################################
-    def __init__(self, results_fullfname):
+    def __init__(self, results_fullfname, evaluation):
         '''
         Create an evaluation results file object.
 
         :param results_fullfname: The full file name (with path) of the results text file. If
             None then no file will be saved and all inputs are ignored.
         :type results_fullfname: str or None
+        :param Evaluation evaluation: The evaluation object being used for the results.
         '''
         self.results_fullfname = results_fullfname
         self.evaluation = None
         self.total_featuriser_duration = 0.0
         self.total_classifier_duration = 0.0
         self.num_rows = 0
+        self.evaluation = evaluation
 
     #########################################
-    def create(self, labels, evaluation):
+    def create(self, labels):
         '''
         Create the results text file.
 
         :param list labels: The list of labels used in the segmenter.
-        :param Evaluation evaluation: The evaluation object being used for the results.
         '''
         if self.results_fullfname is not None:
             with open(self.results_fullfname, 'w', encoding='utf-8') as f:
                 print(
                     'slice',
-                    *['{} {}'.format(label, evaluation.name) for label in labels],
-                    'global {}'.format(evaluation.name),
-                    'min {}'.format(evaluation.name),
-                    'stddev {}'.format(evaluation.name),
+                    *['{} {}'.format(label, self.evaluation.name) for label in labels],
+                    'global {}'.format(self.evaluation.name),
+                    'min {}'.format(self.evaluation.name),
+                    'stddev {}'.format(self.evaluation.name),
                     'featurisation duration (s)',
                     'prediction duration (s)',
                     sep='\t', file=f
                     )
-        self.evaluation = evaluation
 
     #########################################
     def add(self, slice_fullfname, label_results, global_result, featuriser_duration, classifier_duration):
@@ -75,11 +75,11 @@ class EvaluationResultsFile(object):
                         '%' if self.evaluation.is_percentage else 'f'
                         ),
                     '{:.3{}}'.format(
-                        min(label_results),
+                        min([r for r in label_results if r is not None]),
                         '%' if self.evaluation.is_percentage else 'f'
                         ),
                     '{:.3{}}'.format(
-                        np.std(label_results).tolist(),
+                        np.std([r for r in label_results if r is not None]).tolist(),
                         '%' if self.evaluation.is_percentage else 'f'
                         ),
                     '{:.1f}'.format(featuriser_duration),
@@ -114,11 +114,11 @@ class EvaluationResultsFile(object):
                         '%' if self.evaluation.is_percentage else 'f'
                         ),
                     '{:.3{}}'.format(
-                        min(self.evaluation.get_global_result_per_label()),
+                        min([r for r in self.evaluation.get_global_result_per_label() if r is not None]),
                         '%' if self.evaluation.is_percentage else 'f'
                         ),
                     '{:.3{}}'.format(
-                        np.std(self.evaluation.get_global_result_per_label()).tolist(),
+                        np.std([r for r in self.evaluation.get_global_result_per_label() if r is not None]).tolist(),
                         '%' if self.evaluation.is_percentage else 'f'
                         ),
                     '{:.1f}'.format(self.total_featuriser_duration/self.num_rows),
@@ -132,7 +132,7 @@ class TuningResultsFile(object):
     '''Results file interface for the tune command.'''
 
     #########################################
-    def __init__(self, results_fullfname):
+    def __init__(self, results_fullfname, evaluation):
         '''
         Create a tune results file object.
 
@@ -141,30 +141,28 @@ class TuningResultsFile(object):
         :type results_fullfname: str or None
         '''
         self.results_fullfname = results_fullfname
-        self.evaluation = None
+        self.evaluation = evaluation
 
     #########################################
-    def create(self, labels, evaluation):
+    def create(self, labels):
         '''
         Create the results text file.
 
         :param list labels: The list of labels used in the segmenter.
-        :param Evaluation evaluation: The evaluation object being used for the results.
         '''
         if self.results_fullfname is not None:
             with open(self.results_fullfname, 'w', encoding='utf-8') as f:
                 print(
                     'json config',
-                    *['{} {}'.format(label, evaluation.name) for label in labels],
-                    'global {}'.format(evaluation.name),
-                    'min {}'.format(evaluation.name),
-                    'stddev {}'.format(evaluation.name),
+                    *['{} {}'.format(label, self.evaluation.name) for label in labels],
+                    'global {}'.format(self.evaluation.name),
+                    'min {}'.format(self.evaluation.name),
+                    'stddev {}'.format(self.evaluation.name),
                     'featuriser duration (s)',
                     'classifier duration (s)',
                     'max memory (MB)',
                     sep='\t', file=f
                     )
-        self.evaluation = evaluation
 
     #########################################
     def add(self, config, featuriser_duration, classifier_duration, max_memory_mb):
@@ -196,11 +194,11 @@ class TuningResultsFile(object):
                         '%' if self.evaluation.is_percentage else 'f'
                         ),
                     '{:.3{}}'.format(
-                        min(self.evaluation.get_global_result_per_label()),
+                        min([r for r in self.evaluation.get_global_result_per_label() if r is not None]),
                         '%' if self.evaluation.is_percentage else 'f'
                         ),
                     '{:.3{}}'.format(
-                        np.std(self.evaluation.get_global_result_per_label()).tolist(),
+                        np.std([r for r in self.evaluation.get_global_result_per_label() if r is not None]).tolist(),
                         '%' if self.evaluation.is_percentage else 'f'
                         ),
                     '{:.1f}'.format(featuriser_duration),

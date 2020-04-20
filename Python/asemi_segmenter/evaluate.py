@@ -59,7 +59,8 @@ def _loading_data(
     listener.log_output('> Result file')
     if results_fullfname is not None:
         validations.check_filename(results_fullfname, '.txt', False)
-    evaluation_results_file = results.EvaluationResultsFile(results_fullfname)
+    evaluation = evaluations.IntersectionOverUnionEvaluation(len(segmenter.classifier.labels))
+    evaluation_results_file = results.EvaluationResultsFile(results_fullfname, evaluation)
 
     listener.log_output('> Checkpoint file')
     if checkpoint_fullfname is not None:
@@ -71,7 +72,6 @@ def _loading_data(
         )
     
     listener.log_output('> Initialising')
-    evaluation = evaluations.IntersectionOverUnionEvaluation(len(segmenter.classifier.labels))
     hash_function.init(slice_shape, seed=0)
     
     return (full_volume, slice_shape, slice_size, segmenter, subvolume_fullfnames, labels_data, hash_function, evaluation, evaluation_results_file, checkpoint)
@@ -125,7 +125,7 @@ def _evaluating(
             listener.log_output('> Continuing use of checkpointed results file')
             listener.log_output('-')
             raise skip
-        evaluation_results_file.create(segmenter.classifier.labels, evaluation)
+        evaluation_results_file.create(segmenter.classifier.labels)
     best_block_shape = arrayprocs.get_optimal_block_size(
         slice_shape,
         full_volume.get_dtype(),
@@ -140,6 +140,11 @@ def _evaluating(
         listener.log_output('> Evaluating {} ({:.2%})'.format(
             subvolume_fullfname, (i+1)/len(subvolume_fullfnames)
             ))
+        
+        listener.log_output('>> Label sizes:')
+        for (label_index, label) in enumerate(segmenter.classifier.labels):
+            listener.log_output('>>> {}: {}'.format(label, np.sum(subvolume_slice_labels[i*slice_size:(i+1)*slice_size] == label_index)))
+        
         with checkpoint.apply('evaluating_{}'.format(volume_slice_index)) as skip:
             if skip is not None:
                 listener.log_output('>> Skipped as was found checkpointed')
@@ -157,17 +162,16 @@ def _evaluating(
 
                 with times.Timer() as sub_timer_classifier:
                     prediction = segmenter.segment_to_label_indexes(slice_features, max_processes)
-                prediction = prediction.reshape(slice_shape)
-
+                
                 slice_labels = subvolume_slice_labels[i*slice_size:(i+1)*slice_size]
-                slice_labels = slice_labels.reshape(slice_shape)
-
+                
                 (ious, global_iou) = evaluation.evaluate(prediction, slice_labels)
+                listener.log_output('>> Results:')
                 for (label, iou) in zip(segmenter.classifier.labels, ious):
                     if iou is not None:
-                        listener.log_output('>> {}: {:.3%}'.format(label, iou))
+                        listener.log_output('>>> {}: {:.3%}'.format(label, iou))
                 if global_iou is not None:
-                    listener.log_output('>> global: {:.3%}'.format(global_iou))
+                    listener.log_output('>>> global: {:.3%}'.format(global_iou))
                 evaluation_results_file.add(
                     subvolume_fullfname,
                     ious,
@@ -187,7 +191,6 @@ def _evaluating(
             listener.log_output('-')
             
     return (output_result,)
-
 
 
 #########################################

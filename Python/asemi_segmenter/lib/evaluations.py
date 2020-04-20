@@ -331,10 +331,10 @@ class IntersectionOverUnionEvaluation(Evaluation):
             label_freqs.append(label_freq)
             num_intersecting.append(label_intersection)
             num_unioned.append(label_union)
-            labels_result.append(label_intersection/label_union if label_union > 0 else None)
+            labels_result.append(label_intersection/label_union if label_freq > 0 else None)
             
             self.label_freqs[label_index] += label_freqs[label_index]
             self.num_intersecting[label_index] += num_intersecting[label_index]
             self.num_unioned[label_index] += num_unioned[label_index]
-        global_result = sum(num_intersecting)/sum(label_freqs) if label_union > 0 else None
+        global_result = sum(num_intersecting)/sum(label_freqs) if any(f > 0 for f in label_freqs) else None
         return (labels_result, global_result)
