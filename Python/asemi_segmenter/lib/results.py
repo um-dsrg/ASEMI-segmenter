@@ -144,11 +144,12 @@ class TuningResultsFile(object):
         self.evaluation = evaluation
 
     #########################################
-    def create(self, labels):
+    def create(self, labels, extra_col_names=[]):
         '''
         Create the results text file.
 
         :param list labels: The list of labels used in the segmenter.
+        :param list extra_col_names: A list of extra column names to add.
         '''
         if self.results_fullfname is not None:
             with open(self.results_fullfname, 'w', encoding='utf-8') as f:
@@ -161,11 +162,12 @@ class TuningResultsFile(object):
                     'featuriser duration (s)',
                     'classifier duration (s)',
                     'max memory (MB)',
+                    *extra_col_names,
                     sep='\t', file=f
                     )
 
     #########################################
-    def add(self, config, featuriser_duration, classifier_duration, max_memory_mb):
+    def add(self, config, featuriser_duration, classifier_duration, max_memory_mb, extra_col_values=[]):
         '''
         Add a new result to the file.
 
@@ -174,6 +176,7 @@ class TuningResultsFile(object):
         :param float classifier_duration: The duration of the classification process.
         :param float max_memory_mb: The maximum number of megabytes of memory used
             during featurisation and classification.
+        :param list extra_col_values: A list of extra columns to add.
         '''
         if self.results_fullfname is not None:
             with open(self.results_fullfname, 'a', encoding='utf-8') as f:
@@ -204,5 +207,6 @@ class TuningResultsFile(object):
                     '{:.1f}'.format(featuriser_duration),
                     '{:.1f}'.format(classifier_duration),
                     '{:.3f}'.format(max_memory_mb),
+                    *extra_col_values,
                     sep='\t', file=f
                     )

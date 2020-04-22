@@ -168,7 +168,7 @@ def _hashing_eval_subvolume_slices(
 
 #########################################
 def _tuning(
-        config_data, segmenter, slice_shape, slice_size, full_volume, train_subvolume_slice_labels, volume_slice_indexes_in_train_subvolume, eval_subvolume_slice_labels, volume_slice_indexes_in_eval_subvolume, training_set, evaluation, tuning_results_file, checkpoint, max_processes, max_batch_memory, listener
+        config_data, segmenter, slice_shape, slice_size, full_volume, train_subvolume_slice_labels, volume_slice_indexes_in_train_subvolume, eval_subvolume_slice_labels, volume_slice_indexes_in_eval_subvolume, training_set, evaluation, tuning_results_file, checkpoint, max_processes, max_batch_memory, listener, extra_col_names, extra_col_values
     ):
     '''Tuning stage.'''
     train_sample_size_per_label = config_data['training_set']['sample_size_per_label']
@@ -211,7 +211,7 @@ def _tuning(
         if skip is not None:
             listener.log_output('> Continuing use of checkpointed results file')
             raise skip
-        tuning_results_file.create(segmenter.classifier.labels)
+        tuning_results_file.create(segmenter.classifier.labels, extra_col_names)
     with checkpoint.apply('tune') as skip:
         if skip is not None:
             raise skip
@@ -330,7 +330,8 @@ def _tuning(
                         segmenter.get_config(),
                         result['featuriser_time'],
                         result['classifier_time'],
-                        max_memory_mb
+                        max_memory_mb,
+                        extra_col_values
                         )
                 listener.log_output('> Duration: {}'.format(times.get_readable_duration(sub_timer.duration)))
     
@@ -341,7 +342,8 @@ def main(
         preproc_volume_fullfname, train_subvolume_dir, train_label_dirs,
         eval_subvolume_dir, eval_label_dirs, config,
         results_fullfname, checkpoint_fullfname, restart_checkpoint,
-        max_processes, max_batch_memory, listener=ProgressListener()
+        max_processes, max_batch_memory, listener=ProgressListener(),
+        extra_result_col_names=[], extra_result_col_values=[]
     ):
     '''
     Find Train a classifier model to segment volumes based on manually labelled slices.
@@ -375,6 +377,8 @@ def main(
     :param int max_processes: The maximum number of processes to use concurrently.
     :param float max_batch_memory: The maximum number of gigabytes to use between all processes.
     :param ProgressListener listener: The command's progress listener.
+    :param list extra_result_col_names: Names of any extra columns to add to the result file.
+    :param list extra_result_col_values: Values (fixed) of any extra columns to add to the result file.
     '''
     full_volume = None
     try:
@@ -428,7 +432,7 @@ def main(
             listener.log_output(times.get_timestamp())
             listener.log_output('Tuning')
             with times.Timer() as timer:
-                () = _tuning(config_data, segmenter, slice_shape, slice_size, full_volume, train_subvolume_slice_labels, volume_slice_indexes_in_train_subvolume, eval_subvolume_slice_labels, volume_slice_indexes_in_eval_subvolume, training_set, evaluation, tuning_results_file, checkpoint, max_processes, max_batch_memory, listener)
+                () = _tuning(config_data, segmenter, slice_shape, slice_size, full_volume, train_subvolume_slice_labels, volume_slice_indexes_in_train_subvolume, eval_subvolume_slice_labels, volume_slice_indexes_in_eval_subvolume, training_set, evaluation, tuning_results_file, checkpoint, max_processes, max_batch_memory, listener, extra_result_col_names, extra_result_col_values)
             listener.log_output('Tuned')
             listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
             listener.log_output('')
