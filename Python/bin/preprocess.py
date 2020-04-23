@@ -64,27 +64,29 @@ if __name__ == '__main__':
 
     #########################
 
-    params = None
-    params = vars(parser.parse_args())
-    if params is not None:
-        params['listener'] = _interfaces.CliProgressListener(params.pop('log_file_fullfname'))
-        if True:
-            assert 'config' not in params
-            params['config'] = params['config_fullfname']
-            del params['config_fullfname']
-        if 'restart_checkpoint' in params:
-            params['restart_checkpoint'] = params['restart_checkpoint'] == 'yes'
-        if 'max_processes' in params:
-            params['max_processes'] = arrayprocs.get_num_processes(params['max_processes'])
-        if 'max_batch_memory' in params:
-            if params['max_batch_memory'] <= 0:
-                params['max_batch_memory'] = psutil.virtual_memory().available/(1024**3)
-        params['listener'].log_output('='*100)
-        params['listener'].log_output('version: {}'.format(asemi_segmenter.__version__))
-        params['listener'].log_output('hostname: {}'.format(socket.gethostname()))
-        params['listener'].log_output('bin dir: {}'.format(os.path.dirname(os.path.realpath(__file__))))
-        params['listener'].log_output('-'*50)
-        params['listener'].log_output('')
-        preprocess.main(**params)
-        params['listener'].log_output('')
-        params['listener'].log_output('')
+    args = None
+    args = parser.parse_args()
+    if args is not None:
+        listener = _interfaces.CliProgressListener(args.log_file_fullfname)
+        listener.log_output('='*100)
+        listener.log_output('version: {}'.format(asemi_segmenter.__version__))
+        listener.log_output('hostname: {}'.format(socket.gethostname()))
+        listener.log_output('bin dir: {}'.format(os.path.dirname(os.path.realpath(__file__))))
+        listener.log_output('-'*50)
+        listener.log_output('')
+        preprocess.main(
+            volume_dir=args.volume_dir,
+            config=args.config_fullfname,
+            result_data_fullfname=args.result_data_fullfname,
+            checkpoint_fullfname=args.checkpoint_fullfname,
+            restart_checkpoint=args.restart_checkpoint == 'yes',
+            max_processes=arrayprocs.get_num_processes(args.max_processes),
+            max_batch_memory=(
+                args.max_batch_memory
+                if args.max_batch_memory > 0
+                else psutil.virtual_memory().available/(1024**3)
+                ),
+            listener=listener
+            )
+        listener.log_output('')
+        listener.log_output('')
