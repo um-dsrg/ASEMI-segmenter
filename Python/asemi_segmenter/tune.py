@@ -47,7 +47,6 @@ def _loading_data(
         train_labels_data.append(label_data)
         listener.log_output('>>> {}'.format(label_data.name))
     train_labels = sorted(label_data.name for label_data in train_labels_data)
-    train_subvolume_slice_labels = volumes.load_labels(train_labels_data)
     validations.validate_annotation_data(full_volume, train_subvolume_data, train_labels_data)
 
     listener.log_output('> Eval subvolume directory')
@@ -68,7 +67,6 @@ def _loading_data(
             '(train=[{}], eval=[{}]).'.format(train_labels, eval_labels)
             )
     labels = train_labels
-    eval_subvolume_slice_labels = volumes.load_labels(eval_labels_data)
     validations.validate_annotation_data(full_volume, eval_subvolume_data, eval_labels_data)
 
     listener.log_output('> Config file')
@@ -113,7 +111,7 @@ def _loading_data(
     hash_function.init(slice_shape, seed=0)
     training_set = trainingsets.TrainingSet(None)
     
-    return (config_data, full_volume, slice_shape, slice_size, segmenter, train_subvolume_fullfnames, train_subvolume_slice_labels, eval_subvolume_fullfnames, eval_subvolume_slice_labels, training_set, hash_function, evaluation, tuning_results_file, checkpoint)
+    return (config_data, full_volume, slice_shape, slice_size, segmenter, train_subvolume_fullfnames, train_labels_data, eval_subvolume_fullfnames, eval_labels_data, training_set, hash_function, evaluation, tuning_results_file, checkpoint)
     
     
 #########################################
@@ -164,6 +162,17 @@ def _hashing_eval_subvolume_slices(
             ))
     
     return (volume_slice_indexes_in_eval_subvolume,)
+
+
+#########################################
+def _constructing_labels_dataset(
+        train_labels_data, eval_labels_data
+    ):
+    '''Constructing labels dataset stage.'''
+    train_subvolume_slice_labels = volumes.load_labels(train_labels_data)
+    eval_subvolume_slice_labels = volumes.load_labels(eval_labels_data)
+    
+    return (train_subvolume_slice_labels, eval_subvolume_slice_labels)
 
 
 #########################################
@@ -383,7 +392,7 @@ def main(
     full_volume = None
     try:
         with times.Timer() as full_timer:
-            listener.overall_progress_start(4)
+            listener.overall_progress_start(5)
 
             listener.log_output('Starting tuning process')
             listener.log_output('')
@@ -394,7 +403,7 @@ def main(
             listener.log_output(times.get_timestamp())
             listener.log_output('Loading data')
             with times.Timer() as timer:
-                (config_data, full_volume, slice_shape, slice_size, segmenter, train_subvolume_fullfnames, train_subvolume_slice_labels, eval_subvolume_fullfnames, eval_subvolume_slice_labels, training_set, hash_function, evaluation, tuning_results_file, checkpoint) = _loading_data(
+                (config_data, full_volume, slice_shape, slice_size, segmenter, train_subvolume_fullfnames, train_labels_data, eval_subvolume_fullfnames, eval_labels_data, training_set, hash_function, evaluation, tuning_results_file, checkpoint) = _loading_data(
                     preproc_volume_fullfname, train_subvolume_dir, train_label_dirs,
                     eval_subvolume_dir, eval_label_dirs, config,
                     results_fullfname, checkpoint_fullfname, restart_checkpoint,
@@ -427,8 +436,19 @@ def main(
             listener.log_output('')
             
             ###################
+
+            listener.overall_progress_update(4, 'Constructing labels dataset')
+            listener.log_output(times.get_timestamp())
+            listener.log_output('Constructing labels dataset')
+            with times.Timer() as timer:
+                (train_subvolume_slice_labels, eval_subvolume_slice_labels) = _constructing_labels_dataset(train_labels_data, eval_labels_data)
+            listener.log_output('Labels dataset constructed')
+            listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
+            listener.log_output('')
             
-            listener.overall_progress_update(4, 'Tuning')
+            ###################
+            
+            listener.overall_progress_update(5, 'Tuning')
             listener.log_output(times.get_timestamp())
             listener.log_output('Tuning')
             with times.Timer() as timer:

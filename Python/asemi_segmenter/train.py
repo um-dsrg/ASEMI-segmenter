@@ -108,21 +108,38 @@ def _hashing_subvolume_slices(
 
 
 #########################################
+def _constructing_labels_dataset(
+        labels_data
+    ):
+    '''Constructing labels dataset stage.'''
+    subvolume_slice_labels = volumes.load_labels(labels_data)
+    
+    return (subvolume_slice_labels,)
+
+
+#########################################
 def _constructing_trainingset(
-        full_volume, subvolume_fullfnames, volume_slice_indexes_in_subvolume, labels_data, slice_shape, slice_size, segmenter, training_set, checkpoint, max_processes, max_batch_memory, listener
+        full_volume, subvolume_fullfnames, volume_slice_indexes_in_subvolume, slice_shape, slice_size, subvolume_slice_labels, segmenter, training_set, checkpoint, max_processes, max_batch_memory, listener
     ):
     '''Constructing training set stage.'''
     listener.log_output('> Sampling training items')
-    loaded_labels = volumes.load_labels(labels_data)
     train_sample_size_per_label = segmenter.train_config['training_set']['sample_size_per_label']
     if train_sample_size_per_label != -1:
         (voxel_indexes, label_positions) = trainingsets.sample_voxels(
-            loaded_labels,
+            subvolume_slice_labels,
             train_sample_size_per_label,
             len(segmenter.classifier.labels),
             slice_shape,
             seed=0
             )
+    
+    listener.log_output('> Train label sizes:')
+    if train_sample_size_per_label != -1:
+        for (label, label_slice) in zip(segmenter.classifier.labels, label_positions):
+            listener.log_output('>> {}: {}'.format(label, label_slice.stop - label_slice.start))
+    else:
+        for (label_index, label) in enumerate(segmenter.classifier.labels):
+            listener.log_output('>> {}: {}'.format(label, np.sum(subvolume_slice_labels == label_index)))
     
     listener.log_output('> Creating empty training set')
     if train_sample_size_per_label != -1:
@@ -132,7 +149,7 @@ def _constructing_trainingset(
             )
     else:
         training_set.create(
-            loaded_labels.size,
+            subvolume_slice_labels.size,
             segmenter.featuriser.get_feature_size()
             )
     training_set.load()
@@ -146,7 +163,7 @@ def _constructing_trainingset(
             if skip is not None:
                 listener.log_output('> Skipped as was found checkpointed')
                 raise skip
-            training_set.get_labels_array()[:] = loaded_labels
+            training_set.get_labels_array()[:] = subvolume_slice_labels
 
     listener.log_output('> Constructing features')
     if train_sample_size_per_label != -1:
@@ -255,7 +272,7 @@ def main(
     training_set = None
     try:
         with times.Timer() as full_timer:
-            listener.overall_progress_start(5)
+            listener.overall_progress_start(6)
 
             listener.log_output('Starting training process')
             listener.log_output('')
@@ -289,18 +306,29 @@ def main(
 
             ###################
 
-            listener.overall_progress_update(3, 'Constructing training set')
+            listener.overall_progress_update(3, 'Constructing labels dataset')
+            listener.log_output(times.get_timestamp())
+            listener.log_output('Constructing labels dataset')
+            with times.Timer() as timer:
+                (subvolume_slice_labels,) = _constructing_labels_dataset(labels_data)
+            listener.log_output('Labels dataset constructed')
+            listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
+            listener.log_output('')
+            
+            ###################
+
+            listener.overall_progress_update(4, 'Constructing training set')
             listener.log_output(times.get_timestamp())
             listener.log_output('Constructing training set')
             with times.Timer() as timer:
-                () = _constructing_trainingset(full_volume, subvolume_fullfnames, volume_slice_indexes_in_subvolume, labels_data, slice_shape, slice_size, segmenter, training_set, checkpoint, max_processes, max_batch_memory, listener)
+                () = _constructing_trainingset(full_volume, subvolume_fullfnames, volume_slice_indexes_in_subvolume, slice_shape, slice_size, subvolume_slice_labels, segmenter, training_set, checkpoint, max_processes, max_batch_memory, listener)
             listener.log_output('Training set constructed')
             listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
             listener.log_output('')
 
             ###################
 
-            listener.overall_progress_update(4, 'Training segmenter')
+            listener.overall_progress_update(5, 'Training segmenter')
             listener.log_output(times.get_timestamp())
             listener.log_output('Training segmenter')
             with times.Timer() as timer:
@@ -311,7 +339,7 @@ def main(
 
             ###################
 
-            listener.overall_progress_update(5, 'Saving model')
+            listener.overall_progress_update(6, 'Saving model')
             listener.log_output(times.get_timestamp())
             listener.log_output('Saving model')
             with times.Timer() as timer:
