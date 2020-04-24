@@ -3,6 +3,215 @@
     "$id": "classifier.json",
     "definitions": {
     
+        "logistic_regression": {
+            "type": "object",
+            "properties": {
+                "type": { "const": "logistic_regression" },
+                "params": {
+                    "type": "object",
+                    "properties": {
+                        "C": {
+                            "oneOf": [
+                                {
+                                    "type": "number",
+                                    "exclusiveMinimum": 0.0
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "min": {
+                                            "type": "number",
+                                            "exclusiveMinimum": 0.0
+                                        },
+                                        "max": {
+                                            "type": "number",
+                                            "exclusiveMinimum": 0.0
+                                        }
+                                    },
+                                    "required": ["min", "max"],
+                                    "additionalProperties": false
+                                }
+                            ]
+                        },
+                        "max_iter": {
+                            "oneOf": [
+                                {
+                                    "type": "integer",
+                                    "minimum": 1
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "min": {
+                                            "type": "integer",
+                                            "minimum": 1
+                                        },
+                                        "max": {
+                                            "type": "integer",
+                                            "minimum": 1
+                                        }
+                                    },
+                                    "required": ["min", "max"],
+                                    "additionalProperties": false
+                                }
+                            ]
+                        }
+                    },
+                    "required": ["C", "max_iter"],
+                    "additionalProperties": false
+                }
+            },
+            "required": ["type", "params"],
+            "additionalProperties": false
+        },
+        
+        "neural_network": {
+            "type": "object",
+            "properties": {
+                "type": { "const": "neural_network" },
+                "params": {
+                    "type": "object",
+                    "properties": {
+                        "hidden_layer_size": {
+                            "oneOf": [
+                                {
+                                    "type": "integer",
+                                    "minimum": 1
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "min": {
+                                            "type": "integer",
+                                            "minimum": 1
+                                        },
+                                        "max": {
+                                            "type": "integer",
+                                            "minimum": 1
+                                        }
+                                    },
+                                    "required": ["min", "max"],
+                                    "additionalProperties": false
+                                }
+                            ]
+                        },
+                        "alpha": {
+                            "oneOf": [
+                                {
+                                    "type": "number",
+                                    "exclusiveMinimum": 0.0
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "min": {
+                                            "type": "number",
+                                            "exclusiveMinimum": 0.0
+                                        },
+                                        "max": {
+                                            "type": "number",
+                                            "exclusiveMinimum": 0.0
+                                        }
+                                    },
+                                    "required": ["min", "max"],
+                                    "additionalProperties": false
+                                }
+                            ]
+                        },
+                        "max_iter": {
+                            "oneOf": [
+                                {
+                                    "type": "integer",
+                                    "minimum": 1
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "min": {
+                                            "type": "integer",
+                                            "minimum": 1
+                                        },
+                                        "max": {
+                                            "type": "integer",
+                                            "minimum": 1
+                                        }
+                                    },
+                                    "required": ["min", "max"],
+                                    "additionalProperties": false
+                                }
+                            ]
+                        }
+                    },
+                    "required": ["hidden_layer_size", "alpha", "max_iter"],
+                    "additionalProperties": false
+                }
+            },
+            "required": ["type", "params"],
+            "additionalProperties": false
+        },
+        
+        "decision_tree": {
+            "type": "object",
+            "properties": {
+                "type": { "const": "decision_tree" },
+                "params": {
+                    "type": "object",
+                    "properties": {
+                        "max_depth": {
+                            "oneOf": [
+                                {
+                                    "type": "integer",
+                                    "minimum": 1
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "min": {
+                                            "type": "integer",
+                                            "minimum": 1
+                                        },
+                                        "max": {
+                                            "type": "integer",
+                                            "minimum": 1
+                                        }
+                                    },
+                                    "required": ["min", "max"],
+                                    "additionalProperties": false
+                                }
+                            ]
+                        },
+                        "min_samples_leaf": {
+                            "oneOf": [
+                                {
+                                    "type": "integer",
+                                    "minimum": 1
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "min": {
+                                            "type": "integer",
+                                            "minimum": 1
+                                        },
+                                        "max": {
+                                            "type": "integer",
+                                            "minimum": 1
+                                        }
+                                    },
+                                    "required": ["min", "max"],
+                                    "additionalProperties": false
+                                }
+                            ]
+                        }
+                    },
+                    "required": ["max_depth", "min_samples_leaf"],
+                    "additionalProperties": false
+                }
+            },
+            "required": ["type", "params"],
+            "additionalProperties": false
+        },
+        
         "random_forest": {
             "type": "object",
             "properties": {
@@ -80,7 +289,7 @@
                             ]
                         }
                     },
-                    "required": [],
+                    "required": ["n_estimators", "max_depth", "min_samples_leaf"],
                     "additionalProperties": false
                 }
             },
@@ -91,6 +300,9 @@
     },
     
     "oneOf": [
+        { "$ref": "#/definitions/logistic_regression" },
+        { "$ref": "#/definitions/neural_network" },
+        { "$ref": "#/definitions/decision_tree" },
         { "$ref": "#/definitions/random_forest" }
     ]
 }

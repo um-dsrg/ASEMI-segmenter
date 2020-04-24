@@ -30,14 +30,14 @@
         }
     },
     "classifier": {
-        "type": "random_forest",
+        "type": "neural_network",
         "params": {
-            "n_estimators": 25,
-            "max_depth": 27,
-            "min_samples_leaf": 3
+            "hidden_layer_size": 25,
+            "alpha": 0.18,
+            "max_iter": 64
         }
     },
     "training_set": {
-        "sample_size_per_label": 10
+        "sample_size_per_label": 20
     }
 }
