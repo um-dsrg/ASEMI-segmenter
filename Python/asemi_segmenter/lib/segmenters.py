@@ -48,17 +48,6 @@ class Segmenter(object):
         if train_config['training_set']['sample_size_per_label'] == 0:
             raise ValueError('Model is invalid as sample_size_per_label cannot be 0.')
             
-        if model is not None:
-            if train_config['classifier']['type'] in {'decision_tree', 'random_forest'}:
-                if model.n_features_ != featuriser.get_feature_size():
-                    raise ValueError(
-                        'Model is invalid as the number of features is not as declared (declared={}, ' \
-                        'actual={}).'.format(
-                            featuriser.get_feature_size(),
-                            model.n_features_
-                            )
-                        )
-
         scales_needed = featuriser.get_scales_needed()
         if None not in scales_needed and not scales_needed <= full_volume.get_scales():
             raise ValueError(

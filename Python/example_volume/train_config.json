@@ -10,9 +10,9 @@
                 {
                     "type": "histogram",
                     "params": {
-                        "radius": 29,
-                        "scale": 3,
-                        "num_bins": 26
+                        "radius": 14,
+                        "scale": 2,
+                        "num_bins": 32
                     }
                 },
                 {
@@ -22,8 +22,8 @@
                             1,
                             2
                         ],
-                        "radius": 30,
-                        "scale": 3
+                        "radius": 17,
+                        "scale": 2
                     }
                 }
             ]
@@ -32,12 +32,12 @@
     "classifier": {
         "type": "neural_network",
         "params": {
-            "hidden_layer_size": 25,
-            "alpha": 0.18,
+            "hidden_layer_size": 32,
+            "alpha": 0.016398435363483168,
             "max_iter": 64
         }
     },
     "training_set": {
-        "sample_size_per_label": 20
+        "sample_size_per_label": 10
     }
 }
