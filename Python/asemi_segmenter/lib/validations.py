@@ -26,7 +26,10 @@ def validate_json_with_schema_file(loaded_json, schema_name):
         )
     jsonschema.Draft7Validator.check_schema(schema)
     validator = jsonschema.Draft7Validator(schema)
-    validator.validate(loaded_json)
+    try:
+        validator.validate(loaded_json)
+    except jsonschema.ValidationError as ex:
+        raise ValueError(ex.message)
 
 
 #########################################
