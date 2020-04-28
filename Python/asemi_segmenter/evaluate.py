@@ -184,7 +184,7 @@ def _evaluating(
 def main(
         model, preproc_volume_fullfname, subvolume_dir, label_dirs, results_fullfname,
         checkpoint_fullfname, restart_checkpoint, max_processes, max_batch_memory,
-        listener=ProgressListener()
+        listener=ProgressListener(), debug_mode=False
     ):
     '''
     Evaluate a trained classifier model on manually labelled slices.
@@ -213,6 +213,7 @@ def main(
     :param int max_processes: The maximum number of processes to use concurrently.
     :param float max_batch_memory: The maximum number of gigabytes to use between all processes.
     :param ProgressListener listener: The command's progress listener.
+    :param bool debug_mode: Whether to show full error messages or just simple ones.
     :return: If results_fullfname was None, returns the results as a dictionary of subvolume slice
         paths mapped to their intersection-over-union scores.
     :rtype: None or dict
@@ -285,7 +286,10 @@ def main(
             return output_result
         return None
     except Exception as ex:
-        listener.error_output(str(ex))
+        if debug_mode:
+            raise
+        else:
+            listener.error_output(str(ex))
     finally:
         if full_volume is not None:
             full_volume.close()

@@ -126,7 +126,8 @@ def _segmenting(
 def main(
         model, preproc_volume_fullfname, config, results_dir,
         checkpoint_fullfname, restart_checkpoint,
-        max_processes, max_batch_memory, listener=ProgressListener()
+        max_processes, max_batch_memory, listener=ProgressListener(),
+        debug_mode=False
     ):
     '''
     Segment a preprocessed volume using a trained classifier model.
@@ -152,6 +153,7 @@ def main(
     :param int max_processes: The maximum number of processes to use concurrently.
     :param float max_batch_memory: The maximum number of gigabytes to use between all processes.
     :param ProgressListener listener: The command's progress listener.
+    :param bool debug_mode: Whether to show full error messages or just simple ones.
     '''
     full_volume = None
     try:
@@ -195,7 +197,10 @@ def main(
 
         listener.overall_progress_end()
     except Exception as ex:
-        listener.error_output(str(ex))
+        if debug_mode:
+            raise
+        else:
+            listener.error_output(str(ex))
     finally:
         if full_volume is not None:
             full_volume.close()

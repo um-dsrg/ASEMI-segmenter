@@ -237,7 +237,8 @@ def main(
         preproc_volume_fullfname, subvolume_dir, label_dirs, config,
         result_model_fullfname, trainingset_file_fullfname,
         checkpoint_fullfname, restart_checkpoint,
-        max_processes, max_batch_memory, listener=ProgressListener()
+        max_processes, max_batch_memory, listener=ProgressListener(),
+        debug_mode=False
     ):
     '''
     Train a classifier model to segment volumes based on manually labelled slices.
@@ -265,6 +266,7 @@ def main(
     :param int max_processes: The maximum number of processes to use concurrently.
     :param float max_batch_memory: The maximum number of gigabytes to use between all processes.
     :param ProgressListener listener: The command's progress listener.
+    :param bool debug_mode: Whether to show full error messages or just simple ones.
     :return: If result_model_fullfname was None, returns the trained model as a dictionary.
         See user guide for description of the model dictionary.
     :rtype: None or dict
@@ -361,7 +363,10 @@ def main(
             return segmenter
         return None
     except Exception as ex:
-        listener.error_output(str(ex))
+        if debug_mode:
+            raise
+        else:
+            listener.error_output(str(ex))
     finally:
         if full_volume is not None:
             full_volume.close()

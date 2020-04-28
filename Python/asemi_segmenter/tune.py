@@ -346,7 +346,7 @@ def main(
         eval_subvolume_dir, eval_label_dirs, config,
         results_fullfname, checkpoint_fullfname, restart_checkpoint,
         max_processes, max_batch_memory, listener=ProgressListener(),
-        extra_result_col_names=[], extra_result_col_values=[]
+        debug_mode=False, extra_result_col_names=[], extra_result_col_values=[]
     ):
     '''
     Find Train a classifier model to segment volumes based on manually labelled slices.
@@ -380,6 +380,7 @@ def main(
     :param int max_processes: The maximum number of processes to use concurrently.
     :param float max_batch_memory: The maximum number of gigabytes to use between all processes.
     :param ProgressListener listener: The command's progress listener.
+    :param bool debug_mode: Whether to show full error messages or just simple ones.
     :param list extra_result_col_names: Names of any extra columns to add to the result file.
     :param list extra_result_col_values: Values (fixed) of any extra columns to add to the result file.
     '''
@@ -459,7 +460,10 @@ def main(
 
         listener.overall_progress_end()
     except Exception as ex:
-        listener.error_output(str(ex))
+        if debug_mode:
+            raise
+        else:
+            listener.error_output(str(ex))
     finally:
         if full_volume is not None:
             full_volume.close()
