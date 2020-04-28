@@ -5,8 +5,18 @@
     "type": "object",
     "properties": {
         "soft_segmentation": {
+            "type": "boolean"
+        },
+        "as_masks": {
+            "type": "boolean"
+        },
+        "image_extension": {
             "type": "string",
-            "enum": ["yes", "no"]
+            "enum": ["png", "tiff", "tif"]
+        },
+        "bits": {
+            "type": "integer",
+            "enum": [8, 16]
         }
     },
     "required": ["soft_segmentation"],

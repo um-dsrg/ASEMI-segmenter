@@ -49,7 +49,9 @@ def _loading_data(
             config_data = json.load(f)
     else:
         config_data = config
-    soft_segmentation = config_data['soft_segmentation'] == 'yes'
+    validations.validate_json_with_schema_file(config_data, 'segment.json')
+    if config_data['soft_segmentation'] and not config_data['as_masks']:
+        raise ValueError('Cannot use soft segmentation if output is not as masks.')
 
     listener.log_output('> Result')
     listener.log_output('>> {}'.format(results_dir))
@@ -71,16 +73,17 @@ def _loading_data(
     listener.log_output('>> max_processes: {}'.format(max_processes))
     listener.log_output('>> max_batch_memory: {}GB'.format(max_batch_memory))
     
-    return (soft_segmentation, full_volume, slice_shape, segmenter, checkpoint)
+    return (config_data, full_volume, slice_shape, segmenter, checkpoint)
     
     
 #########################################
 def _segmenting(
-        soft_segmentation, full_volume, slice_shape, segmenter, results_dir, max_processes, max_batch_memory, checkpoint, listener
+        config_data, full_volume, slice_shape, segmenter, results_dir, max_processes, max_batch_memory, checkpoint, listener
     ):
     '''Segmenting stage.'''
-    for label in segmenter.classifier.labels:
-        files.mkdir(os.path.join(results_dir, label))
+    if config_data['as_masks']:
+        for label in segmenter.classifier.labels:
+            files.mkdir(os.path.join(results_dir, label))
 
     num_digits_in_filename = math.ceil(math.log10(full_volume.get_shape()[0]+1))
     best_block_shape = arrayprocs.get_optimal_block_size(
@@ -92,41 +95,56 @@ def _segmenting(
         implicit_depth=True
         )
 
-    with checkpoint.apply('segment') as skip:
-        if skip is not None:
-            raise skip
-        start = checkpoint.get_next_to_process('segment_prog')
-        listener.current_progress_start(start, full_volume.get_shape()[0])
-        for volume_slice_index in range(full_volume.get_shape()[0]):
-            if volume_slice_index < start:
-                continue
-            with checkpoint.apply('segment_prog'):
-                slice_features = segmenter.featuriser.featurise_slice(
-                    full_volume.get_scale_arrays(segmenter.featuriser.get_scales_needed()),
-                    slice_index=volume_slice_index,
-                    block_rows=best_block_shape[0],
-                    block_cols=best_block_shape[1],
-                    n_jobs=max_processes
+    def save_slice(volume_slice_index, segmentation, label=None):
+        '''Save image slice.'''
+        if config_data['bits'] == 8:
+            if config_data['as_masks']:
+                segmentation = segmentation*(2**8 - 1)
+            output = np.round(segmentation).astype(np.uint8)
+        elif config_data['bits'] == 16:
+            if config_data['as_masks']:
+                segmentation = segmentation*(2**16 - 1)
+            output = np.round(segmentation).astype(np.uint16)
+        else:
+            raise NotImplementedError('Number of bits not implemented.')
+        if not config_data['as_masks']:
+            segmentation = segmentation + 1
+        output = output.reshape(slice_shape)
+        
+        images.save_image(
+            os.path.join(
+                results_dir if label is None else os.path.join(results_dir, label),
+                '{}_{:0>{}}.{}'.format(
+                    label if config_data['as_masks'] else 'seg',
+                    volume_slice_index + 1,
+                    num_digits_in_filename,
+                    config_data['image_extension']
                     )
+                ),
+            output,
+            compress=True
+            )
 
-                for (label, mask) in zip(segmenter.classifier.labels, segmenter.segment_to_labels_iter(slice_features, soft_segmentation, max_processes)):
-                    mask = np.round(mask*255).astype(np.uint8)
-                    mask = mask.reshape(slice_shape)
-                    images.save_image(
-                        os.path.join(
-                            results_dir,
-                            label,
-                            '{}_{:0>{}}.tiff'.format(
-                                label,
-                                volume_slice_index+1,
-                                num_digits_in_filename
-                                )
-                            ),
-                        mask,
-                        compress=True
-                        )
-            listener.current_progress_update(volume_slice_index+1)
-        listener.current_progress_end()
+    start = checkpoint.get_next_to_process('segment_prog')
+    listener.current_progress_start(start, full_volume.get_shape()[0])
+    for volume_slice_index in range(full_volume.get_shape()[0]):
+        if volume_slice_index < start:
+            continue
+        with checkpoint.apply('segment_prog'):
+            slice_features = segmenter.featuriser.featurise_slice(
+                full_volume.get_scale_arrays(segmenter.featuriser.get_scales_needed()),
+                slice_index=volume_slice_index,
+                block_rows=best_block_shape[0],
+                block_cols=best_block_shape[1],
+                n_jobs=max_processes
+                )
+            if config_data['as_masks']:
+                for (label, mask) in zip(segmenter.classifier.labels, segmenter.segment_to_labels_iter(slice_features, config_data['soft_segmentation'], max_processes)):
+                    save_slice(volume_slice_index, mask, label)
+            else:
+                save_slice(volume_slice_index, segmenter.segment_to_label_indexes(slice_features, max_processes))
+        listener.current_progress_update(volume_slice_index+1)
+    listener.current_progress_end()
         
     return ()
 
@@ -178,7 +196,7 @@ def main(
             listener.log_output(times.get_timestamp())
             listener.log_output('Loading data')
             with times.Timer() as timer:
-                (soft_segmentation, full_volume, slice_shape, segmenter, checkpoint) = _loading_data(
+                (config_data, full_volume, slice_shape, segmenter, checkpoint) = _loading_data(
                     model, preproc_volume_fullfname, config, results_dir,
                     checkpoint_fullfname, restart_checkpoint, max_processes, max_batch_memory,
                     listener
@@ -193,7 +211,7 @@ def main(
             listener.log_output(times.get_timestamp())
             listener.log_output('Segmenting')
             with times.Timer() as timer:
-                () = _segmenting(soft_segmentation, full_volume, slice_shape, segmenter, results_dir, max_processes, max_batch_memory, checkpoint, listener)
+                () = _segmenting(config_data, full_volume, slice_shape, segmenter, results_dir, max_processes, max_batch_memory, checkpoint, listener)
             listener.log_output('Volume segmented')
             listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
             listener.log_output('')
