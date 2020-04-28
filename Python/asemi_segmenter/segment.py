@@ -78,9 +78,12 @@ def _loading_data(
     
 #########################################
 def _segmenting(
-        config_data, full_volume, slice_shape, segmenter, results_dir, max_processes, max_batch_memory, checkpoint, listener
+        config_data, full_volume, slice_shape, segmenter, results_dir, slice_indexes, max_processes, max_batch_memory, checkpoint, listener
     ):
     '''Segmenting stage.'''
+    if slice_indexes is None:
+        slice_indexes = range(full_volume.get_shape()[0])
+    
     if config_data['as_masks']:
         for label in segmenter.classifier.labels:
             files.mkdir(os.path.join(results_dir, label))
@@ -127,7 +130,7 @@ def _segmenting(
 
     start = checkpoint.get_next_to_process('segment_prog')
     listener.current_progress_start(start, full_volume.get_shape()[0])
-    for volume_slice_index in range(full_volume.get_shape()[0]):
+    for volume_slice_index in slice_indexes:
         if volume_slice_index < start:
             continue
         with checkpoint.apply('segment_prog'):
@@ -154,7 +157,7 @@ def main(
         model, preproc_volume_fullfname, config, results_dir,
         checkpoint_fullfname, restart_checkpoint,
         max_processes, max_batch_memory, listener=ProgressListener(),
-        debug_mode=False
+        slice_indexes=None, debug_mode=False
     ):
     '''
     Segment a preprocessed volume using a trained classifier model.
@@ -180,6 +183,8 @@ def main(
     :param int max_processes: The maximum number of processes to use concurrently.
     :param float max_batch_memory: The maximum number of gigabytes to use between all processes.
     :param ProgressListener listener: The command's progress listener.
+    :param list slice_indexes: The integer indexes (0-based) of slices in the volume to
+        segment. If None then all slices are segmented.
     :param bool debug_mode: Whether to show full error messages or just simple ones.
     '''
     full_volume = None
@@ -211,7 +216,7 @@ def main(
             listener.log_output(times.get_timestamp())
             listener.log_output('Segmenting')
             with times.Timer() as timer:
-                () = _segmenting(config_data, full_volume, slice_shape, segmenter, results_dir, max_processes, max_batch_memory, checkpoint, listener)
+                () = _segmenting(config_data, full_volume, slice_shape, segmenter, results_dir, slice_indexes, max_processes, max_batch_memory, checkpoint, listener)
             listener.log_output('Volume segmented')
             listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
             listener.log_output('')
