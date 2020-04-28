@@ -119,11 +119,17 @@ def _evaluating(
         full_volume, segmenter, slice_shape, slice_size, subvolume_fullfnames, volume_slice_indexes_in_subvolume, subvolume_slice_labels, evaluation, checkpoint, evaluation_results_file, max_processes, max_batch_memory, listener
     ):
     '''Evaluating stage.'''
+    listener.log_output('> Label sizes:')
+    for (i, volume_slice_index) in enumerate(volume_slice_indexes_in_subvolume):
+        listener.log_output('>> Subvolume slice {} (volume slice {})'.format(i, volume_slice_index))
+        for (label_index, label) in enumerate(segmenter.classifier.labels):
+            listener.log_output('>>> {}: {}'.format(label, np.sum(subvolume_slice_labels[i*slice_size:(i+1)*slice_size] == label_index)))
+    
+    listener.log_output('> Evaluating')
     output_result = dict()
     with checkpoint.apply('create_results_file') as skip:
         if skip is not None:
-            listener.log_output('> Continuing use of checkpointed results file')
-            listener.log_output('-')
+            listener.log_output('>> Continuing use of checkpointed results file')
             raise skip
         evaluation_results_file.create(segmenter.classifier.labels)
     best_block_shape = arrayprocs.get_optimal_block_size(
@@ -134,22 +140,14 @@ def _evaluating(
         max_batch_memory,
         implicit_depth=True
         )
+    start = checkpoint.get_next_to_process('segment_prog')
+    listener.current_progress_start(start, len(subvolume_fullfnames))
     for (i, (subvolume_fullfname, volume_slice_index)) in enumerate(
             zip(subvolume_fullfnames, volume_slice_indexes_in_subvolume)
         ):
-        listener.log_output('> Evaluating {} ({:.2%})'.format(
-            subvolume_fullfname, (i+1)/len(subvolume_fullfnames)
-            ))
-        
-        listener.log_output('>> Label sizes:')
-        for (label_index, label) in enumerate(segmenter.classifier.labels):
-            listener.log_output('>>> {}: {}'.format(label, np.sum(subvolume_slice_labels[i*slice_size:(i+1)*slice_size] == label_index)))
-        
-        with checkpoint.apply('evaluating_{}'.format(volume_slice_index)) as skip:
-            if skip is not None:
-                listener.log_output('>> Skipped as was found checkpointed')
-                listener.log_output('-')
-                raise skip
+        if i < start:
+            continue
+        with checkpoint.apply('evaluation_prog') as skip:
             with times.Timer() as sub_timer:
                 with times.Timer() as sub_timer_featuriser:
                     slice_features = segmenter.featuriser.featurise_slice(
@@ -166,12 +164,6 @@ def _evaluating(
                 slice_labels = subvolume_slice_labels[i*slice_size:(i+1)*slice_size]
                 
                 (ious, global_iou) = evaluation.evaluate(prediction, slice_labels)
-                listener.log_output('>> Results:')
-                for (label, iou) in zip(segmenter.classifier.labels, ious):
-                    if iou is not None:
-                        listener.log_output('>>> {}: {:.3%}'.format(label, iou))
-                if global_iou is not None:
-                    listener.log_output('>>> global: {:.3%}'.format(global_iou))
                 evaluation_results_file.add(
                     subvolume_fullfname,
                     ious,
@@ -182,14 +174,9 @@ def _evaluating(
                 output_result[subvolume_fullfname] = ious
 
             evaluation_results_file.conclude()
-            listener.log_output('   Duration: {} (featurisation: {}, ' \
-                'classification: {})'.format(
-                    times.get_readable_duration(sub_timer.duration),
-                    times.get_readable_duration(sub_timer_featuriser.duration),
-                    times.get_readable_duration(sub_timer_classifier.duration)
-                    ))
-            listener.log_output('-')
-            
+        listener.current_progress_update(i+1)
+    listener.current_progress_end()
+        
     return (output_result,)
 
 

@@ -227,6 +227,7 @@ def _tuning(
         if skip is not None:
             raise skip
         start = checkpoint.get_next_to_process('tune_prog')
+        listener.current_progress_start(start, config_data['tuning']['num_iterations'])
         for iteration in range(1, config_data['tuning']['num_iterations'] + 1):
             evaluation.reset()
             while True:
@@ -235,15 +236,10 @@ def _tuning(
                 if params not in parameters_visited:
                     parameters_visited.add(params)
                     break
-            if iteration < start:
+            if iteration - 1 < start:
                 continue
             with checkpoint.apply('tune_prog'):
-                if iteration > 1:
-                    listener.log_output('-')
                 with times.Timer() as sub_timer:
-                    listener.log_output('> Iteration {}'.format(iteration))
-                    listener.log_output('>> {}'.format(json.dumps(segmenter.get_config())))
-                    
                     best_block_shape = arrayprocs.get_optimal_block_size(
                         slice_shape,
                         full_volume.get_dtype(),
@@ -330,13 +326,8 @@ def _tuning(
                     result = dict()
                     max_memory_mb = max(memory_profiler.memory_usage((memory_scope, (result,)), interval=0))
                     
-                    listener.log_output('>> Results:')
                     ious = evaluation.get_global_result_per_label()
                     global_iou = evaluation.get_global_result()
-                    for (label, iou) in zip(segmenter.classifier.labels, ious):
-                        if iou is not None:
-                            listener.log_output('>>> {}: {:.3%}'.format(label, iou))
-                    listener.log_output('>>> global: {:.3%}'.format(global_iou))
                     tuning_results_file.add(
                         segmenter.get_config(),
                         result['featuriser_time'],
@@ -344,7 +335,8 @@ def _tuning(
                         max_memory_mb,
                         extra_col_values
                         )
-                listener.log_output('> Duration: {}'.format(times.get_readable_duration(sub_timer.duration)))
+            listener.current_progress_update(iteration)
+        listener.current_progress_end()
     
     return ()
 
