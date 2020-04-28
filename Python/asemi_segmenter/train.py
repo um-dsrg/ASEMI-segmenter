@@ -129,6 +129,7 @@ def _constructing_trainingset(
             subvolume_slice_labels,
             train_sample_size_per_label,
             len(segmenter.classifier.labels),
+            volume_slice_indexes_in_subvolume,
             slice_shape,
             seed=0
             )

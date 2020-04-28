@@ -190,6 +190,7 @@ def _tuning(
             train_subvolume_slice_labels,
             train_sample_size_per_label,
             len(segmenter.classifier.labels),
+            volume_slice_indexes_in_train_subvolume,
             slice_shape,
             seed=0
             )
@@ -205,6 +206,7 @@ def _tuning(
             eval_subvolume_slice_labels,
             eval_sample_size_per_label,
             len(segmenter.classifier.labels),
+            volume_slice_indexes_in_eval_subvolume,
             slice_shape,
             skip=0 if not eval_same_as_train else train_sample_size_per_label,
             seed=0
