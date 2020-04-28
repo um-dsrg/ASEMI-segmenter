@@ -18,10 +18,11 @@ from asemi_segmenter.lib import volumes
 #########################################
 def _loading_data(
         model, preproc_volume_fullfname, subvolume_dir, label_dirs, results_fullfname,
-        checkpoint_fullfname, restart_checkpoint, listener
+        checkpoint_fullfname, restart_checkpoint, max_processes, max_batch_memory, listener
     ):
     '''Loading data stage.'''
-    listener.log_output('> Full volume data file')
+    listener.log_output('> Volume')
+    listener.log_output('>> {}'.format(preproc_volume_fullfname))
     validations.check_filename(preproc_volume_fullfname, '.hdf', True)
     full_volume = volumes.FullVolume(preproc_volume_fullfname)
     full_volume.load()
@@ -31,8 +32,9 @@ def _loading_data(
     slice_shape = full_volume.get_shape()[1:]
     slice_size = slice_shape[0]*slice_shape[1]
 
-    listener.log_output('> Model file')
+    listener.log_output('> Model')
     if isinstance(model, str):
+        listener.log_output('>> {}'.format(model))
         validations.check_filename(model, '.pkl', True)
         with open(model, 'rb') as f:
             pickled_data = pickle.load(f)
@@ -40,30 +42,33 @@ def _loading_data(
         pickled_data = model
     segmenter = segmenters.load_segmenter_from_pickle_data(pickled_data, full_volume, allow_random=False)
 
+    listener.log_output('> Subvolume')
+    listener.log_output('>> {}'.format(subvolume_dir))
+    subvolume_data = volumes.load_volume_dir(subvolume_dir)
+    subvolume_fullfnames = subvolume_data.fullfnames
+    
     listener.log_output('> Labels')
     labels_data = []
-    for (i, label_dir) in enumerate(label_dirs):
-        listener.log_output('>> Loading label {} directory'.format(i+1))
+    for label_dir in label_dirs:
+        listener.log_output('>> {}'.format(label_dir))
         label_data = volumes.load_label_dir(label_dir)
         labels_data.append(label_data)
         listener.log_output('>>> {}'.format(label_data.name))
     evaluation_labels = sorted(label_data.name for label_data in labels_data)
     if evaluation_labels != segmenter.classifier.labels:
         raise ValueError('Labels in evaluation directory do not match labels in model')
-
-    listener.log_output('> Subvolume directory')
-    subvolume_data = volumes.load_volume_dir(subvolume_dir)
     validations.validate_annotation_data(full_volume, subvolume_data, labels_data)
-    subvolume_fullfnames = subvolume_data.fullfnames
     
-    listener.log_output('> Result file')
+    listener.log_output('> Result')
     if results_fullfname is not None:
+        listener.log_output('>> {}'.format(results_fullfname))
         validations.check_filename(results_fullfname, '.txt', False)
     evaluation = evaluations.IntersectionOverUnionEvaluation(len(segmenter.classifier.labels))
     evaluation_results_file = results.EvaluationResultsFile(results_fullfname, evaluation)
 
-    listener.log_output('> Checkpoint file')
+    listener.log_output('> Checkpoint')
     if checkpoint_fullfname is not None:
+        listener.log_output('>> {}'.format(checkpoint_fullfname))
         validations.check_filename(checkpoint_fullfname, '.json', False)
     checkpoint = checkpoints.CheckpointManager(
         'evaluate',
@@ -73,6 +78,10 @@ def _loading_data(
     
     listener.log_output('> Initialising')
     hash_function.init(slice_shape, seed=0)
+    
+    listener.log_output('> Other parameters:')
+    listener.log_output('>> max_processes: {}'.format(max_processes))
+    listener.log_output('>> max_batch_memory: {}GB'.format(max_batch_memory))
     
     return (full_volume, slice_shape, slice_size, segmenter, subvolume_fullfnames, labels_data, hash_function, evaluation, evaluation_results_file, checkpoint)
     
@@ -121,7 +130,7 @@ def _evaluating(
     '''Evaluating stage.'''
     listener.log_output('> Label sizes:')
     for (i, volume_slice_index) in enumerate(volume_slice_indexes_in_subvolume):
-        listener.log_output('>> Subvolume slice {} (volume slice {})'.format(i, volume_slice_index))
+        listener.log_output('>> Subvolume slice #{} (volume slice #{})'.format(i + 1, volume_slice_index + 1))
         for (label_index, label) in enumerate(segmenter.classifier.labels):
             listener.log_output('>>> {}: {}'.format(label, np.sum(subvolume_slice_labels[i*slice_size:(i+1)*slice_size] == label_index)))
     
@@ -214,9 +223,9 @@ def main(
     :param float max_batch_memory: The maximum number of gigabytes to use between all processes.
     :param ProgressListener listener: The command's progress listener.
     :param bool debug_mode: Whether to show full error messages or just simple ones.
-    :return: If results_fullfname was None, returns the results as a dictionary of subvolume slice
-        paths mapped to their intersection-over-union scores.
-    :rtype: None or dict
+    :return: The results as a dictionary of subvolume slice paths mapped to their
+        intersection-over-union scores.
+    :rtype: dict
     '''
     full_volume = None
     try:
@@ -234,7 +243,8 @@ def main(
             with times.Timer() as timer:
                 (full_volume, slice_shape, slice_size, segmenter, subvolume_fullfnames, labels_data, hash_function, evaluation, evaluation_results_file, checkpoint) = _loading_data(
                     model, preproc_volume_fullfname, subvolume_dir, label_dirs, results_fullfname,
-                    checkpoint_fullfname, restart_checkpoint, listener
+                    checkpoint_fullfname, restart_checkpoint, max_processes, max_batch_memory,
+                    listener
                     )
             listener.log_output('Data loaded')
             listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
@@ -267,7 +277,6 @@ def main(
             listener.overall_progress_update(4, 'Evaluating')
             listener.log_output(times.get_timestamp())
             listener.log_output('Evaluating')
-            listener.log_output('-')
             with times.Timer() as timer:
                 (output_result,) = _evaluating(full_volume, segmenter, slice_shape, slice_size, subvolume_fullfnames, volume_slice_indexes_in_subvolume, subvolume_slice_labels, evaluation, checkpoint, evaluation_results_file, max_processes, max_batch_memory, listener)
             listener.log_output('Evaluated')
@@ -282,9 +291,7 @@ def main(
 
         listener.overall_progress_end()
 
-        if results_fullfname is None:
-            return output_result
-        return None
+        return output_result
     except Exception as ex:
         if debug_mode:
             raise

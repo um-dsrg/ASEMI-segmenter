@@ -15,17 +15,19 @@ from asemi_segmenter.lib import volumes
 #########################################
 def _loading_data(
         volume_dir, config, result_data_fullfname,
-        checkpoint_fullfname, restart_checkpoint,
+        checkpoint_fullfname, restart_checkpoint, max_processes, max_batch_memory,
         listener
     ):
     '''Loading data stage.'''
-    listener.log_output('> Volume directory')
+    listener.log_output('> Volume')
+    listener.log_output('>> {}'.format(volume_dir))
     volume_data = volumes.load_volume_dir(volume_dir)
     slice_shape = volume_data.shape
     volume_fullfnames = volume_data.fullfnames
 
-    listener.log_output('> Config file')
+    listener.log_output('> Config')
     if isinstance(config, str):
+        listener.log_output('>> {}'.format(config))
         validations.check_filename(config, '.json', True)
         with open(config, 'r', encoding='utf-8') as f:
             config_data = json.load(f)
@@ -35,12 +37,14 @@ def _loading_data(
     downsample_filter = downscales.load_downsamplekernel_from_config(config_data['downsample_filter'])
     hash_function = hashfunctions.load_hashfunction_from_config(config_data['hash_function'])
     
-    listener.log_output('> Result data file')
+    listener.log_output('> Result')
+    listener.log_output('>> {}'.format(result_data_fullfname))
     validations.check_filename(result_data_fullfname, '.hdf', False)
     full_volume = volumes.FullVolume(result_data_fullfname)
 
     listener.log_output('> Checkpoint')
     if checkpoint_fullfname is not None:
+        listener.log_output('>> {}'.format(checkpoint_fullfname))
         validations.check_filename(checkpoint_fullfname, '.json', False)
     checkpoint = checkpoints.CheckpointManager(
         'preprocess',
@@ -50,6 +54,10 @@ def _loading_data(
 
     listener.log_output('> Initialising')
     hash_function.init(slice_shape, seed=0)
+    
+    listener.log_output('> Other parameters:')
+    listener.log_output('>> max_processes: {}'.format(max_processes))
+    listener.log_output('>> max_batch_memory: {}GB'.format(max_batch_memory))
     
     return (config_data, full_volume, volume_fullfnames, slice_shape, downsample_filter, hash_function, checkpoint)
 
@@ -208,7 +216,7 @@ def main(
             with times.Timer() as timer:
                 (config_data, full_volume, volume_fullfnames, slice_shape, downsample_filter, hash_function, checkpoint) = _loading_data(
                     volume_dir, config, result_data_fullfname,
-                    checkpoint_fullfname, restart_checkpoint,
+                    checkpoint_fullfname, restart_checkpoint, max_processes, max_batch_memory,
                     listener
                     )
             listener.log_output('Data loaded')

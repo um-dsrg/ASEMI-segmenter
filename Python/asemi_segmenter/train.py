@@ -18,11 +18,12 @@ from asemi_segmenter.lib import volumes
 def _loading_data(
         preproc_volume_fullfname, subvolume_dir, label_dirs, config,
         result_model_fullfname, trainingset_file_fullfname,
-        checkpoint_fullfname, restart_checkpoint,
+        checkpoint_fullfname, restart_checkpoint, max_processes, max_batch_memory,
         listener
     ):
     '''Loading data stage.'''
-    listener.log_output('> Full volume data file')
+    listener.log_output('> Volume')
+    listener.log_output('>> {}'.format(preproc_volume_fullfname))
     validations.check_filename(preproc_volume_fullfname, '.hdf', False)
     full_volume = volumes.FullVolume(preproc_volume_fullfname)
     full_volume.load()
@@ -32,22 +33,24 @@ def _loading_data(
     slice_shape = full_volume.get_shape()[1:]
     slice_size = slice_shape[0]*slice_shape[1]
     
-    listener.log_output('> Subvolume directory')
+    listener.log_output('> Subvolume')
+    listener.log_output('>> {}'.format(subvolume_dir))
     subvolume_data = volumes.load_volume_dir(subvolume_dir)
     subvolume_fullfnames = subvolume_data.fullfnames
 
     listener.log_output('> Labels')
     labels_data = []
-    for (i, label_dir) in enumerate(label_dirs):
-        listener.log_output('>> Loading label {} directory'.format(i+1))
+    for label_dir in label_dirs:
+        listener.log_output('>> {}'.format(label_dir))
         label_data = volumes.load_label_dir(label_dir)
         labels_data.append(label_data)
         listener.log_output('>>> {}'.format(label_data.name))
     validations.validate_annotation_data(full_volume, subvolume_data, labels_data)
     labels = sorted(label_data.name for label_data in labels_data)
 
-    listener.log_output('> Config file')
+    listener.log_output('> Config')
     if isinstance(config, str):
+        listener.log_output('>> {}'.format(config))
         validations.check_filename(config, '.json', True)
         with open(config, 'r', encoding='utf-8') as f:
             config_data = json.load(f)
@@ -55,17 +58,20 @@ def _loading_data(
         config_data = config
     segmenter = segmenters.Segmenter(labels, full_volume, config_data, allow_random=False)
 
-    listener.log_output('> Result model file')
+    listener.log_output('> Result')
     if result_model_fullfname is not None:
+        listener.log_output('>> {}'.format(result_model_fullfname))
         validations.check_filename(result_model_fullfname, '.pkl', False)
     
-    listener.log_output('> Training set file')
+    listener.log_output('> Training set')
     if trainingset_file_fullfname is not None:
+        listener.log_output('>> {}'.format(trainingset_file_fullfname))
         validations.check_filename(trainingset_file_fullfname, '.hdf', False)
     training_set = trainingsets.TrainingSet(trainingset_file_fullfname)
 
-    listener.log_output('> Checkpoint file')
+    listener.log_output('> Checkpoint')
     if checkpoint_fullfname is not None:
+        listener.log_output('>> {}'.format(checkpoint_fullfname))
         validations.check_filename(checkpoint_fullfname, '.json', False)
     checkpoint = checkpoints.CheckpointManager(
         'train',
@@ -75,6 +81,10 @@ def _loading_data(
         
     listener.log_output('> Initialising')
     hash_function.init(slice_shape, seed=0)
+    
+    listener.log_output('> Other parameters:')
+    listener.log_output('>> max_processes: {}'.format(max_processes))
+    listener.log_output('>> max_batch_memory: {}GB'.format(max_batch_memory))
     
     return (full_volume, subvolume_fullfnames, labels_data, slice_shape, slice_size, segmenter, training_set, hash_function, checkpoint)
 
@@ -223,11 +233,13 @@ def _training_segmenter(
 
 #########################################
 def _saving_model(
-        segmenter, result_model_fullfname
+        segmenter, result_model_fullfname, listener
     ):
     '''Saving model stage.'''
     if result_model_fullfname is not None:
         segmenter.save(result_model_fullfname)
+    else:
+        listener.log_output('Model not to be saved')
     
     return ()
 
@@ -267,9 +279,9 @@ def main(
     :param float max_batch_memory: The maximum number of gigabytes to use between all processes.
     :param ProgressListener listener: The command's progress listener.
     :param bool debug_mode: Whether to show full error messages or just simple ones.
-    :return: If result_model_fullfname was None, returns the trained model as a dictionary.
-        See user guide for description of the model dictionary.
-    :rtype: None or dict
+    :return: The trained model as a dictionary. See user guide for description of the
+        model dictionary.
+    :rtype: dict
     '''
     full_volume = None
     training_set = None
@@ -289,7 +301,7 @@ def main(
                 (full_volume, subvolume_fullfnames, labels_data, slice_shape, slice_size, segmenter, training_set, hash_function, checkpoint) = _loading_data(
                     preproc_volume_fullfname, subvolume_dir, label_dirs, config,
                     result_model_fullfname, trainingset_file_fullfname,
-                    checkpoint_fullfname, restart_checkpoint,
+                    checkpoint_fullfname, restart_checkpoint, max_processes, max_batch_memory,
                     listener
                     )
             listener.log_output('Data loaded')
@@ -346,7 +358,7 @@ def main(
             listener.log_output(times.get_timestamp())
             listener.log_output('Saving model')
             with times.Timer() as timer:
-                () = _saving_model(segmenter, result_model_fullfname)
+                () = _saving_model(segmenter, result_model_fullfname, listener)
             listener.log_output('Model saved')
             listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
             listener.log_output('')
@@ -359,9 +371,7 @@ def main(
 
         listener.overall_progress_end()
 
-        if result_model_fullfname is None:
-            return segmenter
-        return None
+        return segmenter
     except Exception as ex:
         if debug_mode:
             raise

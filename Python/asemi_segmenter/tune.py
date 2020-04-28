@@ -22,10 +22,11 @@ def _loading_data(
         preproc_volume_fullfname, train_subvolume_dir, train_label_dirs,
         eval_subvolume_dir, eval_label_dirs, config,
         results_fullfname, checkpoint_fullfname, restart_checkpoint,
-        listener
+        max_processes, max_batch_memory, listener
     ):
     '''Loading data stage.'''
-    listener.log_output('> Full volume data file')
+    listener.log_output('> Volume')
+    listener.log_output('>> {}'.format(preproc_volume_fullfname))
     validations.check_filename(preproc_volume_fullfname, '.hdf', True)
     full_volume = volumes.FullVolume(preproc_volume_fullfname)
     full_volume.load()
@@ -35,7 +36,8 @@ def _loading_data(
     slice_shape = full_volume.get_shape()[1:]
     slice_size = slice_shape[0]*slice_shape[1]
     
-    listener.log_output('> Train subvolume directory')
+    listener.log_output('> Train subvolume')
+    listener.log_output('>> {}'.format(train_subvolume_dir))
     train_subvolume_data = volumes.load_volume_dir(train_subvolume_dir)
     train_subvolume_fullfnames = train_subvolume_data.fullfnames
 
@@ -49,11 +51,12 @@ def _loading_data(
     train_labels = sorted(label_data.name for label_data in train_labels_data)
     validations.validate_annotation_data(full_volume, train_subvolume_data, train_labels_data)
 
-    listener.log_output('> Eval subvolume directory')
+    listener.log_output('> Evaluation subvolume')
+    listener.log_output('>> {}'.format(eval_subvolume_dir))
     eval_subvolume_data = volumes.load_volume_dir(eval_subvolume_dir)
     eval_subvolume_fullfnames = eval_subvolume_data.fullfnames
 
-    listener.log_output('> Eval labels')
+    listener.log_output('> Evaluation labels')
     eval_labels_data = []
     for label_dir in eval_label_dirs:
         listener.log_output('>> {}'.format(label_dir))
@@ -63,14 +66,15 @@ def _loading_data(
     eval_labels = sorted(label_data.name for label_data in eval_labels_data)
     if train_labels != eval_labels:
         raise ValueError(
-            'Train labels and eval labels are not the same '
+            'Train labels and evaluation labels are not the same '
             '(train=[{}], eval=[{}]).'.format(train_labels, eval_labels)
             )
     labels = train_labels
     validations.validate_annotation_data(full_volume, eval_subvolume_data, eval_labels_data)
 
-    listener.log_output('> Config file')
+    listener.log_output('> Config')
     if isinstance(config, str):
+        listener.log_output('>> {}'.format(config))
         validations.check_filename(config, '.json', True)
         with open(config, 'r', encoding='utf-8') as f:
             config_data = json.load(f)
@@ -82,14 +86,16 @@ def _loading_data(
     if config_data['evaluation_set']['same_as_train'] and config_data['training_set']['sample_size_per_label'] == -1:
         raise ValueError('Evaluation set configuration is invalid as same_as_train can only be true if training_set sample_size_per_label is not -1.')
     
-    listener.log_output('> Result file')
+    listener.log_output('> Result')
     if results_fullfname is not None:
+        listener.log_output('>> {}'.format(results_fullfname))
         validations.check_filename(results_fullfname, '.txt', False)
     evaluation = evaluations.IntersectionOverUnionEvaluation(len(labels))
     tuning_results_file = results.TuningResultsFile(results_fullfname, evaluation)
 
     listener.log_output('> Checkpoint')
     if checkpoint_fullfname is not None:
+        listener.log_output('>> {}'.format(checkpoint_fullfname))
         validations.check_filename(checkpoint_fullfname, '.json', False)
     checkpoint = checkpoints.CheckpointManager(
         'tune',
@@ -110,6 +116,10 @@ def _loading_data(
         )
     hash_function.init(slice_shape, seed=0)
     training_set = trainingsets.TrainingSet(None)
+    
+    listener.log_output('> Other parameters:')
+    listener.log_output('>> max_processes: {}'.format(max_processes))
+    listener.log_output('>> max_batch_memory: {}GB'.format(max_batch_memory))
     
     return (config_data, full_volume, slice_shape, slice_size, segmenter, train_subvolume_fullfnames, train_labels_data, eval_subvolume_fullfnames, eval_labels_data, training_set, hash_function, evaluation, tuning_results_file, checkpoint)
     
@@ -153,7 +163,7 @@ def _hashing_eval_subvolume_slices(
     volume_slice_indexes_in_eval_subvolume = volumes.get_volume_slice_indexes_in_subvolume(
         full_volume.get_hashes_array()[:], eval_subvolume_hashes  #Load the hashes eagerly.
         )
-    listener.log_output('> Eval subvolume to volume file name mapping found:')
+    listener.log_output('> Evaluation subvolume to volume file name mapping found:')
     for (subvolume_index, volume_index) in enumerate(
             volume_slice_indexes_in_eval_subvolume
         ):
@@ -200,7 +210,7 @@ def _tuning(
         for (label_index, label) in enumerate(segmenter.classifier.labels):
             listener.log_output('>> {}: {}'.format(label, np.sum(train_subvolume_slice_labels == label_index)))
     
-    listener.log_output('> Eval label sizes:')
+    listener.log_output('> Evaluation label sizes:')
     if eval_sample_size_per_label != -1:
         (eval_voxel_indexes, eval_label_positions) = trainingsets.sample_voxels(
             eval_subvolume_slice_labels,
@@ -401,8 +411,7 @@ def main(
                 (config_data, full_volume, slice_shape, slice_size, segmenter, train_subvolume_fullfnames, train_labels_data, eval_subvolume_fullfnames, eval_labels_data, training_set, hash_function, evaluation, tuning_results_file, checkpoint) = _loading_data(
                     preproc_volume_fullfname, train_subvolume_dir, train_label_dirs,
                     eval_subvolume_dir, eval_label_dirs, config,
-                    results_fullfname, checkpoint_fullfname, restart_checkpoint,
-                    listener
+                    results_fullfname, checkpoint_fullfname, restart_checkpoint, max_processes, max_batch_memory, listener
                     )
             listener.log_output('Input data')
             listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
@@ -421,9 +430,9 @@ def main(
 
             ###################
             
-            listener.overall_progress_update(3, 'Hashing eval subvolume slices')
+            listener.overall_progress_update(3, 'Hashing Evaluation subvolume slices')
             listener.log_output(times.get_timestamp())
-            listener.log_output('Hashing eval subvolume slices')
+            listener.log_output('Hashing Evaluation subvolume slices')
             with times.Timer() as timer:
                 (volume_slice_indexes_in_eval_subvolume,) = _hashing_eval_subvolume_slices(full_volume, eval_subvolume_fullfnames, hash_function, listener)
             listener.log_output('Slices hashed')

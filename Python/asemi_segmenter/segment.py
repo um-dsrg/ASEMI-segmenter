@@ -19,19 +19,21 @@ from asemi_segmenter.lib import volumes
 #########################################
 def _loading_data(
         model, preproc_volume_fullfname, config, results_dir,
-        checkpoint_fullfname, restart_checkpoint,
+        checkpoint_fullfname, restart_checkpoint, max_processes, max_batch_memory,
         listener
     ):
     '''Loading data stage.'''
-    listener.log_output('> Full volume data file')
+    listener.log_output('> Volume')
+    listener.log_output('>> {}'.format(preproc_volume_fullfname))
     validations.check_filename(preproc_volume_fullfname, '.hdf', True)
     full_volume = volumes.FullVolume(preproc_volume_fullfname)
     full_volume.load()
     validations.validate_json_with_schema_file(full_volume.get_config(), 'preprocess.json')
     slice_shape = full_volume.get_shape()[1:]
 
-    listener.log_output('> Model file')
+    listener.log_output('> Model')
     if isinstance(model, str):
+        listener.log_output('>> {}'.format(model))
         validations.check_filename(model, '.pkl', True)
         with open(model, 'rb') as f:
             pickled_data = pickle.load(f)
@@ -39,8 +41,9 @@ def _loading_data(
         pickled_data = model
     segmenter = segmenters.load_segmenter_from_pickle_data(pickled_data, full_volume, allow_random=False)
 
-    listener.log_output('> Config file')
+    listener.log_output('> Config')
     if isinstance(config, str):
+        listener.log_output('>> {}'.format(config))
         validations.check_filename(config, '.json', True)
         with open(config, 'r', encoding='utf-8') as f:
             config_data = json.load(f)
@@ -48,11 +51,13 @@ def _loading_data(
         config_data = config
     soft_segmentation = config_data['soft_segmentation'] == 'yes'
 
-    listener.log_output('> Results directory')
+    listener.log_output('> Result')
+    listener.log_output('>> {}'.format(results_dir))
     validations.check_directory(results_dir)
 
-    listener.log_output('> Checkpoint file')
+    listener.log_output('> Checkpoint')
     if checkpoint_fullfname is not None:
+        listener.log_output('>> {}'.format(checkpoint_fullfname))
         validations.check_filename(checkpoint_fullfname)
     checkpoint = checkpoints.CheckpointManager(
         'segment',
@@ -61,6 +66,10 @@ def _loading_data(
         )
 
     listener.log_output('> Initialising')
+    
+    listener.log_output('> Other parameters:')
+    listener.log_output('>> max_processes: {}'.format(max_processes))
+    listener.log_output('>> max_batch_memory: {}GB'.format(max_batch_memory))
     
     return (soft_segmentation, full_volume, slice_shape, segmenter, checkpoint)
     
@@ -171,7 +180,7 @@ def main(
             with times.Timer() as timer:
                 (soft_segmentation, full_volume, slice_shape, segmenter, checkpoint) = _loading_data(
                     model, preproc_volume_fullfname, config, results_dir,
-                    checkpoint_fullfname, restart_checkpoint,
+                    checkpoint_fullfname, restart_checkpoint, max_processes, max_batch_memory,
                     listener
                     )
             listener.log_output('Data loaded')
