@@ -10,7 +10,7 @@ import numpy as np
 import argparse
 import time
 from datetime import timedelta
-from multiprocessing import Process, Queue
+import multiprocessing as mp
 
 # image read/write functions
 
@@ -82,7 +82,7 @@ def worker(queue_in, queue_out, soft):
       # mark as done
       queue_out.put(i)
    # tell user we're done
-   print("Process %d exiting" % Process.pid)
+   print("Process %d exiting" % mp.current_process().pid)
    return
 
 ## main program
@@ -110,10 +110,10 @@ def main():
    start = time.time()
 
    # set up queues and spawn a pool of workers
-   queue_in = Queue()
-   queue_out = Queue()
+   queue_in = mp.Queue()
+   queue_out = mp.Queue()
    for i in range(args.processes):
-      Process(target=worker, args=(queue_in, queue_out, args.soft)).start()
+      mp.Process(target=worker, args=(queue_in, queue_out, args.soft)).start()
 
    # iterate through each slice
    for i, images in enumerate(zip(*filestack)):
