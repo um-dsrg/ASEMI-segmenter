@@ -37,9 +37,9 @@ def _loading_data(
         validations.check_filename(model, '.pkl', True)
         with open(model, 'rb') as f:
             pickled_data = pickle.load(f)
+        segmenter = segmenters.load_segmenter_from_pickle_data(pickled_data, full_volume, allow_random=False)
     else:
-        pickled_data = model
-    segmenter = segmenters.load_segmenter_from_pickle_data(pickled_data, full_volume, allow_random=False)
+        segmenter = model
 
     listener.log_output('> Config')
     if isinstance(config, str):
@@ -162,9 +162,8 @@ def main(
     '''
     Segment a preprocessed volume using a trained classifier model.
 
-    :param model: Full file name (with path) to saved pickle file or dictionary with model
-        directly.
-    :type model: str or dict
+    :param model: Full file name (with path) to saved model pickle file or Segmenter object.
+    :type model: str or Segmenter
     :param str preproc_volume_fullfname: The full file name (with path) to the preprocessed
         volume HDF file.
     :param config: The configuration to use when segmenting (can be either a path to a
