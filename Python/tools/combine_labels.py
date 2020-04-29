@@ -47,7 +47,7 @@ def imread(infile):
 
 # method combining a set of individual-label images to a multi-ROI image
 
-def combine_labels(input_files, output_file):
+def combine_labels(input_files, output_file, soft):
    # read input images
    stack = [imread(infile).squeeze() for infile in input_files]
    # check for correct size and format
@@ -57,9 +57,13 @@ def combine_labels(input_files, output_file):
    stack = [np.zeros(stack[0].shape, dtype=np.uint8)] + stack
    # rearrange format and check internal consistency
    stack = np.array(stack)
-   assert np.logical_or(stack==0, stack==255).all() # binary masks
-   stack = stack // 255
-   assert (stack.sum(axis=0)<=1).all() # unique masks (not necessarily complete)
+   if soft:
+      stack = stack / 255.
+      assert (stack.sum(axis=0)<=1).all() # probabilities sum to one or less
+   else:
+      assert np.logical_or(stack==0, stack==255).all() # binary masks
+      stack = stack // 255
+      assert (stack.sum(axis=0)<=1).all() # unique masks (not necessarily complete)
    # convert to multi-ROI representation
    I = stack.argmax(axis=0)
    # write output image
@@ -75,6 +79,8 @@ def main():
                      help="input folders with single-label image stacks")
    parser.add_argument("-o", "--output", required=True,
                      help="output folder for multi-ROI image stack")
+   parser.add_argument("-s", "--soft", action="store_true", default=False,
+                     help="input images contain probabilities, not binary masks")
    args = parser.parse_args()
 
    # get lists of files in each folder
@@ -87,7 +93,7 @@ def main():
    for i, images in enumerate(zip(*filestack)):
       print("Processing %d of %d..." % (i+1, N), end='')
       paths = [os.path.join(a,b) for a,b in zip(args.input, images)]
-      combine_labels(paths, os.path.join(args.output, "%05d.tiff" % i))
+      combine_labels(paths, os.path.join(args.output, "%05d.tiff" % i), args.soft)
       print("ETA %s" % str(timedelta(seconds=(time.time()-start)*(N-i-1)/(i+1))))
    print("Time taken: %s" % str(timedelta(seconds=time.time()-start)))
    return
