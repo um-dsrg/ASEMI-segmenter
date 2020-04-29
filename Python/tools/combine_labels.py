@@ -8,6 +8,8 @@ import os
 import PIL.Image
 import numpy as np
 import argparse
+import time
+from datetime import timedelta
 
 # image read/write functions
 
@@ -81,10 +83,13 @@ def main():
    if not all(len(x)==N for x in filestack):
       print("Warning: not all folders contain an equal number of files")
    # iterate through each slice
+   start = time.time()
    for i, images in enumerate(zip(*filestack)):
-      print("Processing %d of %d..." % (i+1, N))
+      print("Processing %d of %d..." % (i+1, N), end='')
       paths = [os.path.join(a,b) for a,b in zip(args.input, images)]
       combine_labels(paths, os.path.join(args.output, "%05d.tiff" % i))
+      print("ETA %s" % str(timedelta(seconds=(time.time()-start)*(N-i-1)/(i+1))))
+   print("Time taken: %s" % str(timedelta(seconds=time.time()-start)))
    return
 
 # main entry point
