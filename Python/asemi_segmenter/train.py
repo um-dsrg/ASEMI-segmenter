@@ -18,7 +18,7 @@ from asemi_segmenter.lib import volumes
 def _loading_data(
         preproc_volume_fullfname, subvolume_dir, label_dirs, config,
         result_model_fullfname, trainingset_file_fullfname,
-        checkpoint_fullfname, restart_checkpoint, max_processes, max_batch_memory,
+        checkpoint_fullfname, checkpoint_init, max_processes, max_batch_memory,
         listener
     ):
     '''Loading data stage.'''
@@ -76,7 +76,7 @@ def _loading_data(
     checkpoint = checkpoints.CheckpointManager(
         'train',
         checkpoint_fullfname,
-        initial_content=dict() if restart_checkpoint else None
+        initial_content=checkpoint_init
         )
         
     listener.log_output('> Initialising')
@@ -248,7 +248,7 @@ def _saving_model(
 def main(
         preproc_volume_fullfname, subvolume_dir, label_dirs, config,
         result_model_fullfname, trainingset_file_fullfname,
-        checkpoint_fullfname, restart_checkpoint,
+        checkpoint_fullfname, checkpoint_init,
         max_processes, max_batch_memory, listener=ProgressListener(),
         debug_mode=False
     ):
@@ -274,7 +274,10 @@ def main(
     :param checkpoint_fullfname: Full file name (with path) to checkpoint pickle. If None then no
         checkpointing is used.
     :type checkpoint_fullfname: str or None
-    :param bool restart_checkpoint: Whether to ignore checkpoint and start process from beginning.
+    :param dict checkpoint_init: The checkpoint data to initialise the checkpoint with,
+        including the checkpoint file (only data about this particular command will be
+        overwritten). If None then checkpoint is checkpoint file content if file exists,
+        otherwise the checkpoint will be empty. To restart checkpoint set to empty dictionary.
     :param int max_processes: The maximum number of processes to use concurrently.
     :param float max_batch_memory: The maximum number of gigabytes to use between all processes.
     :param ProgressListener listener: The command's progress listener.
@@ -301,7 +304,7 @@ def main(
                 (full_volume, subvolume_fullfnames, labels_data, slice_shape, slice_size, segmenter, training_set, hash_function, checkpoint) = _loading_data(
                     preproc_volume_fullfname, subvolume_dir, label_dirs, config,
                     result_model_fullfname, trainingset_file_fullfname,
-                    checkpoint_fullfname, restart_checkpoint, max_processes, max_batch_memory,
+                    checkpoint_fullfname, checkpoint_init, max_processes, max_batch_memory,
                     listener
                     )
             listener.log_output('Data loaded')

@@ -79,7 +79,7 @@ if __name__ == '__main__':
             config=args.config_fullfname,
             result_data_fullfname=args.result_data_fullfname,
             checkpoint_fullfname=args.checkpoint_fullfname,
-            restart_checkpoint=args.restart_checkpoint == 'yes',
+            checkpoint_init=dict() if args.restart_checkpoint == 'yes' else None,
             max_processes=arrayprocs.get_num_processes(args.max_processes),
             max_batch_memory=(
                 args.max_batch_memory

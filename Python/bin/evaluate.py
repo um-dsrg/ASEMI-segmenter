@@ -94,7 +94,7 @@ if __name__ == '__main__':
             label_dirs=args.label_dirs,
             results_fullfname=args.results_fullfname,
             checkpoint_fullfname=args.checkpoint_fullfname,
-            restart_checkpoint=args.restart_checkpoint == 'yes',
+            checkpoint_init=dict() if args.restart_checkpoint == 'yes' else None,
             max_processes=arrayprocs.get_num_processes(args.max_processes),
             max_batch_memory=(
                 args.max_batch_memory
