@@ -82,7 +82,10 @@ def _segmenting(
     ):
     '''Segmenting stage.'''
     if slice_indexes is None:
-        slice_indexes = range(full_volume.get_shape()[0])
+        num_slices = full_volume.get_shape()[0]
+        slice_indexes = range(num_slices)
+    else:
+        num_slices = len(slice_indexes)
     
     if config_data['as_masks']:
         for label in segmenter.classifier.labels:
@@ -111,7 +114,7 @@ def _segmenting(
         else:
             raise NotImplementedError('Number of bits not implemented.')
         if not config_data['as_masks']:
-            segmentation = segmentation + 1
+            output = output + 1
         output = output.reshape(slice_shape)
         
         images.save_image(
@@ -129,7 +132,7 @@ def _segmenting(
             )
 
     start = checkpoint.get_next_to_process('segment_prog')
-    listener.current_progress_start(start, full_volume.get_shape()[0])
+    listener.current_progress_start(start, num_slices)
     for volume_slice_index in slice_indexes:
         if volume_slice_index < start:
             continue
