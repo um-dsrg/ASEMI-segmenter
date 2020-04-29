@@ -59,7 +59,8 @@ def combine_labels(input_files, output_file, soft):
    stack = np.array(stack)
    if soft:
       stack = stack / 255.
-      assert (stack.sum(axis=0)<=1).all() # probabilities sum to one or less
+      if not (stack.sum(axis=0)<=1.).all():
+         print("Warning: probabilities sum to %f" % stack.sum(axis=0).max())
    else:
       assert np.logical_or(stack==0, stack==255).all() # binary masks
       stack = stack // 255
