@@ -9,7 +9,7 @@ class CheckpointManager(object):
     '''Checkpoint manager keep track of which stages in a process are complete.'''
 
     #########################################
-    def __init__(self, this_command, checkpoint_fullfname, restart_checkpoint=False):
+    def __init__(self, this_command, checkpoint_fullfname, initial_content=None):
         '''
         Create a new checkpoint manager.
 
@@ -18,20 +18,24 @@ class CheckpointManager(object):
         :param checkpoint_fullfname: The full file name (with path) of the checkpoint file. If
             None then the checkpoint state is not persisted.
         :type checkpoint_fullfname: str or None
-        :param bool restart_checkpoint: Whether to ignore the saved checkpoint and start over.
+        :param dict initial_content: The checkpoint data to initialise the checkpoint with,
+            even if the checkpoint file already contains data. This is only the checkpoint
+            for the command in question, not the entire checkpoint file content. If None then
+            the checkpoint will either be empty or the content of the checkpoint file if it
+            exists. Can be used to reset the checkpoint of the command by passing in an empty
+            dictionary.
         '''
         self.this_command = this_command
         self.checkpoint_fullfname = checkpoint_fullfname
         self.checkpoints_ready = dict()
+        if self.checkpoint_fullfname is not None and files.fexists(self.checkpoint_fullfname):
+            with open(self.checkpoint_fullfname, 'r', encoding='utf-8') as f:
+                self.checkpoints_ready = json.load(f)
+        if initial_content is not None:
+            self.checkpoints_ready[this_command] = initial_content
         if self.checkpoint_fullfname is not None:
-            if files.fexists(self.checkpoint_fullfname):
-                with open(self.checkpoint_fullfname, 'r', encoding='utf-8') as f:
-                    self.checkpoints_ready = json.load(f)
-                if restart_checkpoint and this_command in self.checkpoints_ready:
-                    self.checkpoints_ready.pop(this_command)
-            else:
-                with open(self.checkpoint_fullfname, 'w', encoding='utf-8') as f:
-                    json.dump(self.checkpoints_ready, f, indent='\t')
+            with open(self.checkpoint_fullfname, 'w', encoding='utf-8') as f:
+                json.dump(self.checkpoints_ready, f, indent='\t')
 
     #########################################
     def get_next_to_process(self, this_checkpoint):

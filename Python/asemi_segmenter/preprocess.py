@@ -49,7 +49,7 @@ def _loading_data(
     checkpoint = checkpoints.CheckpointManager(
         'preprocess',
         checkpoint_fullfname,
-        restart_checkpoint
+        initial_content=dict() if restart_checkpoint else None
         )
 
     listener.log_output('> Initialising')

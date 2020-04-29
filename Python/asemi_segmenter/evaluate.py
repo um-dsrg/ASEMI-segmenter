@@ -73,7 +73,7 @@ def _loading_data(
     checkpoint = checkpoints.CheckpointManager(
         'evaluate',
         checkpoint_fullfname,
-        restart_checkpoint
+        initial_content=dict() if restart_checkpoint else None
         )
     
     listener.log_output('> Initialising')
@@ -149,7 +149,7 @@ def _evaluating(
         max_batch_memory,
         implicit_depth=True
         )
-    start = checkpoint.get_next_to_process('segment_prog')
+    start = checkpoint.get_next_to_process('evaluation_prog')
     listener.current_progress_start(start, len(subvolume_fullfnames))
     for (i, (subvolume_fullfname, volume_slice_index)) in enumerate(
             zip(subvolume_fullfnames, volume_slice_indexes_in_subvolume)

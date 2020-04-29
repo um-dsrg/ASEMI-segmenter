@@ -64,7 +64,7 @@ def _loading_data(
     checkpoint = checkpoints.CheckpointManager(
         'segment',
         checkpoint_fullfname,
-        restart_checkpoint
+        initial_content=dict() if restart_checkpoint else None
         )
 
     listener.log_output('> Initialising')
