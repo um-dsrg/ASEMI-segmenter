@@ -51,6 +51,8 @@ def combine_labels(input_files, output_file):
    # check for correct size and format
    assert all(len(im.shape) == 2 for im in stack) # single channel
    assert all(im.shape == stack[0].shape for im in stack) # same size
+   # insert null label
+   stack = [np.zeros(stack[0].shape, dtype=np.uint8)] + stack
    # rearrange format and check internal consistency
    stack = np.array(stack)
    assert np.logical_or(stack==0, stack==255).all() # binary masks
