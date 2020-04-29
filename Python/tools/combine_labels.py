@@ -10,6 +10,7 @@ import numpy as np
 import argparse
 import time
 from datetime import timedelta
+from multiprocessing import Process, Queue
 
 # image read/write functions
 
@@ -71,17 +72,32 @@ def combine_labels(input_files, output_file, soft):
    imwrite(I.astype(np.uint8), output_file)
    return
 
+# worker thread
+
+def worker(queue_in, queue_out, soft):
+   # iterate through slices to process
+   for i, input_files, output_file in iter(queue_in.get, None):
+      # do the work
+      combine_labels(input_files, output_file, soft)
+      # mark as done
+      queue_out.put(i)
+   # tell user we're done
+   print("Process %d exiting" % Process.pid)
+   return
+
 ## main program
 
 def main():
    # interpret user options
    parser = argparse.ArgumentParser()
    parser.add_argument("-i", "--input", nargs='+', required=True,
-                     help="input folders with single-label image stacks")
+      help="input folders with single-label image stacks")
    parser.add_argument("-o", "--output", required=True,
-                     help="output folder for multi-ROI image stack")
+      help="output folder for multi-ROI image stack")
    parser.add_argument("-s", "--soft", action="store_true", default=False,
-                     help="input images contain probabilities, not binary masks")
+      help="input images contain probabilities, not binary masks")
+   parser.add_argument("-p", "--processes", type=int, default=1,
+      help="number of parallel processes")
    args = parser.parse_args()
 
    # get lists of files in each folder
@@ -89,13 +105,33 @@ def main():
    N = len(filestack[0])
    if not all(len(x)==N for x in filestack):
       print("Warning: not all folders contain an equal number of files")
-   # iterate through each slice
+
+   # main timer
    start = time.time()
+
+   # set up queues and spawn a pool of workers
+   queue_in = Queue()
+   queue_out = Queue()
+   for i in range(args.processes):
+      Process(target=worker, args=(queue_in, queue_out, args.soft)).start()
+
+   # iterate through each slice
    for i, images in enumerate(zip(*filestack)):
-      print("Processing %d of %d..." % (i+1, N), end='')
+      print("Scheduling %d of %d..." % (i+1, N))
       paths = [os.path.join(a,b) for a,b in zip(args.input, images)]
-      combine_labels(paths, os.path.join(args.output, "%05d.tiff" % i), args.soft)
-      print("ETA %s" % str(timedelta(seconds=(time.time()-start)*(N-i-1)/(i+1))))
+      queue_in.put((i, paths, os.path.join(args.output, "%05d.tiff" % i)))
+
+   # wait on completion
+   for i in range(N):
+      queue_out.get()
+      ETA = str(timedelta(seconds=(time.time()-start)*(N-i-1)/(i+1)))
+      print("Completed %d of %d, ETA %s" % (i+1, N, ETA))
+
+   # tell workers to stop
+   for i in range(args.processes):
+      queue_in.put(None)
+
+   # all done
    print("Time taken: %s" % str(timedelta(seconds=time.time()-start)))
    return
 
