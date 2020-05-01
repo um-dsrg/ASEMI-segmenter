@@ -16,7 +16,8 @@ python ../bin/tune.py \
         "tune/eval/labels/air" \
         "tune/eval/labels/terracotta" \
     --config_fullfname "tune_config.json" \
-    --results_fullfname "tune/results.txt" \
+    --search_results_fullfname "tune/results.txt" \
+    --best_result_fullfname "tune/result.json" \
     --max_processes 2 \
     --max_batch_memory 0.1
 

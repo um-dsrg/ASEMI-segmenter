@@ -36,10 +36,10 @@ class EvaluationResultsFile(object):
             with open(self.results_fullfname, 'w', encoding='utf-8') as f:
                 print(
                     'slice',
-                    *['{} {}'.format(label, self.evaluation.name) for label in labels],
                     'global {}'.format(self.evaluation.name),
                     'min {}'.format(self.evaluation.name),
                     'stddev {}'.format(self.evaluation.name),
+                    *['{} {}'.format(label, self.evaluation.name) for label in labels],
                     'featurisation duration (s)',
                     'prediction duration (s)',
                     sep='\t', file=f
@@ -60,16 +60,6 @@ class EvaluationResultsFile(object):
             with open(self.results_fullfname, 'a', encoding='utf-8') as f:
                 print(
                     slice_fullfname,
-                    *[
-                        (
-                            '{:.3{}}'.format(
-                                result,
-                                '%' if self.evaluation.is_percentage else 'f'
-                                )
-                            if result is not None else ''
-                            )
-                        for result in label_results
-                        ],
                     '{:.3{}}'.format(
                         global_result,
                         '%' if self.evaluation.is_percentage else 'f'
@@ -82,6 +72,16 @@ class EvaluationResultsFile(object):
                         np.std([r for r in label_results if r is not None]).tolist(),
                         '%' if self.evaluation.is_percentage else 'f'
                         ),
+                    *[
+                        (
+                            '{:.3{}}'.format(
+                                result,
+                                '%' if self.evaluation.is_percentage else 'f'
+                                )
+                            if result is not None else ''
+                            )
+                        for result in label_results
+                        ],
                     '{:.1f}'.format(featuriser_duration),
                     '{:.1f}'.format(classifier_duration),
                     sep='\t', file=f
@@ -99,16 +99,6 @@ class EvaluationResultsFile(object):
             with open(self.results_fullfname, 'a', encoding='utf-8') as f:
                 print(
                     'global',
-                    *[
-                        (
-                            '{:.3{}}'.format(
-                                result,
-                                '%' if self.evaluation.is_percentage else 'f'
-                                )
-                            if result is not None else ''
-                            )
-                        for result in self.evaluation.get_global_result_per_label()
-                        ],
                     '{:.3{}}'.format(
                         self.evaluation.get_global_result(),
                         '%' if self.evaluation.is_percentage else 'f'
@@ -121,6 +111,16 @@ class EvaluationResultsFile(object):
                         np.std([r for r in self.evaluation.get_global_result_per_label() if r is not None]).tolist(),
                         '%' if self.evaluation.is_percentage else 'f'
                         ),
+                    *[
+                        (
+                            '{:.3{}}'.format(
+                                result,
+                                '%' if self.evaluation.is_percentage else 'f'
+                                )
+                            if result is not None else ''
+                            )
+                        for result in self.evaluation.get_global_result_per_label()
+                        ],
                     '{:.1f}'.format(self.total_featuriser_duration/self.num_rows),
                     '{:.1f}'.format(self.total_classifier_duration/self.num_rows),
                     sep='\t', file=f
@@ -142,6 +142,8 @@ class TuningResultsFile(object):
         '''
         self.results_fullfname = results_fullfname
         self.evaluation = evaluation
+        self.best_config = None
+        self.best_globalscore = 0.0
 
     #########################################
     def create(self, labels, extra_col_names=[]):
@@ -155,10 +157,10 @@ class TuningResultsFile(object):
             with open(self.results_fullfname, 'w', encoding='utf-8') as f:
                 print(
                     'json config',
-                    *['{} {}'.format(label, self.evaluation.name) for label in labels],
                     'global {}'.format(self.evaluation.name),
                     'min {}'.format(self.evaluation.name),
                     'stddev {}'.format(self.evaluation.name),
+                    *['{} {}'.format(label, self.evaluation.name) for label in labels],
                     'featuriser duration (s)',
                     'classifier duration (s)',
                     'max memory (MB)',
@@ -166,6 +168,23 @@ class TuningResultsFile(object):
                     sep='\t', file=f
                     )
 
+    #########################################
+    def load(self):
+        '''Load existing results in order to get the best global evaluation score.'''
+        if self.results_fullfname is not None:
+            best_jsonconfig = None
+            with open(self.results_fullfname, 'r', encoding='utf-8') as f:
+                for line in f.read().strip().split('\n')[1:]:
+                    [json_config, global_score] = line.split('\t')[:2]
+                    if self.evaluation.is_percentage:
+                        global_score = global_score[:-1]
+                    global_score = float(global_score)
+                    if global_score > self.best_globalscore:
+                        self.best_globalscore = global_score
+                        best_jsonconfig = json_config
+            if best_jsonconfig is not None:
+                self.best_config = json.loads(best_jsonconfig)
+    
     #########################################
     def add(self, config, featuriser_duration, classifier_duration, max_memory_mb, extra_col_values=[]):
         '''
@@ -178,22 +197,17 @@ class TuningResultsFile(object):
             during featurisation and classification.
         :param list extra_col_values: A list of extra columns to add.
         '''
+        global_score = self.evaluation.get_global_result()
+        if global_score > self.best_globalscore:
+            self.best_globalscore = global_score
+            self.best_config = config
+        
         if self.results_fullfname is not None:
             with open(self.results_fullfname, 'a', encoding='utf-8') as f:
                 print(
                     json.dumps(config),
-                    *[
-                        (
-                            '{:.3{}}'.format(
-                                result,
-                                '%' if self.evaluation.is_percentage else 'f'
-                                )
-                            if result is not None else ''
-                            )
-                        for result in self.evaluation.get_global_result_per_label()
-                        ],
                     '{:.3{}}'.format(
-                        self.evaluation.get_global_result(),
+                        global_score,
                         '%' if self.evaluation.is_percentage else 'f'
                         ),
                     '{:.3{}}'.format(
@@ -204,6 +218,16 @@ class TuningResultsFile(object):
                         np.std([r for r in self.evaluation.get_global_result_per_label() if r is not None]).tolist(),
                         '%' if self.evaluation.is_percentage else 'f'
                         ),
+                    *[
+                        (
+                            '{:.3{}}'.format(
+                                result,
+                                '%' if self.evaluation.is_percentage else 'f'
+                                )
+                            if result is not None else ''
+                            )
+                        for result in self.evaluation.get_global_result_per_label()
+                        ],
                     '{:.1f}'.format(featuriser_duration),
                     '{:.1f}'.format(classifier_duration),
                     '{:.3f}'.format(max_memory_mb),

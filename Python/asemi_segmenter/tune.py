@@ -21,8 +21,8 @@ from asemi_segmenter.lib import volumes
 def _loading_data(
         preproc_volume_fullfname, train_subvolume_dir, train_label_dirs,
         eval_subvolume_dir, eval_label_dirs, config,
-        results_fullfname, checkpoint_fullfname, checkpoint_init,
-        max_processes, max_batch_memory, listener
+        search_results_fullfname, best_result_fullfname, checkpoint_fullfname,
+        checkpoint_init, max_processes, max_batch_memory, listener
     ):
     '''Loading data stage.'''
     listener.log_output('> Volume')
@@ -86,13 +86,18 @@ def _loading_data(
     if config_data['evaluation_set']['same_as_train'] and config_data['training_set']['sample_size_per_label'] == -1:
         raise ValueError('Evaluation set configuration is invalid as same_as_train can only be true if training_set sample_size_per_label is not -1.')
     
-    listener.log_output('> Result')
-    if results_fullfname is not None:
-        listener.log_output('>> {}'.format(results_fullfname))
-        validations.check_filename(results_fullfname, '.txt', False)
+    listener.log_output('> Search results')
+    if search_results_fullfname is not None:
+        listener.log_output('>> {}'.format(search_results_fullfname))
+        validations.check_filename(search_results_fullfname, '.txt', False)
     evaluation = evaluations.IntersectionOverUnionEvaluation(len(labels))
-    tuning_results_file = results.TuningResultsFile(results_fullfname, evaluation)
-
+    tuning_results_file = results.TuningResultsFile(search_results_fullfname, evaluation)
+    
+    listener.log_output('> Best result')
+    if best_result_fullfname is not None:
+        listener.log_output('>> {}'.format(best_result_fullfname))
+        validations.check_filename(best_result_fullfname, '.json', False)
+    
     listener.log_output('> Checkpoint')
     if checkpoint_fullfname is not None:
         listener.log_output('>> {}'.format(checkpoint_fullfname))
@@ -233,6 +238,9 @@ def _tuning(
             listener.log_output('> Continuing use of checkpointed results file')
             raise skip
         tuning_results_file.create(segmenter.classifier.labels, extra_col_names)
+    
+    tuning_results_file.load()
+    
     with checkpoint.apply('tune') as skip:
         if skip is not None:
             raise skip
@@ -351,15 +359,26 @@ def _tuning(
     return ()
 
 #########################################
+def _saving_best_config(best_result_fullfname, tuning_results_file, listener):
+    '''Saving best config stage.'''
+    if best_result_fullfname is not None:
+        with open(best_result_fullfname, 'w', encoding='utf-8') as f:
+            json.dump(tuning_results_file.best_config, f)
+    else:
+        listener.log_output('Config not to be saved')
+    
+    return ()
+
+#########################################
 def main(
         preproc_volume_fullfname, train_subvolume_dir, train_label_dirs,
         eval_subvolume_dir, eval_label_dirs, config,
-        results_fullfname, checkpoint_fullfname, checkpoint_init,
-        max_processes, max_batch_memory, listener=ProgressListener(),
+        search_results_fullfname, best_result_fullfname, checkpoint_fullfname,
+        checkpoint_init, max_processes, max_batch_memory, listener=ProgressListener(),
         debug_mode=False, extra_result_col_names=[], extra_result_col_values=[]
     ):
     '''
-    Find Train a classifier model to segment volumes based on manually labelled slices.
+    Find the best parameters for a segmenter based on manually labelled slices.
 
     :param str preproc_volume_fullfname: The full file name (with path) to the preprocessed
         volume HDF file.
@@ -379,9 +398,11 @@ def main(
         json file containing the configuration or a dictionary specifying the configuration
         directly). See user guide for description of the eval configuration.
     :type config: str or dict
-    :param results_fullfname: Full file name (with path) to the text file to create. If None
-        then results will be returned instead of saved.
-    :type results_fullfname: str or None
+    :param str search_results_fullfname: Full file name (with path) to the text file that will
+        contain all the configurations tested. If None then no file will be saved.
+    :param str best_result_fullfname: Full file name (with path) to the JSON file that will
+        contain the best configuration found as a JSON encoded configuration file. If None
+        then no file will be saved.
     :param str checkpoint_fullfname: Full file name (with path) to checkpoint pickle.
     :param checkpoint_fullfname: Full file name (with path) to checkpoint pickle. If None then no
         checkpointing is used.
@@ -396,11 +417,13 @@ def main(
     :param bool debug_mode: Whether to show full error messages or just simple ones.
     :param list extra_result_col_names: Names of any extra columns to add to the result file.
     :param list extra_result_col_values: Values (fixed) of any extra columns to add to the result file.
+    :return: The config data of the best segmenter found.
+    :rtype: dict
     '''
     full_volume = None
     try:
         with times.Timer() as full_timer:
-            listener.overall_progress_start(5)
+            listener.overall_progress_start(6)
 
             listener.log_output('Starting tuning process')
             listener.log_output('')
@@ -414,7 +437,8 @@ def main(
                 (config_data, full_volume, slice_shape, slice_size, segmenter, train_subvolume_fullfnames, train_labels_data, eval_subvolume_fullfnames, eval_labels_data, training_set, hash_function, evaluation, tuning_results_file, checkpoint) = _loading_data(
                     preproc_volume_fullfname, train_subvolume_dir, train_label_dirs,
                     eval_subvolume_dir, eval_label_dirs, config,
-                    results_fullfname, checkpoint_fullfname, checkpoint_init, max_processes, max_batch_memory, listener
+                    search_results_fullfname, best_result_fullfname, checkpoint_fullfname,
+                    checkpoint_init, max_processes, max_batch_memory, listener
                     )
             listener.log_output('Input data')
             listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
@@ -463,6 +487,17 @@ def main(
             listener.log_output('Tuned')
             listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
             listener.log_output('')
+            
+            ###################
+            
+            listener.overall_progress_update(6, 'Saving best config')
+            listener.log_output(times.get_timestamp())
+            listener.log_output('Saving best config')
+            with times.Timer() as timer:
+                () = _saving_best_config(best_result_fullfname, tuning_results_file, listener)
+            listener.log_output('Saved')
+            listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
+            listener.log_output('')
 
         listener.log_output('Done')
         listener.log_output('Entire process duration: {}'.format(
@@ -471,6 +506,8 @@ def main(
         listener.log_output(times.get_timestamp())
 
         listener.overall_progress_end()
+        
+        return tuning_results_file.best_config
     except Exception as ex:
         if debug_mode:
             raise

@@ -46,9 +46,14 @@ if __name__ == '__main__':
             help='Full path to configuration file specifying how to extract features and classify them (*.json).'
         )
     parser.add_argument(
-            '--results_fullfname',
+            '--search_results_fullfname',
             required=True,
-            help='Full path to result text file to be created by this process (*.txt).'
+            help='Full path to result text file containing all the configurations tested by this process (*.txt).'
+        )
+    parser.add_argument(
+            '--best_result_fullfname',
+            required=True,
+            help='Full path to result JSON file containing the best configuration found by this process (*.json).'
         )
     parser.add_argument(
             '--checkpoint_fullfname',
@@ -110,7 +115,8 @@ if __name__ == '__main__':
             eval_subvolume_dir=args.eval_subvolume_dir,
             eval_label_dirs=args.eval_label_dirs,
             config=args.config_fullfname,
-            results_fullfname=args.results_fullfname,
+            search_results_fullfname=args.search_results_fullfname,
+            best_result_fullfname=args.best_result_fullfname,
             checkpoint_fullfname=args.checkpoint_fullfname,
             checkpoint_init=dict() if args.restart_checkpoint == 'yes' else None,
             max_processes=arrayprocs.get_num_processes(args.max_processes),
