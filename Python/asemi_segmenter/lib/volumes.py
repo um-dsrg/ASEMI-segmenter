@@ -294,7 +294,7 @@ def load_volume_dir(volume_dir):
         for entry in it:
             if entry.name.startswith('.'):
                 continue
-            if entry.name.split('.')[-1] not in images.IMAGE_EXTS:
+            if not images.check_image_ext(entry.name, images.IMAGE_EXTS_IN):
                 continue
             if entry.is_file():
                 volume_fullfnames.append(os.path.join(volume_dir, entry.name))
@@ -370,7 +370,7 @@ def load_label_dir(label_dir):
         for entry in it:
             if entry.name.startswith('.'):
                 continue
-            if entry.name.split('.')[-1] not in images.IMAGE_EXTS:
+            if not images.check_image_ext(entry.name, images.IMAGE_EXTS_IN):
                 continue
             if entry.is_file():
                 label_fullfnames.append(os.path.join(label_dir, entry.name))
