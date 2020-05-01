@@ -17,7 +17,7 @@ from asemi_segmenter.lib import volumes
 #########################################
 def _loading_data(
         preproc_volume_fullfname, subvolume_dir, label_dirs, config,
-        result_model_fullfname, trainingset_file_fullfname,
+        result_segmenter_fullfname, trainingset_file_fullfname,
         checkpoint_fullfname, checkpoint_init, max_processes, max_batch_memory,
         listener
     ):
@@ -59,9 +59,9 @@ def _loading_data(
     segmenter = segmenters.Segmenter(labels, full_volume, config_data, allow_random=False)
 
     listener.log_output('> Result')
-    if result_model_fullfname is not None:
-        listener.log_output('>> {}'.format(result_model_fullfname))
-        validations.check_filename(result_model_fullfname, '.pkl', False)
+    if result_segmenter_fullfname is not None:
+        listener.log_output('>> {}'.format(result_segmenter_fullfname))
+        validations.check_filename(result_segmenter_fullfname, '.pkl', False)
     
     listener.log_output('> Training set')
     if trainingset_file_fullfname is not None:
@@ -232,14 +232,14 @@ def _training_segmenter(
 
 
 #########################################
-def _saving_model(
-        segmenter, result_model_fullfname, listener
+def _saving_segmenter(
+        segmenter, result_segmenter_fullfname, listener
     ):
-    '''Saving model stage.'''
-    if result_model_fullfname is not None:
-        segmenter.save(result_model_fullfname)
+    '''Saving segmenter stage.'''
+    if result_segmenter_fullfname is not None:
+        segmenter.save(result_segmenter_fullfname)
     else:
-        listener.log_output('Model not to be saved')
+        listener.log_output('Segmenter not to be saved')
     
     return ()
 
@@ -247,13 +247,13 @@ def _saving_model(
 #########################################
 def main(
         preproc_volume_fullfname, subvolume_dir, label_dirs, config,
-        result_model_fullfname, trainingset_file_fullfname,
+        result_segmenter_fullfname, trainingset_file_fullfname,
         checkpoint_fullfname, checkpoint_init,
         max_processes, max_batch_memory, listener=ProgressListener(),
         debug_mode=False
     ):
     '''
-    Train a classifier model to segment volumes based on manually labelled slices.
+    Train a segmenter to segment volumes based on manually labelled slices.
 
     :param str preproc_volume_fullfname: The full file name (with path) to the preprocessed
         volume HDF file.
@@ -267,9 +267,9 @@ def main(
         json file containing the configuration or a dictionary specifying the configuration
         directly). See user guide for description of the train configuration.
     :type config: str or dict
-    :param result_model_fullfname: Full file name (with path) to pickle file to create. If None
-        then model will be returned instead of saved.
-    :type result_model_fullfname: str or None
+    :param result_segmenter_fullfname: Full file name (with path) to pickle file to create. If None
+        then it will not be saved.
+    :type result_segmenter_fullfname: str or None
     :param str checkpoint_fullfname: Full file name (with path) to checkpoint pickle.
     :param checkpoint_fullfname: Full file name (with path) to checkpoint pickle. If None then no
         checkpointing is used.
@@ -282,9 +282,8 @@ def main(
     :param float max_batch_memory: The maximum number of gigabytes to use between all processes.
     :param ProgressListener listener: The command's progress listener.
     :param bool debug_mode: Whether to show full error messages or just simple ones.
-    :return: The trained model as a dictionary. See user guide for description of the
-        model dictionary.
-    :rtype: dict
+    :return: The segmenter object.
+    :rtype: segmenters.Segmenter
     '''
     full_volume = None
     training_set = None
@@ -303,7 +302,7 @@ def main(
             with times.Timer() as timer:
                 (full_volume, subvolume_fullfnames, labels_data, slice_shape, slice_size, segmenter, training_set, hash_function, checkpoint) = _loading_data(
                     preproc_volume_fullfname, subvolume_dir, label_dirs, config,
-                    result_model_fullfname, trainingset_file_fullfname,
+                    result_segmenter_fullfname, trainingset_file_fullfname,
                     checkpoint_fullfname, checkpoint_init, max_processes, max_batch_memory,
                     listener
                     )
@@ -357,12 +356,12 @@ def main(
 
             ###################
 
-            listener.overall_progress_update(6, 'Saving model')
+            listener.overall_progress_update(6, 'Saving segmenter')
             listener.log_output(times.get_timestamp())
-            listener.log_output('Saving model')
+            listener.log_output('Saving segmenter')
             with times.Timer() as timer:
-                () = _saving_model(segmenter, result_model_fullfname, listener)
-            listener.log_output('Model saved')
+                () = _saving_segmenter(segmenter, result_segmenter_fullfname, listener)
+            listener.log_output('Segmenter saved')
             listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
             listener.log_output('')
 

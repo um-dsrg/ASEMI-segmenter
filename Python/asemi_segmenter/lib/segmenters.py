@@ -23,7 +23,7 @@ def load_segmenter_from_pickle_data(pickle_data, full_volume, allow_random=False
         if not isinstance(entry, str):
             raise ValueError('Pickle is invalid as label entry {} is not a string.'.format(i))
     
-    return Segmenter(pickle_data['labels'], full_volume, pickle_data['config'], pickle_data['model'], allow_random)
+    return Segmenter(pickle_data['labels'], full_volume, pickle_data['config'], pickle_data['sklearn_model'], allow_random)
 
 
 #########################################
@@ -31,22 +31,22 @@ class Segmenter(object):
     '''An object that puts together everything needed to segment a volume after it has been processed.'''
 
     #########################################
-    def __init__(self, labels, full_volume, train_config, model=None, allow_random=False):
+    def __init__(self, labels, full_volume, train_config, sklearn_model=None, allow_random=False):
         '''
         Constructor.
         
         :param list labels: List of labels for the classifier.
         :param FullVolume full_volume: Full volume on which the segmenter will be working.
         :param dict train_config: Loaded configuration of the training method.
-        :param sklearn_model model: sklearn model to use for machine learning, if pretrained.
+        :param sklearn_model sklearn_model: sklearn model to use for machine learning, if pretrained.
         :param bool allow_random: Whether to allow training configurations that specify how to randomly generate parameters.
         '''
         validations.validate_json_with_schema_file(train_config, 'train.json')
         featuriser = featurisers.load_featuriser_from_config(train_config['featuriser'], allow_random)
-        classifier = classifiers.load_classifier_from_config(labels, train_config['classifier'], model, allow_random)
+        classifier = classifiers.load_classifier_from_config(labels, train_config['classifier'], sklearn_model, allow_random)
         
         if train_config['training_set']['sample_size_per_label'] == 0:
-            raise ValueError('Model is invalid as sample_size_per_label cannot be 0.')
+            raise ValueError('Segmenter is invalid as sample_size_per_label cannot be 0.')
             
         scales_needed = featuriser.get_scales_needed()
         if None not in scales_needed and not scales_needed <= full_volume.get_scales():
@@ -161,14 +161,14 @@ class Segmenter(object):
     #########################################
     def save(self, fname):
         '''
-        Save the model to a pickle file.
+        Save the segmenter data to a pickle file.
 
         Pickle uses protocol 2.
 
         :param str fname: The full file name (with path) of the pickle file.
         '''
         pickle_data = {
-            'model': self.classifier.model,
+            'sklearn_model': self.classifier.sklearn_model,
             'labels': self.classifier.labels,
             'config': self.get_config()
             }

@@ -14,13 +14,13 @@ from asemi_segmenter.lib import validations
 
 
 #########################################
-def load_classifier_from_config(labels, config, model=None, allow_random=False):
+def load_classifier_from_config(labels, config, sklearn_model=None, allow_random=False):
     '''
     Load a classifier from a configuration dictionary.
     
     :param list labels: List of labels to recognise.
     :param dict config: Configuration of the classifier.
-    :param sklearn_model model: Trained model if available.
+    :param sklearn_model sklearn_model: Trained sklearn model if available.
     :return: A classifier object.
     :rtype: Classifier
     '''
@@ -55,29 +55,29 @@ def load_classifier_from_config(labels, config, model=None, allow_random=False):
         else:
             max_iter = config['params']['max_iter']
         
-        if model is not None:
-            if not isinstance(model, sklearn.pipeline.Pipeline):
-                raise ValueError('Model is invalid as it is not a pipeline.')
-            if set(model.named_steps.keys()) != {'preprocessor', 'classifier'}:
-                raise ValueError('Model is invalid as pipeline named steps does not have the expected names.')
-            if not isinstance(model.named_steps['preprocessor'], sklearn.preprocessing.StandardScaler):
-                raise ValueError('Model is invalid as preprocessor type is not StandardScaler.')
-            if not isinstance(model.named_steps['classifier'], sklearn.linear_model.LogisticRegression):
-                raise ValueError('Model is invalid as classifier type is not LogisticRegression.')
-            if model.classes_.size != len(labels):
+        if sklearn_model is not None:
+            if not isinstance(sklearn_model, sklearn.pipeline.Pipeline):
+                raise ValueError('sklearn_model is invalid as it is not a pipeline.')
+            if set(sklearn_model.named_steps.keys()) != {'preprocessor', 'classifier'}:
+                raise ValueError('sklearn_model is invalid as pipeline named steps does not have the expected names.')
+            if not isinstance(sklearn_model.named_steps['preprocessor'], sklearn.preprocessing.StandardScaler):
+                raise ValueError('sklearn_model is invalid as preprocessor type is not StandardScaler.')
+            if not isinstance(sklearn_model.named_steps['classifier'], sklearn.linear_model.LogisticRegression):
+                raise ValueError('sklearn_model is invalid as classifier type is not LogisticRegression.')
+            if sklearn_model.classes_.size != len(labels):
                 raise ValueError(
-                    'Model is invalid as the number of classes is not as declared (declared={}, ' \
+                    'sklearn_model is invalid as the number of classes is not as declared (declared={}, ' \
                     'actual={}).'.format(
                         len(labels),
-                        model.classes_.size
+                        sklearn_model.classes_.size
                         )
                     )
-            if model.named_steps['classifier'].C != c:
-                raise ValueError('Model is invalid as C is not as declared.')
-            if model.named_steps['classifier'].max_iter != max_iter:
-                raise ValueError('Model is invalid as max_iter is not as declared.')
+            if sklearn_model.named_steps['classifier'].C != c:
+                raise ValueError('sklearn_model is invalid as C is not as declared.')
+            if sklearn_model.named_steps['classifier'].max_iter != max_iter:
+                raise ValueError('sklearn_model is invalid as max_iter is not as declared.')
         
-        return LogisticRegressionClassifier(labels, c, max_iter, model)
+        return LogisticRegressionClassifier(labels, c, max_iter, sklearn_model)
     
     elif config['type'] == 'neural_network':
         hidden_layer_size = None
@@ -120,31 +120,31 @@ def load_classifier_from_config(labels, config, model=None, allow_random=False):
         else:
             max_iter = config['params']['max_iter']
         
-        if model is not None:
-            if not isinstance(model, sklearn.pipeline.Pipeline):
-                raise ValueError('Model is invalid as it is not a pipeline.')
-            if set(model.named_steps.keys()) != {'preprocessor', 'classifier'}:
-                raise ValueError('Model is invalid as pipeline named steps does not have the expected names.')
-            if not isinstance(model.named_steps['preprocessor'], sklearn.preprocessing.StandardScaler):
-                raise ValueError('Model is invalid as preprocessor type is not StandardScaler.')
-            if not isinstance(model.named_steps['classifier'], sklearn.neural_network.MLPClassifier):
-                raise ValueError('Model is invalid as classifier type is not MLPClassifier.')
-            if model.classes_.size != len(labels):
+        if sklearn_model is not None:
+            if not isinstance(sklearn_model, sklearn.pipeline.Pipeline):
+                raise ValueError('sklearn_model is invalid as it is not a pipeline.')
+            if set(sklearn_model.named_steps.keys()) != {'preprocessor', 'classifier'}:
+                raise ValueError('sklearn_model is invalid as pipeline named steps does not have the expected names.')
+            if not isinstance(sklearn_model.named_steps['preprocessor'], sklearn.preprocessing.StandardScaler):
+                raise ValueError('sklearn_model is invalid as preprocessor type is not StandardScaler.')
+            if not isinstance(sklearn_model.named_steps['classifier'], sklearn.neural_network.MLPClassifier):
+                raise ValueError('sklearn_model is invalid as classifier type is not MLPClassifier.')
+            if sklearn_model.classes_.size != len(labels):
                 raise ValueError(
-                    'Model is invalid as the number of classes is not as declared (declared={}, ' \
+                    'sklearn_model is invalid as the number of classes is not as declared (declared={}, ' \
                     'actual={}).'.format(
                         len(labels),
-                        model.classes_.size
+                        sklearn_model.classes_.size
                         )
                     )
-            if model.named_steps['classifier'].hidden_layer_sizes != (hidden_layer_size,):
-                raise ValueError('Model is invalid as hidden_layer_size is not as declared.')
-            if model.named_steps['classifier'].alpha != alpha:
-                raise ValueError('Model is invalid as alpha is not as declared.')
-            if model.named_steps['classifier'].max_iter != max_iter:
-                raise ValueError('Model is invalid as max_iter is not as declared.')
+            if sklearn_model.named_steps['classifier'].hidden_layer_sizes != (hidden_layer_size,):
+                raise ValueError('sklearn_model is invalid as hidden_layer_size is not as declared.')
+            if sklearn_model.named_steps['classifier'].alpha != alpha:
+                raise ValueError('sklearn_model is invalid as alpha is not as declared.')
+            if sklearn_model.named_steps['classifier'].max_iter != max_iter:
+                raise ValueError('sklearn_model is invalid as max_iter is not as declared.')
         
-        return NeuralNetworkClassifier(labels, hidden_layer_size, alpha, max_iter, model)
+        return NeuralNetworkClassifier(labels, hidden_layer_size, alpha, max_iter, sklearn_model)
     
     elif config['type'] == 'decision_tree':
         max_depth = None
@@ -174,29 +174,29 @@ def load_classifier_from_config(labels, config, model=None, allow_random=False):
         else:
             min_samples_leaf = config['params']['min_samples_leaf']
         
-        if model is not None:
-            if not isinstance(model, sklearn.pipeline.Pipeline):
-                raise ValueError('Model is invalid as it is not a pipeline.')
-            if set(model.named_steps.keys()) != {'preprocessor', 'classifier'}:
-                raise ValueError('Model is invalid as pipeline named steps does not have the expected names.')
-            if not isinstance(model.named_steps['preprocessor'], sklearn.preprocessing.StandardScaler):
-                raise ValueError('Model is invalid as preprocessor type is not StandardScaler.')
-            if not isinstance(model.named_steps['classifier'], sklearn.tree.DecisionTreeClassifier):
-                raise ValueError('Model is invalid as classifier type is not DecisionTreeClassifier.')
-            if model.classes_.size != len(labels):
+        if sklearn_model is not None:
+            if not isinstance(sklearn_model, sklearn.pipeline.Pipeline):
+                raise ValueError('sklearn_model is invalid as it is not a pipeline.')
+            if set(sklearn_model.named_steps.keys()) != {'preprocessor', 'classifier'}:
+                raise ValueError('sklearn_model is invalid as pipeline named steps does not have the expected names.')
+            if not isinstance(sklearn_model.named_steps['preprocessor'], sklearn.preprocessing.StandardScaler):
+                raise ValueError('sklearn_model is invalid as preprocessor type is not StandardScaler.')
+            if not isinstance(sklearn_model.named_steps['classifier'], sklearn.tree.DecisionTreeClassifier):
+                raise ValueError('sklearn_model is invalid as classifier type is not DecisionTreeClassifier.')
+            if sklearn_model.classes_.size != len(labels):
                 raise ValueError(
-                    'Model is invalid as the number of classes is not as declared (declared={}, ' \
+                    'sklearn_model is invalid as the number of classes is not as declared (declared={}, ' \
                     'actual={}).'.format(
                         len(labels),
-                        model.classes_.size
+                        sklearn_model.classes_.size
                         )
                     )
-            if model.named_steps['classifier'].max_depth != max_depth:
-                raise ValueError('Model is invalid as max_depth is not as declared.')
-            if model.named_steps['classifier'].min_samples_leaf != min_samples_leaf:
-                raise ValueError('Model is invalid as min_samples_leaf is not as declared.')
+            if sklearn_model.named_steps['classifier'].max_depth != max_depth:
+                raise ValueError('sklearn_model is invalid as max_depth is not as declared.')
+            if sklearn_model.named_steps['classifier'].min_samples_leaf != min_samples_leaf:
+                raise ValueError('sklearn_model is invalid as min_samples_leaf is not as declared.')
         
-        return DecisionTreeClassifier(labels, max_depth, min_samples_leaf, model)
+        return DecisionTreeClassifier(labels, max_depth, min_samples_leaf, sklearn_model)
     
     elif config['type'] == 'random_forest':
         n_estimators = None
@@ -239,31 +239,31 @@ def load_classifier_from_config(labels, config, model=None, allow_random=False):
         else:
             min_samples_leaf = config['params']['min_samples_leaf']
         
-        if model is not None:
-            if not isinstance(model, sklearn.pipeline.Pipeline):
-                raise ValueError('Model is invalid as it is not a pipeline.')
-            if set(model.named_steps.keys()) != {'preprocessor', 'classifier'}:
-                raise ValueError('Model is invalid as pipeline named steps does not have the expected names.')
-            if not isinstance(model.named_steps['preprocessor'], sklearn.preprocessing.StandardScaler):
-                raise ValueError('Model is invalid as preprocessor type is not StandardScaler.')
-            if not isinstance(model.named_steps['classifier'], sklearn.ensemble.RandomForestClassifier):
-                raise ValueError('Model is invalid as classifier type is not RandomForestClassifier.')
-            if model.classes_.size != len(labels):
+        if sklearn_model is not None:
+            if not isinstance(sklearn_model, sklearn.pipeline.Pipeline):
+                raise ValueError('sklearn_model is invalid as it is not a pipeline.')
+            if set(sklearn_model.named_steps.keys()) != {'preprocessor', 'classifier'}:
+                raise ValueError('sklearn_model is invalid as pipeline named steps does not have the expected names.')
+            if not isinstance(sklearn_model.named_steps['preprocessor'], sklearn.preprocessing.StandardScaler):
+                raise ValueError('sklearn_model is invalid as preprocessor type is not StandardScaler.')
+            if not isinstance(sklearn_model.named_steps['classifier'], sklearn.ensemble.RandomForestClassifier):
+                raise ValueError('sklearn_model is invalid as classifier type is not RandomForestClassifier.')
+            if sklearn_model.classes_.size != len(labels):
                 raise ValueError(
-                    'Model is invalid as the number of classes is not as declared (declared={}, ' \
+                    'sklearn_model is invalid as the number of classes is not as declared (declared={}, ' \
                     'actual={}).'.format(
                         len(labels),
-                        model.classes_.size
+                        sklearn_model.classes_.size
                         )
                     )
-            if model.named_steps['classifier'].n_estimators != n_estimators:
-                raise ValueError('Model is invalid as n_estimators is not as declared.')
-            if model.named_steps['classifier'].max_depth != max_depth:
-                raise ValueError('Model is invalid as max_depth is not as declared.')
-            if model.named_steps['classifier'].min_samples_leaf != min_samples_leaf:
-                raise ValueError('Model is invalid as min_samples_leaf is not as declared.')
+            if sklearn_model.named_steps['classifier'].n_estimators != n_estimators:
+                raise ValueError('sklearn_model is invalid as n_estimators is not as declared.')
+            if sklearn_model.named_steps['classifier'].max_depth != max_depth:
+                raise ValueError('sklearn_model is invalid as max_depth is not as declared.')
+            if sklearn_model.named_steps['classifier'].min_samples_leaf != min_samples_leaf:
+                raise ValueError('sklearn_model is invalid as min_samples_leaf is not as declared.')
         
-        return RandomForestClassifier(labels, n_estimators, max_depth, min_samples_leaf, model)
+        return RandomForestClassifier(labels, n_estimators, max_depth, min_samples_leaf, sklearn_model)
     
     else:
         raise NotImplementedError('Classifier {} not implemented.'.format(config['type']))
@@ -274,22 +274,22 @@ class Classifier(object):
     '''Super class for classifiers.'''
     
     #########################################
-    def __init__(self, labels, model=None):
+    def __init__(self, labels, sklearn_model=None):
         '''
         Constructor.
         
         :param list labels: List of labels to be classified.
-        :param sklearn_model model: The pretrained sklearn model to use, if any.
+        :param sklearn_model sklearn_model: The pretrained sklearn model to use, if any.
             If None then an untrained model will be created. Otherwise
             it is validated against the given parameters.
         '''
         self.labels = labels
-        self.model = model
+        self.sklearn_model = sklearn_model
     
     #########################################
     def regenerate(self):
         '''
-        Regenerate parameters and resulting model with value generators provided.
+        Regenerate parameters and resulting sklearn model with value generators provided.
         '''
         raise NotImplementedError()
     
@@ -322,10 +322,10 @@ class Classifier(object):
         :return: A reference to output.
         :rtype: numpy.ndarray
         '''
-        self.model.n_jobs = n_jobs
+        self.sklearn_model.n_jobs = n_jobs
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', category=sklearn.exceptions.ConvergenceWarning)
-            self.model.fit(
+            self.sklearn_model.fit(
                 training_set.get_features_array(),
                 training_set.get_labels_array()
                 )
@@ -342,8 +342,8 @@ class Classifier(object):
             feature vector and each column being a label.
         :rtype: numpy.ndarray
         '''
-        self.model.n_jobs = n_jobs
-        return self.model.predict_proba(features_array)
+        self.sklearn_model.n_jobs = n_jobs
+        return self.sklearn_model.predict_proba(features_array)
     
     #########################################
     def predict_label_onehots(self, features_array, n_jobs=1):
@@ -426,7 +426,7 @@ class LogisticRegressionClassifier(Classifier):
             ])
     
     #########################################
-    def __init__(self, labels, c, max_iter, model=None):
+    def __init__(self, labels, c, max_iter, sklearn_model=None):
         '''
         Constructor.
         
@@ -437,16 +437,16 @@ class LogisticRegressionClassifier(Classifier):
         :param max_iter: The number of iterations to spend on
             training.
         :type max_iter: int or callable
-        :param model: The pretrained sklearn model to use, if any.
+        :param sklearn_model: The pretrained sklearn model to use, if any.
             If None then an untrained model will be created. Otherwise
             it is validated against the given parameters.
-        :type model: None or sklearn_LogisticRegression
+        :type sklearn_model: None or sklearn_LogisticRegression
         '''
         super().__init__(
             labels,
             (
-                model
-                if model is not None
+                sklearn_model
+                if sklearn_model is not None
                 else self.__MAKE_MODEL(c, max_iter)
                 if (
                     c is not None
@@ -476,11 +476,11 @@ class LogisticRegressionClassifier(Classifier):
     #########################################
     def regenerate(self):
         '''
-        Regenerate parameters and resulting model with value generators provided.
+        Regenerate parameters and resulting sklearn model with value generators provided.
         '''
         self.c = self.c_generator()
         self.max_iter = self.max_iter_generator()
-        self.model = self.__MAKE_MODEL(self.c, self.max_iter)
+        self.sklearn_model = self.__MAKE_MODEL(self.c, self.max_iter)
     
     #########################################
     def get_config(self):
@@ -540,7 +540,7 @@ class NeuralNetworkClassifier(Classifier):
             ])
     
     #########################################
-    def __init__(self, labels, hidden_layer_size, alpha, max_iter, model=None):
+    def __init__(self, labels, hidden_layer_size, alpha, max_iter, sklearn_model=None):
         '''
         Constructor.
         
@@ -554,16 +554,16 @@ class NeuralNetworkClassifier(Classifier):
         :param max_iter: The number of iterations to spend on
             training.
         :type max_iter: int or callable
-        :param model: The pretrained sklearn model to use, if any.
+        :param sklearn_model: The pretrained sklearn model to use, if any.
             If None then an untrained model will be created. Otherwise
             it is validated against the given parameters.
-        :type model: None or sklearn_LogisticRegression
+        :type sklearn_model: None or sklearn_LogisticRegression
         '''
         super().__init__(
             labels,
             (
-                model
-                if model is not None
+                sklearn_model
+                if sklearn_model is not None
                 else self.__MAKE_MODEL(hidden_layer_size, alpha, max_iter)
                 if (
                     hidden_layer_size is not None
@@ -602,12 +602,12 @@ class NeuralNetworkClassifier(Classifier):
     #########################################
     def regenerate(self):
         '''
-        Regenerate parameters and resulting model with value generators provided.
+        Regenerate parameters and resulting sklearn model with value generators provided.
         '''
         self.hidden_layer_size = self.hidden_layer_size_generator()
         self.alpha = self.alpha_generator()
         self.max_iter = self.max_iter_generator()
-        self.model = self.__MAKE_MODEL(self.hidden_layer_size, self.alpha, self.max_iter)
+        self.sklearn_model = self.__MAKE_MODEL(self.hidden_layer_size, self.alpha, self.max_iter)
     
     #########################################
     def get_config(self):
@@ -665,7 +665,7 @@ class DecisionTreeClassifier(Classifier):
             ])
     
     #########################################
-    def __init__(self, labels, max_depth, min_samples_leaf, model=None):
+    def __init__(self, labels, max_depth, min_samples_leaf, sklearn_model=None):
         '''
         Constructor.
         
@@ -674,16 +674,16 @@ class DecisionTreeClassifier(Classifier):
         :type max_depth: int or callable
         :param min_samples_leaf: The minimum number of items per leaf.
         :type min_samples_leaf: int or callable
-        :param model: The pretrained sklearn model to use, if any.
+        :param sklearn_model: The pretrained sklearn model to use, if any.
             If None then an untrained model will be created. Otherwise
             it is validated against the given parameters.
-        :type model: None or sklearn_DecisionTreeClassifier
+        :type sklearn_model: None or sklearn_DecisionTreeClassifier
         '''
         super().__init__(
             labels,
             (
-                model
-                if model is not None
+                sklearn_model
+                if sklearn_model is not None
                 else self.__MAKE_MODEL(max_depth, min_samples_leaf)
                 if (
                     max_depth is not None
@@ -713,11 +713,11 @@ class DecisionTreeClassifier(Classifier):
     #########################################
     def regenerate(self):
         '''
-        Regenerate parameters and resulting model with value generators provided.
+        Regenerate parameters and resulting sklearn model with value generators provided.
         '''
         self.max_depth = self.max_depth_generator()
         self.min_samples_leaf = self.min_samples_leaf_generator()
-        self.model = self.__MAKE_MODEL(self.max_depth, self.min_samples_leaf)
+        self.sklearn_model = self.__MAKE_MODEL(self.max_depth, self.min_samples_leaf)
     
     #########################################
     def get_config(self):
@@ -775,7 +775,7 @@ class RandomForestClassifier(Classifier):
             ])
     
     #########################################
-    def __init__(self, labels, n_estimators, max_depth, min_samples_leaf, model=None):
+    def __init__(self, labels, n_estimators, max_depth, min_samples_leaf, sklearn_model=None):
         '''
         Constructor.
         
@@ -786,16 +786,16 @@ class RandomForestClassifier(Classifier):
         :type max_depth: int or callable
         :param min_samples_leaf: The minimum number of items per leaf.
         :type min_samples_leaf: int or callable
-        :param model: The pretrained sklearn model to use, if any.
+        :param sklearn_model: The pretrained sklearn model to use, if any.
             If None then an untrained model will be created. Otherwise
             it is validated against the given parameters.
-        :type model: None or sklearn_RandomForestClassifier
+        :type sklearn_model: None or sklearn_RandomForestClassifier
         '''
         super().__init__(
             labels,
             (
-                model
-                if model is not None
+                sklearn_model
+                if sklearn_model is not None
                 else self.__MAKE_MODEL(n_estimators, max_depth, min_samples_leaf)
                 if (
                     n_estimators is not None
@@ -834,12 +834,12 @@ class RandomForestClassifier(Classifier):
     #########################################
     def regenerate(self):
         '''
-        Regenerate parameters and resulting model with value generators provided.
+        Regenerate parameters and resulting sklearn model with value generators provided.
         '''
         self.n_estimators = self.n_estimators_generator()
         self.max_depth = self.max_depth_generator()
         self.min_samples_leaf = self.min_samples_leaf_generator()
-        self.model = self.__MAKE_MODEL(self.n_estimators, self.max_depth, self.min_samples_leaf)
+        self.sklearn_model = self.__MAKE_MODEL(self.n_estimators, self.max_depth, self.min_samples_leaf)
     
     #########################################
     def get_config(self):

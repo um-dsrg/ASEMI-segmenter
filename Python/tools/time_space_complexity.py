@@ -84,7 +84,7 @@ def measure(side_length, num_training_slices, num_labels, num_runs, train_config
                             subvolume_dir=os.path.join(temp_dir, 'subvolume'),
                             label_dirs=[ os.path.join(temp_dir, 'labels', '_{}'.format(label)) for label in range(num_labels) ],
                             config=train_config,
-                            result_model_fullfname=os.path.join(temp_dir, 'model.pkl'),
+                            result_segmenter_fullfname=os.path.join(temp_dir, 'segmenter.pkl'),
                             trainingset_file_fullfname=None,
                             checkpoint_fullfname=None,
                             restart_checkpoint=False,
@@ -104,7 +104,7 @@ def measure(side_length, num_training_slices, num_labels, num_runs, train_config
                         segment.main,
                         [],
                         dict(
-                            model=os.path.join(temp_dir, 'model.pkl'),
+                            segmenter=os.path.join(temp_dir, 'segmenter.pkl'),
                             preproc_volume_fullfname=os.path.join(temp_dir, 'full_volume.hdf'),
                             config={'soft_segmentation': 'no'},
                             results_dir=os.path.join(temp_dir, 'segmentation'),

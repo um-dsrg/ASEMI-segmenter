@@ -18,7 +18,7 @@ from asemi_segmenter.lib import volumes
 
 #########################################
 def _loading_data(
-        model, preproc_volume_fullfname, config, results_dir,
+        segmenter, preproc_volume_fullfname, config, results_dir,
         checkpoint_fullfname, checkpoint_init, max_processes, max_batch_memory,
         listener
     ):
@@ -31,15 +31,13 @@ def _loading_data(
     validations.validate_json_with_schema_file(full_volume.get_config(), 'preprocess.json')
     slice_shape = full_volume.get_shape()[1:]
 
-    listener.log_output('> Model')
-    if isinstance(model, str):
-        listener.log_output('>> {}'.format(model))
-        validations.check_filename(model, '.pkl', True)
-        with open(model, 'rb') as f:
+    listener.log_output('> Segmenter')
+    if isinstance(segmenter, str):
+        listener.log_output('>> {}'.format(segmenter))
+        validations.check_filename(segmenter, '.pkl', True)
+        with open(segmenter, 'rb') as f:
             pickled_data = pickle.load(f)
         segmenter = segmenters.load_segmenter_from_pickle_data(pickled_data, full_volume, allow_random=False)
-    else:
-        segmenter = model
 
     listener.log_output('> Config')
     if isinstance(config, str):
@@ -157,16 +155,16 @@ def _segmenting(
 
 #########################################
 def main(
-        model, preproc_volume_fullfname, config, results_dir,
+        segmenter, preproc_volume_fullfname, config, results_dir,
         checkpoint_fullfname, checkpoint_init,
         max_processes, max_batch_memory, listener=ProgressListener(),
         slice_indexes=None, debug_mode=False
     ):
     '''
-    Segment a preprocessed volume using a trained classifier model.
+    Segment a preprocessed volume using a trained segmenter.
 
-    :param model: Full file name (with path) to saved model pickle file or Segmenter object.
-    :type model: str or Segmenter
+    :param segmenter: Full file name (with path) to saved segmenter pickle file or Segmenter object.
+    :type segmenter: str or Segmenter
     :param str preproc_volume_fullfname: The full file name (with path) to the preprocessed
         volume HDF file.
     :param config: The configuration to use when segmenting (can be either a path to a
@@ -207,7 +205,7 @@ def main(
             listener.log_output('Loading data')
             with times.Timer() as timer:
                 (config_data, full_volume, slice_shape, segmenter, checkpoint) = _loading_data(
-                    model, preproc_volume_fullfname, config, results_dir,
+                    segmenter, preproc_volume_fullfname, config, results_dir,
                     checkpoint_fullfname, checkpoint_init, max_processes, max_batch_memory,
                     listener
                     )

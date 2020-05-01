@@ -17,7 +17,7 @@ from asemi_segmenter.lib import volumes
 
 #########################################
 def _loading_data(
-        model, preproc_volume_fullfname, subvolume_dir, label_dirs, results_fullfname,
+        segmenter, preproc_volume_fullfname, subvolume_dir, label_dirs, results_fullfname,
         checkpoint_fullfname, checkpoint_init, max_processes, max_batch_memory, listener
     ):
     '''Loading data stage.'''
@@ -32,14 +32,14 @@ def _loading_data(
     slice_shape = full_volume.get_shape()[1:]
     slice_size = slice_shape[0]*slice_shape[1]
 
-    listener.log_output('> Model')
-    if isinstance(model, str):
-        listener.log_output('>> {}'.format(model))
-        validations.check_filename(model, '.pkl', True)
-        with open(model, 'rb') as f:
+    listener.log_output('> Segmenter')
+    if isinstance(segmenter, str):
+        listener.log_output('>> {}'.format(segmenter))
+        validations.check_filename(segmenter, '.pkl', True)
+        with open(segmenter, 'rb') as f:
             pickled_data = pickle.load(f)
     else:
-        pickled_data = model
+        pickled_data = segmenter
     segmenter = segmenters.load_segmenter_from_pickle_data(pickled_data, full_volume, allow_random=False)
 
     listener.log_output('> Subvolume')
@@ -56,7 +56,7 @@ def _loading_data(
         listener.log_output('>>> {}'.format(label_data.name))
     evaluation_labels = sorted(label_data.name for label_data in labels_data)
     if evaluation_labels != segmenter.classifier.labels:
-        raise ValueError('Labels in evaluation directory do not match labels in model')
+        raise ValueError('Labels in evaluation directory do not match labels in segmenter')
     validations.validate_annotation_data(full_volume, subvolume_data, labels_data)
     
     listener.log_output('> Result')
@@ -191,16 +191,16 @@ def _evaluating(
 
 #########################################
 def main(
-        model, preproc_volume_fullfname, subvolume_dir, label_dirs, results_fullfname,
+        segmenter, preproc_volume_fullfname, subvolume_dir, label_dirs, results_fullfname,
         checkpoint_fullfname, checkpoint_init, max_processes, max_batch_memory,
         listener=ProgressListener(), debug_mode=False
     ):
     '''
-    Evaluate a trained classifier model on manually labelled slices.
+    Evaluate a trained segmenter on manually labelled slices.
 
-    :param model: Full file name (with path) to saved pickle file or dictionary with model
+    :param segmenter: Full file name (with path) to saved pickle file or segmenter object
         directly.
-    :type model: str or dict
+    :type segmenter: str or dict
     :param str preproc_volume_fullfname: The full file name (with path) to the preprocessed
         volume HDF file.
     :param str subvolume_dir: The path to the directory containing copies from the full
@@ -245,7 +245,7 @@ def main(
             listener.log_output('Loading data')
             with times.Timer() as timer:
                 (full_volume, slice_shape, slice_size, segmenter, subvolume_fullfnames, labels_data, hash_function, evaluation, evaluation_results_file, checkpoint) = _loading_data(
-                    model, preproc_volume_fullfname, subvolume_dir, label_dirs, results_fullfname,
+                    segmenter, preproc_volume_fullfname, subvolume_dir, label_dirs, results_fullfname,
                     checkpoint_fullfname, checkpoint_init, max_processes, max_batch_memory,
                     listener
                     )

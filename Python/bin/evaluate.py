@@ -10,15 +10,15 @@ from asemi_segmenter import evaluate
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
-            description='Evaluate the performance of a trained segmentation model using the intersection-over-union metric.'
+            description='Evaluate the performance of a trained segmenter using the intersection-over-union metric.'
         )
 
     #########################
 
     parser.add_argument(
-            '--model_fullfname',
+            '--segmenter_fullfname',
             required=True,
-            help='Full path to model pickle file that was obtained from train command (*.pkl).'
+            help='Full path to segmenter pickle file that was obtained from train command (*.pkl).'
         )
     parser.add_argument(
             '--preproc_volume_fullfname',
@@ -95,7 +95,7 @@ if __name__ == '__main__':
         listener.log_output('-'*50)
         listener.log_output('')
         evaluate.main(
-            model=args.model_fullfname,
+            segmenter=args.segmenter_fullfname,
             preproc_volume_fullfname=args.preproc_volume_fullfname,
             subvolume_dir=args.subvolume_dir,
             label_dirs=args.label_dirs,

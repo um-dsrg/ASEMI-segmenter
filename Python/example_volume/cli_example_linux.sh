@@ -28,13 +28,13 @@ python ../bin/train.py \
         "train/labels/air" \
         "train/labels/terracotta" \
     --config_fullfname "train_config.json" \
-    --result_model_fullfname "train/model.pkl" \
+    --result_segmenter_fullfname "train/segmenter.pkl" \
     --trainingset_file_fullfname "train/trainingset.hdf" \
     --max_processes 2 \
     --max_batch_memory 0.1
 
 python ../bin/evaluate.py \
-    --model_fullfname "train/model.pkl" \
+    --segmenter_fullfname "train/segmenter.pkl" \
     --preproc_volume_fullfname "preprocess/volume.hdf" \
     --subvolume_dir "evaluate/subvolume" \
     --label_dirs \
@@ -45,7 +45,7 @@ python ../bin/evaluate.py \
     --max_batch_memory 0.1
 
 python ../bin/segment.py \
-    --model_fullfname "train/model.pkl" \
+    --segmenter_fullfname "train/segmenter.pkl" \
     --preproc_volume_fullfname "preprocess/volume.hdf" \
     --config_fullfname "segment_config.json" \
     --results_dir "segment" \

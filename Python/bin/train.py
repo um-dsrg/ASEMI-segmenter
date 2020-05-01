@@ -10,7 +10,7 @@ from asemi_segmenter import train
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
-            description='Train a new segmentation model.'
+            description='Train a new segmenter.'
         )
 
     parser.add_argument(
@@ -35,9 +35,9 @@ if __name__ == '__main__':
             help='Full path to configuration file specifying how to extract features and classify them (*.json).'
         )
     parser.add_argument(
-            '--result_model_fullfname',
+            '--result_segmenter_fullfname',
             required=True,
-            help='Full path to model pickle file to be created by this process (*.pkl).'
+            help='Full path to segmenter pickle file to be created by this process (*.pkl).'
         )
     parser.add_argument(
             '--trainingset_file_fullfname',
@@ -103,7 +103,7 @@ if __name__ == '__main__':
             subvolume_dir=args.subvolume_dir,
             label_dirs=args.label_dirs,
             config=args.config_fullfname,
-            result_model_fullfname=args.result_model_fullfname,
+            result_segmenter_fullfname=args.result_segmenter_fullfname,
             trainingset_file_fullfname=args.trainingset_file_fullfname,
             checkpoint_fullfname=args.checkpoint_fullfname,
             checkpoint_init=dict() if args.restart_checkpoint == 'yes' else None,
