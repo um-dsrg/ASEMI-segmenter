@@ -9,7 +9,7 @@ from asemi_segmenter.lib import hashfunctions
 from asemi_segmenter.lib import images
 from asemi_segmenter.lib import segmenters
 from asemi_segmenter.lib import times
-from asemi_segmenter.lib import trainingsets
+from asemi_segmenter.lib import datasets
 from asemi_segmenter.lib import validations
 from asemi_segmenter.lib import volumes
 
@@ -67,7 +67,7 @@ def _loading_data(
     if trainingset_file_fullfname is not None:
         listener.log_output('>> {}'.format(trainingset_file_fullfname))
         validations.check_filename(trainingset_file_fullfname, '.hdf', False)
-    training_set = trainingsets.TrainingSet(trainingset_file_fullfname)
+    training_set = datasets.DataSet(trainingset_file_fullfname)
 
     listener.log_output('> Checkpoint')
     if checkpoint_fullfname is not None:
@@ -135,7 +135,7 @@ def _constructing_trainingset(
     listener.log_output('> Sampling training items')
     train_sample_size_per_label = segmenter.train_config['training_set']['sample_size_per_label']
     if train_sample_size_per_label != -1:
-        (voxel_indexes, label_positions) = trainingsets.sample_voxels(
+        (voxel_indexes, label_positions) = datasets.sample_voxels(
             subvolume_slice_labels,
             train_sample_size_per_label,
             len(segmenter.classifier.labels),

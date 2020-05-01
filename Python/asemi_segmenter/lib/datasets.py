@@ -1,4 +1,4 @@
-'''Module for training set functions.'''
+'''Module for data set functions.'''
 
 import random
 import h5py
@@ -7,16 +7,16 @@ from asemi_segmenter.lib import volumes
 
 
 #########################################
-class TrainingSet(object):
-    '''Training set of voxel features to voxel labels.'''
+class DataSet(object):
+    '''Data set of voxel features to voxel labels.'''
 
     #########################################
     def __init__(self, data_fullfname):
         '''
-        Create a training set object.
+        Constructor.
 
         :param data_fullfname: The full file name (with path) to the HDF file if to be used or
-            None if training set will be a numpy array kept in memory.
+            None if data set will be a numpy array kept in memory.
         :type data_fullfname: str or None
         '''
         self.data_fullfname = data_fullfname
@@ -27,7 +27,7 @@ class TrainingSet(object):
         '''
         Create the HDF file or numpy array.
 
-        :param int num_items: The number of voxels in the training set.
+        :param int num_items: The number of voxels in the data set.
         :param int feature_size: The number of elements in the feature vectors describing
             the voxels.
         '''
@@ -55,7 +55,7 @@ class TrainingSet(object):
     #########################################
     def get_labels_array(self):
         '''
-        Get the labels column of the training set.
+        Get the labels column of the data set.
 
         :return: An array of labels.
         :rtype: h5py.Dataset or numpy.ndarray
@@ -65,7 +65,7 @@ class TrainingSet(object):
     #########################################
     def get_features_array(self):
         '''
-        Get the features column of the training set.
+        Get the features column of the data set.
 
         :return: A 2D array of features.
         :rtype: h5py.Dataset or numpy.ndarray
@@ -75,16 +75,16 @@ class TrainingSet(object):
     #########################################
     def without_control_labels(self):
         '''
-        Get a copy of this training set without any items where the labels are control labels.
+        Get a copy of this data set without any items where the labels are control labels.
         '''
         valid_items_mask = self.data['labels'][:] < volumes.FIRST_CONTROL_LABEL
         
-        new_trainingset = TrainingSet(None)
-        new_trainingset.create(np.sum(valid_items_mask), self.data['features'].shape[1])
-        new_trainingset.get_labels_array()[:] = self.data['labels'][valid_items_mask]
-        new_trainingset.get_features_array()[:] = self.data['features'][valid_items_mask, :]
+        new_dataset = DataSet(None)
+        new_dataset.create(np.sum(valid_items_mask), self.data['features'].shape[1])
+        new_dataset.get_labels_array()[:] = self.data['labels'][valid_items_mask]
+        new_dataset.get_features_array()[:] = self.data['features'][valid_items_mask, :]
 
-        return new_trainingset
+        return new_dataset
 
     #########################################
     def close(self):
@@ -105,7 +105,7 @@ def sample_voxels(loaded_labels, max_sample_size_per_label, num_labels, volume_s
     :param numpy.ndarray loaded_labels: 1D numpy array of label indexes
         from a number of full slices.
     :param int max_sample_size_per_label: The number of items from each label to
-        return in the new training set. If there are less items than this then all the items
+        return in the new data set. If there are less items than this then all the items
         are returned.
     :param int num_labels: The number of labels to consider such that the last
         label index is num_labels-1.
@@ -115,7 +115,7 @@ def sample_voxels(loaded_labels, max_sample_size_per_label, num_labels, volume_s
     :param int skip: The number of voxels to skip before selecting. This is used
         for when the same slices are used for separate datasets and you want
         the second dataset to avoid the voxels that were selected for the first.
-    :param int seed: The random number generator seed to use when randomly selecting training
+    :param int seed: The random number generator seed to use when randomly selecting data set
         items.
     :return A tuple consisting of (indexes, labels). 'indexes' is a
         list of voxel indexes sorted by corresponding label index. Each

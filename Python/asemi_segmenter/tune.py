@@ -12,7 +12,7 @@ from asemi_segmenter.lib import images
 from asemi_segmenter.lib import results
 from asemi_segmenter.lib import segmenters
 from asemi_segmenter.lib import times
-from asemi_segmenter.lib import trainingsets
+from asemi_segmenter.lib import datasets
 from asemi_segmenter.lib import validations
 from asemi_segmenter.lib import volumes
 
@@ -115,7 +115,7 @@ def _loading_data(
         allow_random=True
         )
     hash_function.init(slice_shape, seed=0)
-    training_set = trainingsets.TrainingSet(None)
+    training_set = datasets.DataSet(None)
     
     listener.log_output('> Other parameters:')
     listener.log_output('>> max_processes: {}'.format(max_processes))
@@ -196,7 +196,7 @@ def _tuning(
     
     listener.log_output('> Train label sizes:')
     if train_sample_size_per_label != -1:
-        (train_voxel_indexes, train_label_positions) = trainingsets.sample_voxels(
+        (train_voxel_indexes, train_label_positions) = datasets.sample_voxels(
             train_subvolume_slice_labels,
             train_sample_size_per_label,
             len(segmenter.classifier.labels),
@@ -212,7 +212,7 @@ def _tuning(
     
     listener.log_output('> Evaluation label sizes:')
     if eval_sample_size_per_label != -1:
-        (eval_voxel_indexes, eval_label_positions) = trainingsets.sample_voxels(
+        (eval_voxel_indexes, eval_label_positions) = datasets.sample_voxels(
             eval_subvolume_slice_labels,
             eval_sample_size_per_label,
             len(segmenter.classifier.labels),
@@ -295,7 +295,7 @@ def _tuning(
                         
                         iou_lists = [[] for _ in range(len(segmenter.classifier.labels))]
                         if eval_sample_size_per_label != -1:
-                            eval_set = trainingsets.TrainingSet(None)
+                            eval_set = datasets.DataSet(None)
                             eval_set.create(
                                 len(eval_voxel_indexes),
                                 segmenter.featuriser.get_feature_size()
