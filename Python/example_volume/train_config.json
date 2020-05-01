@@ -18,10 +18,7 @@
                 {
                     "type": "lbp",
                     "params": {
-                        "neighbouring_dims": [
-                            1,
-                            2
-                        ],
+                        "orientation": "flat",
                         "radius": 17,
                         "scale": 2
                     }

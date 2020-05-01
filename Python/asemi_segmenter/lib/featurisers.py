@@ -22,7 +22,24 @@ def load_featuriser_from_config(config, allow_random=False):
     validations.validate_json_with_schema_file(config, 'featuriser.json')
     rand = random.Random(0)
     
+    def orientation_to_neighbouringdims(orientation):
+        '''Convert a config orientation string into a neighbouring dims set.'''
+        return {
+            'yz': {0, 1},
+            'right': {0, 1},
+            'sagittal': {0, 1},
+            
+            'xz': {0, 2},
+            'flat': {0, 2},
+            'transverse': {0, 2},
+            
+            'xy': {1, 2},
+            'front': {1, 2},
+            'coronal': {1, 2},
+            }[orientation]
+    
     def recursive(config):
+        '''Recursively read a nested configuration to produce a featuriser object.'''
         if config['type'] == 'voxel':
             return VoxelFeaturiser()
             
@@ -70,7 +87,7 @@ def load_featuriser_from_config(config, allow_random=False):
             return HistogramFeaturiser(radius, scale, num_bins)
         
         elif config['type'] == 'lbp':
-            neighbouring_dims = set(config['params']['neighbouring_dims'])
+            neighbouring_dims = orientation_to_neighbouringdims(config['params']['orientation'])
             radius = None
             scale = None
             
@@ -763,7 +780,11 @@ class LocalBinaryPatternFeaturiser(Featuriser):
         return {
             'type': 'lbp',
             'params': {
-                'neighbouring_dims': sorted(self.neighbouring_dims),
+                'orientation': {
+                    (0,1): 'right',
+                    (0,2): 'flat',
+                    (1,2): 'front'
+                    }[tuple(sorted(self.neighbouring_dims))],
                 'radius': self.radius,
                 'scale': self.scale
                 }

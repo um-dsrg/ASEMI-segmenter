@@ -109,15 +109,13 @@
                 "params": {
                     "type": "object",
                     "properties": {
-                        "neighbouring_dims": {
-                            "type": "array",
-                            "items": {
-                                "type": "integer",
-                                "enum": [0, 1, 2]
-                            },
-                            "minItems": 2,
-                            "maxItems": 2,
-                            "uniqueItems": true
+                        "orientation": {
+                            "type": "string",
+                            "enum": [
+                                "yz", "right", "sagittal",
+                                "xz", "flat", "transverse",
+                                "xy", "front", "coronal"
+                            ]
                         },
                         "radius": {
                             "oneOf": [
@@ -166,7 +164,7 @@
                             ]
                         }
                     },
-                    "required": ["neighbouring_dims", "radius", "scale"],
+                    "required": ["orientation", "radius", "scale"],
                     "additionalProperties": false
                 }
             },

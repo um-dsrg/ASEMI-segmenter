@@ -32,7 +32,7 @@ def validate_json_with_schema_file(loaded_json, schema_name):
     except jsonschema.exceptions.ValidationError as ex:
         error_message = ex.message
     if error_message is not None:
-        raise ValueError(ex.message)
+        raise ValueError(error_message)
 
 
 #########################################
