@@ -435,7 +435,7 @@ def main(
             
             listener.overall_progress_update(3, 'Hashing Evaluation subvolume slices')
             listener.log_output(times.get_timestamp())
-            listener.log_output('Hashing Evaluation subvolume slices')
+            listener.log_output('Hashing evaluation subvolume slices')
             with times.Timer() as timer:
                 (volume_slice_indexes_in_eval_subvolume,) = _hashing_eval_subvolume_slices(full_volume, eval_subvolume_fullfnames, hash_function, listener)
             listener.log_output('Slices hashed')

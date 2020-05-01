@@ -83,6 +83,13 @@ if __name__ == '__main__':
             type=float,
             help='Maximum amount of GB to allow for processing the volume in batches (-1 to use maximum, default).'
         )
+    parser.add_argument(
+            '--debug_mode',
+            required=False,
+            default='no',
+            choices=['yes', 'no'],
+            help='Whether to give full error messages (default is no).'
+        )
 
     #########################
 
@@ -113,6 +120,7 @@ if __name__ == '__main__':
                 else psutil.virtual_memory().available/(1024**3)
                 ),
             listener=listener,
+            debug_mode=args.debug_mode == 'yes',
             extra_result_col_names=[],
             extra_result_col_values=[]
             )
