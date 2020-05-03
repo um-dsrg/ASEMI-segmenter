@@ -82,6 +82,8 @@ def _segmenting(
     if slice_indexes is None:
         num_slices = full_volume.get_shape()[0]
         slice_indexes = range(num_slices)
+    elif isinstance(slice_indexes, range):
+        num_slices = slice_indexes.stop - slice_indexes.start
     else:
         num_slices = len(slice_indexes)
     
@@ -131,7 +133,7 @@ def _segmenting(
 
     start = checkpoint.get_next_to_process('segment_prog')
     listener.current_progress_start(start, num_slices)
-    for volume_slice_index in slice_indexes:
+    for (i, volume_slice_index) in enumerate(slice_indexes):
         if volume_slice_index < start:
             continue
         with checkpoint.apply('segment_prog'):
@@ -147,7 +149,7 @@ def _segmenting(
                     save_slice(volume_slice_index, mask, label)
             else:
                 save_slice(volume_slice_index, segmenter.segment_to_label_indexes(slice_features, max_processes))
-        listener.current_progress_update(volume_slice_index+1)
+        listener.current_progress_update(i+1)
     listener.current_progress_end()
         
     return ()

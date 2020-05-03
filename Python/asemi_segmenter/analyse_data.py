@@ -71,7 +71,6 @@ def _analysing(
     sample_size_per_label = config_data['dataset']['sample_size_per_label']
     labels = sorted(label_data.name for label_data in labels_data)
     
-    subvolume_slice_labels = volumes.load_labels(labels_data)
     overlap_matrices = volumes.get_label_overlap(labels_data)
     for (i, overlap_matrix) in enumerate(overlap_matrices):
         with open(os.path.join(results_dir, 'overlap_slice_{}.txt'.format(i + 1)), 'w', encoding='utf-8') as f:
@@ -80,6 +79,8 @@ def _analysing(
                 print(label1, *[overlap_matrix[label1][label2] for label2 in labels], sep='\t', file=f)
     
     if sample_size_per_label != -1:
+        subvolume_slice_labels = volumes.load_labels(labels_data)
+        
         (voxel_indexes, label_positions) = datasets.sample_voxels(
             subvolume_slice_labels,
             sample_size_per_label,
