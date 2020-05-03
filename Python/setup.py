@@ -22,6 +22,7 @@ setuptools.setup(
                 'jsonref==0.2',
                 'jsonschema==3.2.0',
                 'loky==2.6.0',
+                'matplotlib==2.1.2',
                 'memory_profiler==0.55.0',
                 'numpy==1.15.4',
                 'Pillow==6.2.1',

@@ -81,10 +81,10 @@ def _loading_data(
     else:
         config_data = config
     validations.validate_json_with_schema_file(config_data, 'tune.json')
-    if config_data['evaluation_set']['sample_size_per_label'] == 0:
-        raise ValueError('Evaluation set configuration is invalid as sample_size_per_label cannot be 0.')
-    if config_data['evaluation_set']['same_as_train'] and config_data['training_set']['sample_size_per_label'] == -1:
-        raise ValueError('Evaluation set configuration is invalid as same_as_train can only be true if training_set sample_size_per_label is not -1.')
+    if 'samples_to_skip_per_label' not in config_data['training_set']:
+        config_data['training_set']['samples_to_skip_per_label'] = 0
+    if 'samples_to_skip_per_label' not in config_data['evaluation_set']:
+        config_data['evaluation_set']['samples_to_skip_per_label'] = 0
     
     listener.log_output('> Search results')
     if search_results_fullfname is not None:
@@ -197,7 +197,6 @@ def _tuning(
     '''Tuning stage.'''
     train_sample_size_per_label = config_data['training_set']['sample_size_per_label']
     eval_sample_size_per_label = config_data['evaluation_set']['sample_size_per_label']
-    eval_same_as_train = config_data['evaluation_set']['same_as_train']
     
     listener.log_output('> Train label sizes:')
     if train_sample_size_per_label != -1:
@@ -207,6 +206,7 @@ def _tuning(
             len(segmenter.classifier.labels),
             volume_slice_indexes_in_train_subvolume,
             slice_shape,
+            config_data['training_set']['samples_to_skip_per_label'],
             seed=0
             )
         for (label, label_slice) in zip(segmenter.classifier.labels, train_label_positions):
@@ -223,7 +223,7 @@ def _tuning(
             len(segmenter.classifier.labels),
             volume_slice_indexes_in_eval_subvolume,
             slice_shape,
-            skip=0 if not eval_same_as_train else train_sample_size_per_label,
+            config_data['evaluation_set']['samples_to_skip_per_label'],
             seed=0
             )
         for (label, label_slice) in zip(segmenter.classifier.labels, eval_label_positions):

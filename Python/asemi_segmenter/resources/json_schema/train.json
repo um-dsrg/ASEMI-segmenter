@@ -2,17 +2,7 @@
     "$schema": "http://json-schema.org/draft-07/schema#",
     "$id": "train.json",
     "definitions": {
-        "training_set": {
-            "type": "object",
-            "properties": {
-                "sample_size_per_label": {
-                    "type": "integer",
-                    "minimum": -1
-                }
-            },
-            "required": ["sample_size_per_label"],
-            "additionalProperties": false
-        }
+        "training_set": { "$ref": "dataset.json#definitions/dataset" }
     },
     
     "type": "object",

@@ -44,11 +44,21 @@ def validate_annotation_data(full_volume, subvolume_data, labels_data):
     * that the subvolume and all label slices are of the same shape as those of the full volume,
     * that the number of labels does not exceed the built in limit of FIRST_CONTROL_LABEL-1, and
     * that the number of slices in each label is equal to the number of slices in the subvolume.
+    
+    :param volumes.FullVolume full_volume: The full volume object from which to take the reference
+        slice shape. If None then this will instead be taken from subvolume_data.
+    :param volumes.VolumeData subvolume_data: The subvolume object to validate.
+    :param list labels_data: A list of volumes.LabelData objects of different labels to validate.
     '''
-    if subvolume_data.shape != full_volume.get_shape()[1:]:
+    if full_volume is None:
+        shape = subvolume_data.shape
+    else:
+        shape = full_volume.get_shape()[1:]
+    
+    if subvolume_data.shape != shape:
         raise ValueError('Subvolume slice shapes do not match volume slice shapes ' \
             '(volume={}, subvolume={}).'.format(
-                full_volume.get_shape(), subvolume_data.shape
+                shape, subvolume_data.shape
                 ))
 
     if len(labels_data) > volumes.FIRST_CONTROL_LABEL:
@@ -58,11 +68,11 @@ def validate_annotation_data(full_volume, subvolume_data, labels_data):
                 ))
 
     for label_data in labels_data:
-        if label_data.shape != full_volume.get_shape()[1:]:
+        if label_data.shape != shape:
             raise ValueError('Label {} slice shapes do not match volume slice shapes ' \
                 '(volume={}, label={}).'.format(
                     label_data.name,
-                    full_volume.get_shape()[1:],
+                    shape,
                     label_data.shape
                     ))
         if len(label_data.fullfnames) != len(subvolume_data.fullfnames):

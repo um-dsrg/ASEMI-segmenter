@@ -57,6 +57,8 @@ def _loading_data(
     else:
         config_data = config
     segmenter = segmenters.Segmenter(labels, full_volume, config_data, allow_random=False)
+    if 'samples_to_skip_per_label' not in config_data['training_set']:
+        config_data['training_set']['samples_to_skip_per_label'] = 0
 
     listener.log_output('> Result')
     if result_segmenter_fullfname is not None:
@@ -141,6 +143,7 @@ def _constructing_trainingset(
             len(segmenter.classifier.labels),
             volume_slice_indexes_in_subvolume,
             slice_shape,
+            segmenter.train_config['training_set']['samples_to_skip_per_label'],
             seed=0
             )
     

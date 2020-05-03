@@ -33,7 +33,7 @@ if __name__ == '__main__':
     parser.add_argument(
             '--results_dir',
             required=True,
-            help='Directory of folder to contain results which will consist of a folder for each label.'
+            help='Directory of folder to contain results.'
         )
     parser.add_argument(
             '--checkpoint_fullfname',

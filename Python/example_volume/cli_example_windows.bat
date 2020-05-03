@@ -5,6 +5,15 @@ python ..\bin\preprocess.py ^
     --max_processes 2 ^
     --max_batch_memory 0.1
 
+python ..\bin\analyse_data.py ^
+    --subvolume_dir "tune\train\subvolume" ^
+    --label_dirs ^
+        "tune\train\labels\air" ^
+        "tune\train\labels\terracotta" ^
+    --config "analyse_data_config.json" ^
+    --highlight_radius 3 ^
+    --results_dir "analyse_data"
+
 python ..\bin\tune.py ^
     --preproc_volume_fullfname "preprocess\volume.hdf" ^
     --train_subvolume_dir "tune\train\subvolume" ^

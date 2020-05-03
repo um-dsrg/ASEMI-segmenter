@@ -45,9 +45,6 @@ class Segmenter(object):
         featuriser = featurisers.load_featuriser_from_config(train_config['featuriser'], allow_random)
         classifier = classifiers.load_classifier_from_config(labels, train_config['classifier'], sklearn_model, allow_random)
         
-        if train_config['training_set']['sample_size_per_label'] == 0:
-            raise ValueError('Segmenter is invalid as sample_size_per_label cannot be 0.')
-            
         scales_needed = featuriser.get_scales_needed()
         if None not in scales_needed and not scales_needed <= full_volume.get_scales():
             raise ValueError(

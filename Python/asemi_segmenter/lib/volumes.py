@@ -274,6 +274,39 @@ def load_labels(labels_data):
 
 
 #########################################
+def get_label_overlap(labels_data):
+    '''
+    Get a label to label dictionary of the number of overlaps between label pairs.
+    
+    Note that the overlap of a label and itself is the frequency of said label.
+    
+    :param list labels_data: A list of LabelData objects, one for each label.
+    :return: A list of dictionaries, one for each slice in labels_data, where each dictionary
+        has a key for every label and each value is another dictionary with a key for every label.
+        The values of the inner dictionary are the number of overlaps between the labels in the
+        two keys.
+    :rtype: list
+    '''
+    slice_shape = labels_data[0].shape
+    label_fullfnames = {label_data.name: label_data.fullfnames for label_data in labels_data}
+    labels = sorted(label_fullfnames.keys())
+    num_slices = len(label_fullfnames[labels[0]])
+    overlap_matrices = list()
+    for i in range(num_slices):
+        overlap_matrix = {label: {label: 0 for label in labels} for label in labels}
+        slice_labels = np.empty(slice_shape+(len(labels),), np.bool)
+        for (label_index, label) in enumerate(labels):
+            label_img = images.load_image(label_fullfnames[label][i])
+            slice_labels[:, :, label_index] = label_img > np.min(label_img)
+        for (label_index1, label1) in enumerate(labels):
+            num_overlaps = np.sum(slice_labels[slice_labels[:, :, label_index1]], axis=0).tolist()
+            for (label_index2, label2) in enumerate(labels):
+                overlap_matrix[label1][label2] = num_overlaps[label_index2]
+        overlap_matrices.append(overlap_matrix)
+    return overlap_matrices
+
+
+#########################################
 def load_volume_dir(volume_dir):
     '''
     Load and validate volume meta data.
