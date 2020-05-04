@@ -38,9 +38,7 @@ def _loading_data(
         validations.check_filename(segmenter, '.pkl', True)
         with open(segmenter, 'rb') as f:
             pickled_data = pickle.load(f)
-    else:
-        pickled_data = segmenter
-    segmenter = segmenters.load_segmenter_from_pickle_data(pickled_data, full_volume, allow_random=False)
+        segmenter = segmenters.load_segmenter_from_pickle_data(pickled_data, full_volume, allow_random=False)
 
     listener.log_output('> Subvolume')
     listener.log_output('>> {}'.format(subvolume_dir))
@@ -296,10 +294,9 @@ def main(
 
         return output_result
     except Exception as ex:
+        listener.error_output(str(ex))
         if debug_mode:
             raise
-        else:
-            listener.error_output(str(ex))
     finally:
         if full_volume is not None:
             full_volume.close()

@@ -128,13 +128,14 @@ def _segmenting(
                     )
                 ),
             output,
+            num_bits=config_data['bits'],
             compress=True
             )
 
     start = checkpoint.get_next_to_process('segment_prog')
     listener.current_progress_start(start, num_slices)
     for (i, volume_slice_index) in enumerate(slice_indexes):
-        if volume_slice_index < start:
+        if i < start:
             continue
         with checkpoint.apply('segment_prog'):
             slice_features = segmenter.featuriser.featurise_slice(
@@ -234,10 +235,9 @@ def main(
 
         listener.overall_progress_end()
     except Exception as ex:
+        listener.error_output(str(ex))
         if debug_mode:
             raise
-        else:
-            listener.error_output(str(ex))
     finally:
         if full_volume is not None:
             full_volume.close()

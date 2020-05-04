@@ -337,7 +337,7 @@ def _tuning(
                                 with times.Timer() as classifier_timer:
                                     prediction = segmenter.segment_to_label_indexes(slice_features, max_processes)
                             
-                                evaluation.evaluate(prediction, eval_subvolume_slice_labels)
+                                evaluation.evaluate(prediction, eval_subvolume_slice_labels[i*slice_size:(i+1)*slice_size])
                             
                         result['featuriser_time'] = featuriser_timer.duration
                         result['classifier_time'] = classifier_timer.duration
@@ -509,10 +509,9 @@ def main(
         
         return tuning_results_file.best_config
     except Exception as ex:
+        listener.error_output(str(ex))
         if debug_mode:
             raise
-        else:
-            listener.error_output(str(ex))
     finally:
         if full_volume is not None:
             full_volume.close()

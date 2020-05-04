@@ -280,10 +280,9 @@ def main(
 
         listener.overall_progress_end()
     except Exception as ex:
+        listener.error_output(str(ex))
         if debug_mode:
             raise
-        else:
-            listener.error_output(str(ex))
     finally:
         if full_volume is not None:
             full_volume.close()

@@ -135,11 +135,11 @@ def _constructing_trainingset(
     ):
     '''Constructing training set stage.'''
     listener.log_output('> Sampling training items')
-    train_sample_size_per_label = segmenter.train_config['training_set']['sample_size_per_label']
-    if train_sample_size_per_label != -1:
+    sample_size_per_label = segmenter.train_config['training_set']['sample_size_per_label']
+    if sample_size_per_label != -1:
         (voxel_indexes, label_positions) = datasets.sample_voxels(
             subvolume_slice_labels,
-            train_sample_size_per_label,
+            sample_size_per_label,
             len(segmenter.classifier.labels),
             volume_slice_indexes_in_subvolume,
             slice_shape,
@@ -148,7 +148,7 @@ def _constructing_trainingset(
             )
     
     listener.log_output('> Train label sizes:')
-    if train_sample_size_per_label != -1:
+    if sample_size_per_label != -1:
         for (label, label_slice) in zip(segmenter.classifier.labels, label_positions):
             listener.log_output('>> {}: {}'.format(label, label_slice.stop - label_slice.start))
     else:
@@ -156,7 +156,7 @@ def _constructing_trainingset(
             listener.log_output('>> {}: {}'.format(label, np.sum(subvolume_slice_labels == label_index)))
     
     listener.log_output('> Creating empty training set')
-    if train_sample_size_per_label != -1:
+    if sample_size_per_label != -1:
         training_set.create(
             len(voxel_indexes),
             segmenter.featuriser.get_feature_size()
@@ -169,7 +169,7 @@ def _constructing_trainingset(
     training_set.load()
     
     listener.log_output('> Constructing labels')
-    if train_sample_size_per_label != -1:
+    if sample_size_per_label != -1:
         for (label_index, label_position) in enumerate(label_positions):
             training_set.get_labels_array()[label_position] = label_index
     else:
@@ -180,7 +180,7 @@ def _constructing_trainingset(
             training_set.get_labels_array()[:] = subvolume_slice_labels
 
     listener.log_output('> Constructing features')
-    if train_sample_size_per_label != -1:
+    if sample_size_per_label != -1:
         segmenter.featuriser.featurise_voxels(
             full_volume.get_scale_arrays(segmenter.featuriser.get_scales_needed()),
             voxel_indexes,
@@ -226,8 +226,8 @@ def _training_segmenter(
         segmenter, training_set, max_processes
     ):
     '''Training segmenter stage.'''
-    train_sample_size_per_label = segmenter.train_config['training_set']['sample_size_per_label']
-    if train_sample_size_per_label == -1:
+    sample_size_per_label = segmenter.train_config['training_set']['sample_size_per_label']
+    if sample_size_per_label == -1:
         training_set = training_set.without_control_labels()
     segmenter.train(training_set, max_processes)
     
@@ -378,10 +378,9 @@ def main(
 
         return segmenter
     except Exception as ex:
+        listener.error_output(str(ex))
         if debug_mode:
             raise
-        else:
-            listener.error_output(str(ex))
     finally:
         if full_volume is not None:
             full_volume.close()
