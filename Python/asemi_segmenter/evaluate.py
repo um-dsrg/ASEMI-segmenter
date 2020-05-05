@@ -18,7 +18,7 @@ from asemi_segmenter.lib import volumes
 #########################################
 def _loading_data(
         segmenter, preproc_volume_fullfname, subvolume_dir, label_dirs, results_fullfname,
-        checkpoint_fullfname, checkpoint_init, max_processes, max_batch_memory, listener
+        checkpoint_fullfname, reset_checkpoint, checkpoint_init, max_processes, max_batch_memory, listener
     ):
     '''Loading data stage.'''
     listener.log_output('> Volume')
@@ -71,6 +71,7 @@ def _loading_data(
     checkpoint = checkpoints.CheckpointManager(
         'evaluate',
         checkpoint_fullfname,
+        reset_checkpoint=reset_checkpoint,
         initial_content=checkpoint_init
         )
     
@@ -78,6 +79,7 @@ def _loading_data(
     hash_function.init(slice_shape, seed=0)
     
     listener.log_output('> Other parameters:')
+    listener.log_output('>> reset_checkpoint: {}'.format(reset_checkpoint))
     listener.log_output('>> max_processes: {}'.format(max_processes))
     listener.log_output('>> max_batch_memory: {}GB'.format(max_batch_memory))
     
@@ -190,7 +192,7 @@ def _evaluating(
 #########################################
 def main(
         segmenter, preproc_volume_fullfname, subvolume_dir, label_dirs, results_fullfname,
-        checkpoint_fullfname, checkpoint_init, max_processes, max_batch_memory,
+        checkpoint_fullfname, reset_checkpoint, checkpoint_init, max_processes, max_batch_memory,
         listener=ProgressListener(), debug_mode=False
     ):
     '''
@@ -216,6 +218,8 @@ def main(
     :param checkpoint_fullfname: Full file name (with path) to checkpoint pickle. If None then no
         checkpointing is used.
     :type checkpoint_fullfname: str or None
+    :param bool reset_checkpoint: Whether to clear the checkpoint from the file (if it
+        exists) and start afresh.
     :param dict checkpoint_init: The checkpoint data to initialise the checkpoint with,
         including the checkpoint file (only data about this particular command will be
         overwritten). If None then checkpoint is checkpoint file content if file exists,

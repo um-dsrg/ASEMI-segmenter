@@ -22,7 +22,7 @@ def _loading_data(
         preproc_volume_fullfname, train_subvolume_dir, train_label_dirs,
         eval_subvolume_dir, eval_label_dirs, config,
         search_results_fullfname, best_result_fullfname, checkpoint_fullfname,
-        checkpoint_init, max_processes, max_batch_memory, listener
+        reset_checkpoint, checkpoint_init, max_processes, max_batch_memory, listener
     ):
     '''Loading data stage.'''
     listener.log_output('> Volume')
@@ -105,6 +105,7 @@ def _loading_data(
     checkpoint = checkpoints.CheckpointManager(
         'tune',
         checkpoint_fullfname,
+        reset_checkpoint=reset_checkpoint,
         initial_content=checkpoint_init
         )
 
@@ -123,6 +124,7 @@ def _loading_data(
     training_set = datasets.DataSet(None)
     
     listener.log_output('> Other parameters:')
+    listener.log_output('>> reset_checkpoint: {}'.format(reset_checkpoint))
     listener.log_output('>> max_processes: {}'.format(max_processes))
     listener.log_output('>> max_batch_memory: {}GB'.format(max_batch_memory))
     
@@ -373,7 +375,7 @@ def _saving_best_config(best_result_fullfname, tuning_results_file, listener):
 def main(
         preproc_volume_fullfname, train_subvolume_dir, train_label_dirs,
         eval_subvolume_dir, eval_label_dirs, config,
-        search_results_fullfname, best_result_fullfname, checkpoint_fullfname,
+        search_results_fullfname, best_result_fullfname, checkpoint_fullfname, reset_checkpoint,
         checkpoint_init, max_processes, max_batch_memory, listener=ProgressListener(),
         debug_mode=False, extra_result_col_names=[], extra_result_col_values=[]
     ):
@@ -407,6 +409,8 @@ def main(
     :param checkpoint_fullfname: Full file name (with path) to checkpoint pickle. If None then no
         checkpointing is used.
     :type checkpoint_fullfname: str or None
+    :param bool reset_checkpoint: Whether to clear the checkpoint from the file (if it
+        exists) and start afresh.
     :param dict checkpoint_init: The checkpoint data to initialise the checkpoint with,
         including the checkpoint file (only data about this particular command will be
         overwritten). If None then checkpoint is checkpoint file content if file exists,
@@ -437,8 +441,8 @@ def main(
                 (config_data, full_volume, slice_shape, slice_size, segmenter, train_subvolume_fullfnames, train_labels_data, eval_subvolume_fullfnames, eval_labels_data, training_set, hash_function, evaluation, tuning_results_file, checkpoint) = _loading_data(
                     preproc_volume_fullfname, train_subvolume_dir, train_label_dirs,
                     eval_subvolume_dir, eval_label_dirs, config,
-                    search_results_fullfname, best_result_fullfname, checkpoint_fullfname,
-                    checkpoint_init, max_processes, max_batch_memory, listener
+                    search_results_fullfname, best_result_fullfname, checkpoint_fullfname, 
+                    reset_checkpoint, checkpoint_init, max_processes, max_batch_memory, listener
                     )
             listener.log_output('Input data')
             listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))

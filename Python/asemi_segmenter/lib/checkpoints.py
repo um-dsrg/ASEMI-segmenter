@@ -1,4 +1,16 @@
-'''Module for the checkpoint manager.'''
+'''
+Module for the checkpoint manager.
+
+A checkpoint is a point in command's process that can be skipped if it has already been reached
+before. For example if a file is to be created but has already been created in a previous run
+(which was interrupted) then it can be checkpointed so that its creation will be skipped in a
+subsequent run.
+
+A checkpoint is a dictionary where keys are unique names for checkpoints in a command's process
+and values are the number of times that the checkpoint was reached. A checkpoint file is a JSON
+encoded file consisting of a dictionary of checkpoints. The upper dictionary's keys are the name
+of the command being processed and the values are checkpoint dictionaries of those commands.
+'''
 
 import json
 from asemi_segmenter.lib import files
@@ -9,21 +21,24 @@ class CheckpointManager(object):
     '''Checkpoint manager keep track of which stages in a process are complete.'''
 
     #########################################
-    def __init__(self, this_command, checkpoint_fullfname, initial_content=None):
+    def __init__(self, this_command, checkpoint_fullfname, reset_checkpoint=False, initial_content=None):
         '''
         Create a new checkpoint manager.
 
         :param str this_command: The unique name of the command using the checkpoint (serves as
             a namespace).
-        :param checkpoint_fullfname: The full file name (with path) of the checkpoint file. If
+        :param str checkpoint_fullfname: The full file name (with path) of the checkpoint file. If
             None then the checkpoint state is not persisted.
-        :type checkpoint_fullfname: str or None
-        :param dict initial_content: The checkpoint data to initialise the checkpoint with,
-            even if the checkpoint file already contains data. This is only the checkpoint
-            for the command in question, not the entire checkpoint file content. If None then
-            the checkpoint will either be empty or the content of the checkpoint file if it
-            exists. Can be used to reset the checkpoint of the command by passing in an empty
-            dictionary.
+        :param bool reset_checkpoint: Whether to clear the checkpoint from the file (if it
+            exists) and start afresh.
+        :param dict initial_content: The checkpoint data to initialise the checkpoint with.
+            If the checkpoint file already contains data for this checkpoint, then a dictionary
+            update will be made such that any keys in the file's checkpoint which are also in the
+            initial_content will be overwritten, but nothing else. This is only the checkpoint
+            for the command in question, not the entire checkpoint file content. In other words,
+            only a single dictionary should be in initial_content, not 2 nested dictionaries.
+            If None then the checkpoint will either be empty or the content of the checkpoint file if it exists. Can be used to reset the checkpoint of the command by passing in
+            an empty dictionary.
         '''
         self.this_command = this_command
         self.checkpoint_fullfname = checkpoint_fullfname
@@ -31,8 +46,10 @@ class CheckpointManager(object):
         if self.checkpoint_fullfname is not None and files.fexists(self.checkpoint_fullfname):
             with open(self.checkpoint_fullfname, 'r', encoding='utf-8') as f:
                 self.checkpoints_ready = json.load(f)
+        if this_command not in self.checkpoints_ready or reset_checkpoint:
+            self.checkpoints_ready[this_command] = dict()
         if initial_content is not None:
-            self.checkpoints_ready[this_command] = initial_content
+            self.checkpoints_ready[this_command].update(initial_content)
         if self.checkpoint_fullfname is not None:
             with open(self.checkpoint_fullfname, 'w', encoding='utf-8') as f:
                 json.dump(self.checkpoints_ready, f, indent='\t')
