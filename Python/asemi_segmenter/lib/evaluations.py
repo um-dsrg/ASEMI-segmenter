@@ -9,10 +9,9 @@ def get_confusion_matrix(predicted_labels, true_labels, num_labels):
     '''
     Create a confusion matrix array.
     
-    Labels are numbers between 0 and num_labels-1. Each row stands for a true label and each column
-    for a predicted label. Values in the matrix are the number of times a true label was classified
-    as a predicted label divided by the total number of true labels that are the given true label
-    (total of row).
+    Labels are numbers between 0 and num_labels-1. Each row stands for a true label and each
+    column for a predicted label. Values in the matrix are the number of times a true label
+    was classified as a predicted label.
     
     :param numpy.ndarray predicted_labels: The array of labels given by the segmenter.
     :param numpy.ndarray true_labels: The array of labels given by the dataset.
@@ -20,17 +19,13 @@ def get_confusion_matrix(predicted_labels, true_labels, num_labels):
     :return: The confusion matrix.
     :rtype: numpy.ndarray
     '''
-    totals = {
-            true_label_index: np.sum(true_labels == true_label_index)
-            for true_label_index in range(num_labels)
-        }
-    matrix = np.array([
-            [
-                np.sum(predicted_labels[true_labels==true_label_index] == predicted_label_index)/totals[true_label_index]
-                for predicted_label_index in range(num_labels)
-            ]
-            for true_label_index in range(num_labels)
-        ], np.float32)
+    matrix = np.empty((num_labels, num_labels), np.uint64)
+    for true_index in range(num_labels):
+        true_label_mask = true_labels == true_index
+        for predicted_index in range(num_labels):
+            predicted_label_mask = predicted_labels == predicted_index
+            true_predicted_mask = np.logical_and(predicted_label_mask, true_label_mask)
+            matrix[true_index, predicted_index] = np.sum(true_predicted_mask)
     return matrix
 
 
