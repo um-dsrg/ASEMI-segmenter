@@ -71,6 +71,51 @@ class Evaluations(unittest.TestCase):
             )
     
     #########################################
+    def test_get_confusion_map(self):
+        (tp, tn, fp, fn) = (
+            evaluations.TRUE_POSITIVE,
+            evaluations.TRUE_NEGATIVE,
+            evaluations.FALSE_POSITIVE,
+            evaluations.FALSE_NEGATIVE
+        )
+        
+        np.testing.assert_equal(
+            evaluations.get_confusion_map(
+                predicted_labels=np.array([0, 0, 1, 1]),
+                true_labels     =np.array([0, 1, 0, 1]),
+                label_index=0
+                ),
+            np.array([tp, fp, fn, tn])
+            )
+            
+        np.testing.assert_equal(
+            evaluations.get_confusion_map(
+                predicted_labels=np.array([0, 0, 1, 1]),
+                true_labels     =np.array([0, 1, 0, 1]),
+                label_index=1
+                ),
+            np.array([tn, fn, fp, tp])
+            )
+            
+        np.testing.assert_equal(
+            evaluations.get_confusion_map(
+                predicted_labels=np.array([[0, 0], [1, 1]]),
+                true_labels     =np.array([[0, 1], [0, 1]]),
+                label_index=0
+                ),
+            np.array([[tp, fp], [fn, tn]])
+            )
+            
+        np.testing.assert_equal(
+            evaluations.get_confusion_map(
+                predicted_labels=np.array([[0, 0], [1, 1]]),
+                true_labels     =np.array([[0, 1], [0, 1]]),
+                label_index=1
+                ),
+            np.array([[tn, fn], [fp, tp]])
+            )
+    
+    #########################################
     def test_AccuracyEvaluation(self):
         ev = evaluations.AccuracyEvaluation(2)
         

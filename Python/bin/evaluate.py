@@ -37,9 +37,9 @@ if __name__ == '__main__':
             help='Directories of labels containing the slices in subvolume_dir with unlabelled regions blacked out.'
         )
     parser.add_argument(
-            '--results_fullfname',
-            required=False,
-            help='Full path to results text file to be created by this process (*.txt). If left out then results will just be displayed.'
+            '--results_dir',
+            required=True,
+            help='Full path to results directory to contain results of this process.'
         )
     parser.add_argument(
             '--checkpoint_fullfname',
@@ -99,7 +99,7 @@ if __name__ == '__main__':
             preproc_volume_fullfname=args.preproc_volume_fullfname,
             subvolume_dir=args.subvolume_dir,
             label_dirs=args.label_dirs,
-            results_fullfname=args.results_fullfname,
+            results_dir=args.results_dir,
             checkpoint_fullfname=args.checkpoint_fullfname,
             reset_checkpoint=args.reset_checkpoint == 'yes',
             checkpoint_init=dict(),

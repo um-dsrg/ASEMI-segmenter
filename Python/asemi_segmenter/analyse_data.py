@@ -92,7 +92,7 @@ def _analysing(
             )
         
         label_palette = colours.LabelPalette(labels)
-        label_palette.get_legend().savefig(os.path.join(results_dir, 'legend.tiff'))
+        label_palette.get_legend().savefig(os.path.join(results_dir, 'legend.png'))
         
         sample_labels = np.empty((len(voxel_indexes),), np.uint8)
         for (label_index, pos) in enumerate(label_positions):

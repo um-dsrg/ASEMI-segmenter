@@ -1,7 +1,77 @@
-'''Module with functions related to saving results iteratively.'''
+'''Module with functions related to saving results.'''
 
 import json
 import numpy as np
+from asemi_segmenter.lib import colours
+from asemi_segmenter.lib import images
+from asemi_segmenter.lib import evaluations
+
+
+#########################################
+def save_confusion_matrix(fullfname, confusion_matrix, labels):
+    '''
+    Save a confusion matrix to a text file.
+    
+    Confusion matrix comes from evaluations.get_confusion_matrix.
+    
+    :param str fullfname: The full file name (with path) to the text file.
+    :param numpy.ndarray confusion_matrix: The confusion matrix numpy array.
+    :param list labels: List of string labels corresponding to the rows/columns of the matrix.
+    '''
+    with open(fullfname, 'w', encoding='utf-8') as f:
+        print(
+            '',
+            *['true {}'.format(label) for label in labels],
+            'total',
+            sep='\t', file=f
+            )
+        for row in range(confusion_matrix.shape[0]):
+            print(
+                'predicted {}'.format(labels[row]),
+                *confusion_matrix[row, :].tolist(),
+                confusion_matrix[row, :].sum(),
+                sep='\t', file=f
+                )
+        print(
+            'total',
+            *[confusion_matrix[:, col].sum() for col in range(confusion_matrix.shape[1])],
+            confusion_matrix.sum(),
+            sep='\t', file=f
+            )
+
+
+#########################################
+class ConfusionMapSaver(object):
+    '''
+    Confusion map saving helper.
+    
+    Confusion map comes from evaluations.get_confusion_map.
+    '''
+    
+    #########################################
+    def __init__(self):
+        '''
+        Constructor.
+        '''
+        labels = [
+            (evaluations.TRUE_POSITIVE, 'true +ve'),
+            (evaluations.TRUE_NEGATIVE, 'true -ve'),
+            (evaluations.FALSE_POSITIVE, 'false +ve'),
+            (evaluations.FALSE_NEGATIVE, 'false -ve')
+            ]
+        labels.sort()
+        self.palette = colours.LabelPalette([label for (_, label) in labels])
+    
+    #########################################
+    def save(self, fullfname, confusion_map):
+        '''
+        Save a confusion map.
+        
+        :param str fullfname: The full file name (with path) of the image file.
+        :param numpy.ndarray confusion_map: The numpy array containing the confusion map.
+        '''
+        image = self.palette.label_indexes_to_colours(confusion_map)
+        images.save_image(fullfname, image, num_bits=8, compress=True)
 
 
 #########################################
@@ -35,7 +105,8 @@ class EvaluationResultsFile(object):
         if self.results_fullfname is not None:
             with open(self.results_fullfname, 'w', encoding='utf-8') as f:
                 print(
-                    'slice',
+                    'subvolume slice#',
+                    'volume slice#',
                     'global {}'.format(self.evaluation.name),
                     'min {}'.format(self.evaluation.name),
                     'stddev {}'.format(self.evaluation.name),
@@ -46,11 +117,14 @@ class EvaluationResultsFile(object):
                     )
 
     #########################################
-    def add(self, slice_fullfname, label_results, global_result, featuriser_duration, classifier_duration):
+    def add(self, subvolume_slice_num, volume_slice_num, label_results, global_result, featuriser_duration, classifier_duration):
         '''
         Add a new slice's result to the file.
 
-        :param str slice_fullfname: The full file name of the slice being used for evaluation.
+        :param int subvolume_slice_num: The subvolume slice number of the slice being used for
+            evaluation.
+        :param int volume_slice_num: The full volume slice number of the slice being used for
+            evaluation.
         :param list label_results: The list of scores for each label.
         :param float global_result: The global score.
         :param float featuriser_duration: The duration of the featurisation process.
@@ -59,7 +133,8 @@ class EvaluationResultsFile(object):
         if self.results_fullfname is not None:
             with open(self.results_fullfname, 'a', encoding='utf-8') as f:
                 print(
-                    slice_fullfname,
+                    subvolume_slice_num,
+                    volume_slice_num,
                     '{:.3{}}'.format(
                         global_result,
                         '%' if self.evaluation.is_percentage else 'f'
@@ -98,7 +173,8 @@ class EvaluationResultsFile(object):
         if self.results_fullfname is not None:
             with open(self.results_fullfname, 'a', encoding='utf-8') as f:
                 print(
-                    'global',
+                    -1,
+                    -1,
                     '{:.3{}}'.format(
                         self.evaluation.get_global_result(),
                         '%' if self.evaluation.is_percentage else 'f'

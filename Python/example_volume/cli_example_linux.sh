@@ -49,9 +49,9 @@ python ../bin/evaluate.py \
     --label_dirs \
         "evaluate/labels/air" \
         "evaluate/labels/terracotta" \
-    --results_fullfname "evaluate/results.txt" \
+    --results_dir "evaluate/results" \
     --max_processes 2 \
-    --max_batch_memory 0.1
+    --max_batch_memory 0.1 \
 
 python ../bin/segment.py \
     --segmenter_fullfname "train/segmenter.pkl" \

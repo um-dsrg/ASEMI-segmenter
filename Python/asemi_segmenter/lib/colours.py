@@ -43,6 +43,7 @@ class LabelPalette(object):
             self.names_palette_int[label]
             for label in self.label_names
             ]
+        self.index2colour = np.array(self.index_palette_int, np.uint8)
     
     #########################################
     def get_legend(self):
@@ -73,4 +74,4 @@ class LabelPalette(object):
         :return: Numpy array of same shape plus an extra dimension for the RGB channels.
         :rtype: numpy.ndarray
         '''
-        return np.array(self.index_palette_int, np.uint8)[label_indexes]
+        return self.index2colour[label_indexes]

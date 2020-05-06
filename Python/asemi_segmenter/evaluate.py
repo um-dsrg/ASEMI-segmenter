@@ -1,6 +1,7 @@
 '''Evaluate command.'''
 
 import pickle
+import os
 import numpy as np
 from asemi_segmenter.listener import ProgressListener
 from asemi_segmenter.lib import arrayprocs
@@ -10,14 +11,16 @@ from asemi_segmenter.lib import hashfunctions
 from asemi_segmenter.lib import images
 from asemi_segmenter.lib import results
 from asemi_segmenter.lib import segmenters
+from asemi_segmenter.lib import colours
 from asemi_segmenter.lib import times
+from asemi_segmenter.lib import files
 from asemi_segmenter.lib import validations
 from asemi_segmenter.lib import volumes
 
 
 #########################################
 def _loading_data(
-        segmenter, preproc_volume_fullfname, subvolume_dir, label_dirs, results_fullfname,
+        segmenter, preproc_volume_fullfname, subvolume_dir, label_dirs, results_dir,
         checkpoint_fullfname, reset_checkpoint, checkpoint_init, max_processes, max_batch_memory, listener
     ):
     '''Loading data stage.'''
@@ -58,11 +61,10 @@ def _loading_data(
     validations.validate_annotation_data(full_volume, subvolume_data, labels_data)
     
     listener.log_output('> Result')
-    if results_fullfname is not None:
-        listener.log_output('>> {}'.format(results_fullfname))
-        validations.check_filename(results_fullfname, '.txt', False)
+    listener.log_output('>> {}'.format(results_dir))
+    validations.check_directory(results_dir)
     evaluation = evaluations.IntersectionOverUnionEvaluation(len(segmenter.classifier.labels))
-    evaluation_results_file = results.EvaluationResultsFile(results_fullfname, evaluation)
+    evaluation_results_file = results.EvaluationResultsFile(os.path.join(results_dir, 'results.txt'), evaluation)
 
     listener.log_output('> Checkpoint')
     if checkpoint_fullfname is not None:
@@ -125,7 +127,7 @@ def _constructing_labels_dataset(
 
 #########################################
 def _evaluating(
-        full_volume, segmenter, slice_shape, slice_size, subvolume_fullfnames, volume_slice_indexes_in_subvolume, subvolume_slice_labels, evaluation, checkpoint, evaluation_results_file, max_processes, max_batch_memory, listener
+        full_volume, segmenter, slice_shape, slice_size, subvolume_fullfnames, volume_slice_indexes_in_subvolume, subvolume_slice_labels, evaluation, checkpoint, evaluation_results_file, results_dir, max_processes, max_batch_memory, listener
     ):
     '''Evaluating stage.'''
     listener.log_output('> Label sizes:')
@@ -149,11 +151,19 @@ def _evaluating(
         max_batch_memory,
         implicit_depth=True
         )
+    
+    labels_palette = colours.LabelPalette(['unlabelled'] + segmenter.classifier.labels)
+    labels_palette.get_legend().savefig(
+        os.path.join(results_dir, 'labels_legend.png')
+        )
+    confusion_map_saver = results.ConfusionMapSaver()
+    confusion_map_saver.palette.get_legend().savefig(
+        os.path.join(results_dir, 'confusion_map_legend.png')
+        )
+        
     start = checkpoint.get_next_to_process('evaluation_prog')
     listener.current_progress_start(start, len(subvolume_fullfnames))
-    for (i, (subvolume_fullfname, volume_slice_index)) in enumerate(
-            zip(subvolume_fullfnames, volume_slice_indexes_in_subvolume)
-        ):
+    for (i, volume_slice_index) in enumerate(volume_slice_indexes_in_subvolume):
         if i < start:
             continue
         with checkpoint.apply('evaluation_prog') as skip:
@@ -174,13 +184,68 @@ def _evaluating(
                 
                 (ious, global_iou) = evaluation.evaluate(prediction, slice_labels)
                 evaluation_results_file.add(
-                    subvolume_fullfname,
+                    i + 1, volume_slice_index + 1,
                     ious,
                     global_iou,
                     sub_timer_featuriser.duration,
                     sub_timer_classifier.duration
                     )
-                output_result[subvolume_fullfname] = ious
+                output_result[i] = ious
+                
+                files.mkdir(os.path.join(results_dir, 'slice_{}'.format(i + 1)))
+                
+                prediction = prediction.reshape(slice_shape)
+                slice_labels = slice_labels.reshape(slice_shape)
+                
+                images.save_image(
+                    os.path.join(results_dir, 'slice_{}'.format(i + 1), 'input_slice.tiff'),
+                    full_volume.get_scale_array(0)[volume_slice_index, :, :],
+                    compress=True
+                    )
+                
+                images.save_image(
+                    os.path.join(results_dir, 'slice_{}'.format(i + 1), 'true_slice.tiff'),
+                    labels_palette.label_indexes_to_colours(
+                        np.where(
+                            slice_labels >= volumes.FIRST_CONTROL_LABEL,
+                            0,
+                            slice_labels + 1
+                            )
+                        ),
+                    num_bits=8,
+                    compress=True
+                    )
+                
+                images.save_image(
+                    os.path.join(results_dir, 'slice_{}'.format(i + 1), 'predicted_slice.tiff'),
+                    labels_palette.label_indexes_to_colours(
+                        prediction + 1
+                        ),
+                    num_bits=8,
+                    compress=True
+                    )
+                
+                confusion_matrix = evaluations.get_confusion_matrix(
+                    prediction,
+                    slice_labels,
+                    len(segmenter.classifier.labels)
+                    )
+                results.save_confusion_matrix(
+                    os.path.join(results_dir, 'slice_{}'.format(i + 1), 'confusion_matrix.txt'),
+                    confusion_matrix,
+                    segmenter.classifier.labels
+                    )
+                
+                for (label_index, label) in enumerate(segmenter.classifier.labels):
+                    confusion_map = evaluations.get_confusion_map(
+                        prediction,
+                        slice_labels,
+                        label_index
+                        )
+                    confusion_map_saver.save(
+                        os.path.join(results_dir, 'slice_{}'.format(i + 1), 'confusion_map_{}.tiff'.format(label)),
+                        confusion_map
+                        )
 
             evaluation_results_file.conclude()
         listener.current_progress_update(i+1)
@@ -191,7 +256,7 @@ def _evaluating(
 
 #########################################
 def main(
-        segmenter, preproc_volume_fullfname, subvolume_dir, label_dirs, results_fullfname,
+        segmenter, preproc_volume_fullfname, subvolume_dir, label_dirs, results_dir,
         checkpoint_fullfname, reset_checkpoint, checkpoint_init, max_processes, max_batch_memory,
         listener=ProgressListener(), debug_mode=False
     ):
@@ -209,11 +274,7 @@ def main(
         slices with the number of labels being equal to the number of directories and
         the number of images in each directory being equal to the number of subvolume
         images.
-    :param results_fullfname: The full file name (with path) to the results text file to save.
-        Results consist of a table of intersection-over-union scores and durations for each slice in
-        subvolume_dir. If set to None then result will not be saved but will instead be returned
-        as a dictionary of subvolume slice paths mapped to their intersection-over-union scores.
-    :type results_fullfname: str or None
+    :param str results_dir: The path to the directory to contain the results of this command.
     :param str checkpoint_fullfname: Full file name (with path) to checkpoint pickle.
     :param checkpoint_fullfname: Full file name (with path) to checkpoint pickle. If None then no
         checkpointing is used.
@@ -247,8 +308,8 @@ def main(
             listener.log_output('Loading data')
             with times.Timer() as timer:
                 (full_volume, slice_shape, slice_size, segmenter, subvolume_fullfnames, labels_data, hash_function, evaluation, evaluation_results_file, checkpoint) = _loading_data(
-                    segmenter, preproc_volume_fullfname, subvolume_dir, label_dirs, results_fullfname,
-                    checkpoint_fullfname, checkpoint_init, max_processes, max_batch_memory,
+                    segmenter, preproc_volume_fullfname, subvolume_dir, label_dirs, results_dir,
+                    checkpoint_fullfname, reset_checkpoint, checkpoint_init, max_processes, max_batch_memory,
                     listener
                     )
             listener.log_output('Data loaded')
@@ -283,7 +344,7 @@ def main(
             listener.log_output(times.get_timestamp())
             listener.log_output('Evaluating')
             with times.Timer() as timer:
-                (output_result,) = _evaluating(full_volume, segmenter, slice_shape, slice_size, subvolume_fullfnames, volume_slice_indexes_in_subvolume, subvolume_slice_labels, evaluation, checkpoint, evaluation_results_file, max_processes, max_batch_memory, listener)
+                (output_result,) = _evaluating(full_volume, segmenter, slice_shape, slice_size, subvolume_fullfnames, volume_slice_indexes_in_subvolume, subvolume_slice_labels, evaluation, checkpoint, evaluation_results_file, results_dir, max_processes, max_batch_memory, listener)
             listener.log_output('Evaluated')
             listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
             listener.log_output('')
