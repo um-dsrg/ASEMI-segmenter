@@ -115,6 +115,19 @@ class EvaluationResultsFile(object):
                     'prediction duration (s)',
                     sep='\t', file=f
                     )
+    
+    #########################################
+    def load(self):
+        '''
+        Load the existing results text file to continue adding to it.
+        '''
+        if self.results_fullfname is not None:
+            with open(self.results_fullfname, 'r', encoding='utf-8') as f:
+                lines = [line.split('\t') for line in f.read().strip().split('\n')]
+            for line in lines[1:]:
+                self.total_featuriser_duration += float(line[-2])
+                self.total_classifier_duration += float(line[-1])
+                self.num_rows += 1
 
     #########################################
     def add(self, subvolume_slice_num, volume_slice_num, label_results, global_result, featuriser_duration, classifier_duration):

@@ -143,6 +143,7 @@ def _evaluating(
             listener.log_output('>> Continuing use of checkpointed results file')
             raise skip
         evaluation_results_file.create(segmenter.classifier.labels)
+    evaluation_results_file.load()
     best_block_shape = arrayprocs.get_optimal_block_size(
         slice_shape,
         full_volume.get_dtype(),
@@ -247,8 +248,8 @@ def _evaluating(
                         confusion_map
                         )
 
-            evaluation_results_file.conclude()
         listener.current_progress_update(i+1)
+    evaluation_results_file.conclude()
     listener.current_progress_end()
         
     return (output_result,)
