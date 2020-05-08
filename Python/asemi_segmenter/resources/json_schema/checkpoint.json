@@ -1,0 +1,23 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "checkpoint.json",
+    
+    "definitions": {
+        "checkpoint": {
+            "type": "object",
+            "patternProperties": {
+                "[a-z_]+": {
+                    "type": "integer",
+                    "minimum": 1
+                }
+            },
+            "additionalProperties": false
+        }
+    },
+    
+    "type": "object",
+    "patternProperties": {
+        "[a-z_]+": { "$ref": "#/definitions/checkpoint" }
+    },
+    "additionalProperties": false
+}

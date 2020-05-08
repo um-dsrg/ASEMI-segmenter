@@ -249,7 +249,10 @@ def _evaluating(
                         )
 
         listener.current_progress_update(i+1)
-    evaluation_results_file.conclude()
+    with checkpoint.apply('add_results_conclusion') as skip:
+        if skip is not None:
+            raise skip
+        evaluation_results_file.conclude()
     listener.current_progress_end()
         
     return (output_result,)

@@ -15,6 +15,7 @@ the values are checkpoint dictionaries.
 
 import json
 from asemi_segmenter.lib import files
+from asemi_segmenter.lib import validations
 
 
 #########################################
@@ -46,9 +47,17 @@ class CheckpointManager(object):
         if self.checkpoint_fullfname is not None and files.fexists(self.checkpoint_fullfname):
             with open(self.checkpoint_fullfname, 'r', encoding='utf-8') as f:
                 self.checkpoints_ready = json.load(f)
+            validations.validate_json_with_schema_file(
+                self.checkpoints_ready,
+                'checkpoint.json'
+                )
         if namespace not in self.checkpoints_ready or reset_checkpoint:
             self.checkpoints_ready[namespace] = dict()
         if initial_content is not None:
+            validations.validate_json_with_schema_file(
+                {'tmp': initial_content},
+                'checkpoint.json'
+                )
             self.checkpoints_ready[namespace].update(initial_content)
         if self.checkpoint_fullfname is not None:
             with open(self.checkpoint_fullfname, 'w', encoding='utf-8') as f:

@@ -51,7 +51,7 @@ python ../bin/evaluate.py \
         "evaluate/labels/terracotta" \
     --results_dir "evaluate/results" \
     --max_processes 2 \
-    --max_batch_memory 0.1 \
+    --max_batch_memory 0.1
 
 python ../bin/segment.py \
     --segmenter_fullfname "train/segmenter.pkl" \

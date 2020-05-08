@@ -89,7 +89,6 @@ class EvaluationResultsFile(object):
         :param Evaluation evaluation: The evaluation object being used for the results.
         '''
         self.results_fullfname = results_fullfname
-        self.evaluation = None
         self.total_featuriser_duration = 0.0
         self.total_classifier_duration = 0.0
         self.num_rows = 0
