@@ -17,7 +17,11 @@ colour_rgbs = [
 greys = list()
 non_greys = list()
 for colour_rgb in colour_rgbs:
-    if len(set(colour_rgb)) == 1:
+    if max(
+        abs(colour_rgb[0] - colour_rgb[1]),
+        abs(colour_rgb[0] - colour_rgb[2]),
+        abs(colour_rgb[1] - colour_rgb[2])
+        ) <= 1:
         greys.append(colour_rgb)
     else:
         non_greys.append(colour_rgb)
