@@ -1,5 +1,7 @@
 '''Colour related functions.'''
 
+import pkg_resources
+import json
 import numpy as np
 import matplotlib as mpl
 mpl.use('Agg')
@@ -7,7 +9,11 @@ import matplotlib.pyplot as plt
 import matplotlib.patches
 
 #########################################
-cmap = plt.get_cmap('nipy_spectral')
+cmap = json.loads(
+    pkg_resources.resource_string(
+        'asemi_segmenter.resources.colours', 'colours.json'
+        ).decode()
+    )
 
 #########################################
 class LabelPalette(object):
@@ -24,7 +30,7 @@ class LabelPalette(object):
         self.label_names = label_names
         
         self.names_palette_float = {
-            label: cmap((i + 1)/(1 + len(label_names) + 1))[:3]
+            label: cmap[i]
             for (i, label) in enumerate(label_names)
             }
         self.names_palette_int = {
