@@ -118,6 +118,7 @@ if __name__ == '__main__':
             search_results_fullfname=args.search_results_fullfname,
             best_result_fullfname=args.best_result_fullfname,
             checkpoint_fullfname=args.checkpoint_fullfname,
+            checkpoint_namespace='tune',
             reset_checkpoint=args.reset_checkpoint == 'yes',
             checkpoint_init=dict(),
             max_processes=arrayprocs.get_num_processes(args.max_processes),

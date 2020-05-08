@@ -101,6 +101,7 @@ if __name__ == '__main__':
             label_dirs=args.label_dirs,
             results_dir=args.results_dir,
             checkpoint_fullfname=args.checkpoint_fullfname,
+            checkpoint_namespace='evaluate',
             reset_checkpoint=args.reset_checkpoint == 'yes',
             checkpoint_init=dict(),
             max_processes=arrayprocs.get_num_processes(args.max_processes),

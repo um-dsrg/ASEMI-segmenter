@@ -86,6 +86,7 @@ if __name__ == '__main__':
             config=args.config_fullfname,
             result_data_fullfname=args.result_data_fullfname,
             checkpoint_fullfname=args.checkpoint_fullfname,
+            checkpoint_namespace='preprocess',
             reset_checkpoint=args.reset_checkpoint == 'yes',
             checkpoint_init=dict(),
             max_processes=arrayprocs.get_num_processes(args.max_processes),

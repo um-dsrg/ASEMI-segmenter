@@ -8,8 +8,9 @@ subsequent run.
 
 A checkpoint is a dictionary where keys are unique names for checkpoints in a command's process
 and values are the number of times that the checkpoint was reached. A checkpoint file is a JSON
-encoded file consisting of a dictionary of checkpoints. The upper dictionary's keys are the name
-of the command being processed and the values are checkpoint dictionaries of those commands.
+encoded file consisting of a dictionary of checkpoints. The upper dictionary organises the
+checkpoints into namespaces. The keys are the name of the namespace (usually command name) and
+the values are checkpoint dictionaries.
 '''
 
 import json
@@ -21,12 +22,11 @@ class CheckpointManager(object):
     '''Checkpoint manager keep track of which stages in a process are complete.'''
 
     #########################################
-    def __init__(self, this_command, checkpoint_fullfname, reset_checkpoint=False, initial_content=None):
+    def __init__(self, namespace, checkpoint_fullfname, reset_checkpoint=False, initial_content=None):
         '''
         Create a new checkpoint manager.
 
-        :param str this_command: The unique name of the command using the checkpoint (serves as
-            a namespace).
+        :param str namespace: A unique namespace for this checkpoint to use in the checkpoint file.
         :param str checkpoint_fullfname: The full file name (with path) of the checkpoint file. If
             None then the checkpoint state is not persisted.
         :param bool reset_checkpoint: Whether to clear the checkpoint from the file (if it
@@ -40,16 +40,16 @@ class CheckpointManager(object):
             If None then the checkpoint will either be empty or the content of the checkpoint file if it exists. Can be used to reset the checkpoint of the command by passing in
             an empty dictionary.
         '''
-        self.this_command = this_command
+        self.namespace = namespace
         self.checkpoint_fullfname = checkpoint_fullfname
         self.checkpoints_ready = dict()
         if self.checkpoint_fullfname is not None and files.fexists(self.checkpoint_fullfname):
             with open(self.checkpoint_fullfname, 'r', encoding='utf-8') as f:
                 self.checkpoints_ready = json.load(f)
-        if this_command not in self.checkpoints_ready or reset_checkpoint:
-            self.checkpoints_ready[this_command] = dict()
+        if namespace not in self.checkpoints_ready or reset_checkpoint:
+            self.checkpoints_ready[namespace] = dict()
         if initial_content is not None:
-            self.checkpoints_ready[this_command].update(initial_content)
+            self.checkpoints_ready[namespace].update(initial_content)
         if self.checkpoint_fullfname is not None:
             with open(self.checkpoint_fullfname, 'w', encoding='utf-8') as f:
                 json.dump(self.checkpoints_ready, f, indent='\t')
@@ -64,10 +64,10 @@ class CheckpointManager(object):
         :rtype int
         '''
         if (
-                self.this_command in self.checkpoints_ready and
-                this_checkpoint in self.checkpoints_ready[self.this_command]
+                self.namespace in self.checkpoints_ready and
+                this_checkpoint in self.checkpoints_ready[self.namespace]
             ):
-            return self.checkpoints_ready[self.this_command][this_checkpoint]
+            return self.checkpoints_ready[self.namespace][this_checkpoint]
         return 0
 
     #########################################
@@ -104,10 +104,10 @@ class CheckpointManager(object):
 
             def __enter__(self):
                 if (
-                        self.checkpoint_obj.this_command in \
+                        self.checkpoint_obj.namespace in \
                         self.checkpoint_obj.checkpoints_ready and
                         this_checkpoint in self.checkpoint_obj.checkpoints_ready[
-                            self.checkpoint_obj.this_command
+                            self.checkpoint_obj.namespace
                             ]
                     ):
                     return SkipCheckpoint()
@@ -119,19 +119,19 @@ class CheckpointManager(object):
                 elif etype is None:
                     if self.checkpoint_obj.checkpoint_fullfname is not None:
                         if (
-                                self.checkpoint_obj.this_command not in \
+                                self.checkpoint_obj.namespace not in \
                                 self.checkpoint_obj.checkpoints_ready
                             ):
                             self.checkpoint_obj.checkpoints_ready[
-                                self.checkpoint_obj.this_command] = dict()
+                                self.checkpoint_obj.namespace] = dict()
                         if this_checkpoint not in self.checkpoint_obj.checkpoints_ready[
-                                self.checkpoint_obj.this_command
+                                self.checkpoint_obj.namespace
                             ]:
                             self.checkpoint_obj.checkpoints_ready[
-                                self.checkpoint_obj.this_command
+                                self.checkpoint_obj.namespace
                                 ][this_checkpoint] = 0
                         self.checkpoint_obj.checkpoints_ready[
-                            self.checkpoint_obj.this_command
+                            self.checkpoint_obj.namespace
                             ][this_checkpoint] += 1
                         with open(self.checkpoint_obj.checkpoint_fullfname, 'w', encoding='utf-8') as f:
                             json.dump(self.checkpoint_obj.checkpoints_ready, f, indent='\t')

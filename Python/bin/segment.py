@@ -94,6 +94,7 @@ if __name__ == '__main__':
             config=args.config_fullfname,
             results_dir=args.results_dir,
             checkpoint_fullfname=args.checkpoint_fullfname,
+            checkpoint_namespace='segment',
             reset_checkpoint=args.reset_checkpoint == 'yes',
             checkpoint_init=dict(),
             max_processes=arrayprocs.get_num_processes(args.max_processes),

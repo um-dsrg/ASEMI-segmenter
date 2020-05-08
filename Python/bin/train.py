@@ -106,6 +106,7 @@ if __name__ == '__main__':
             result_segmenter_fullfname=args.result_segmenter_fullfname,
             trainingset_file_fullfname=args.trainingset_file_fullfname,
             checkpoint_fullfname=args.checkpoint_fullfname,
+            checkpoint_namespace='train',
             reset_checkpoint=args.reset_checkpoint == 'yes',
             checkpoint_init=dict(),
             max_processes=arrayprocs.get_num_processes(args.max_processes),

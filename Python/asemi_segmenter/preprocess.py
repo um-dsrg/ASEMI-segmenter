@@ -15,8 +15,8 @@ from asemi_segmenter.lib import volumes
 #########################################
 def _loading_data(
         volume_dir, config, result_data_fullfname,
-        checkpoint_fullfname, reset_checkpoint, checkpoint_init, max_processes, max_batch_memory,
-        listener
+        checkpoint_fullfname, checkpoint_namespace, reset_checkpoint,
+        checkpoint_init, max_processes, max_batch_memory, listener
     ):
     '''Loading data stage.'''
     listener.log_output('> Volume')
@@ -47,7 +47,7 @@ def _loading_data(
         listener.log_output('>> {}'.format(checkpoint_fullfname))
         validations.check_filename(checkpoint_fullfname, '.json', False)
     checkpoint = checkpoints.CheckpointManager(
-        'preprocess',
+        checkpoint_namespace,
         checkpoint_fullfname,
         reset_checkpoint=reset_checkpoint,
         initial_content=checkpoint_init
@@ -180,7 +180,7 @@ def _hashing_volume_slices(
 #########################################
 def main(
         volume_dir, config, result_data_fullfname,
-        checkpoint_fullfname, reset_checkpoint, checkpoint_init,
+        checkpoint_fullfname, checkpoint_namespace, reset_checkpoint, checkpoint_init,
         max_processes, max_batch_memory, listener=ProgressListener(),
         debug_mode=False
     ):
@@ -193,9 +193,9 @@ def main(
         directly). See user guide for description of the preprocess configuration.
     :type config: str or dict
     :param str result_data_fullfname: Full file name (with path) to HDF file to create.
-    :param checkpoint_fullfname: Full file name (with path) to checkpoint pickle. If None then no
-        checkpointing is used.
-    :type checkpoint_fullfname: str or None
+    :param str checkpoint_fullfname: Full file name (with path) to checkpoint pickle.
+        If None then no checkpointing is used.
+    :param str checkpoint_namespace: Namespace for the checkpoint file.
     :param bool reset_checkpoint: Whether to clear the checkpoint from the file (if it
         exists) and start afresh.
     :param dict checkpoint_init: The checkpoint data to initialise the checkpoint with,
@@ -223,8 +223,8 @@ def main(
             with times.Timer() as timer:
                 (config_data, full_volume, volume_fullfnames, slice_shape, downsample_filter, hash_function, checkpoint) = _loading_data(
                     volume_dir, config, result_data_fullfname,
-                    checkpoint_fullfname, reset_checkpoint, checkpoint_init, max_processes, max_batch_memory,
-                    listener
+                    checkpoint_fullfname, checkpoint_namespace, reset_checkpoint,
+                    checkpoint_init, max_processes, max_batch_memory, listener
                     )
             listener.log_output('Data loaded')
             listener.log_output('Duration: {}'.format(

@@ -21,7 +21,7 @@ from asemi_segmenter.lib import volumes
 #########################################
 def _loading_data(
         segmenter, preproc_volume_fullfname, subvolume_dir, label_dirs, results_dir,
-        checkpoint_fullfname, reset_checkpoint, checkpoint_init, max_processes, max_batch_memory, listener
+        checkpoint_fullfname, checkpoint_namespace, reset_checkpoint, checkpoint_init, max_processes, max_batch_memory, listener
     ):
     '''Loading data stage.'''
     listener.log_output('> Volume')
@@ -71,7 +71,7 @@ def _loading_data(
         listener.log_output('>> {}'.format(checkpoint_fullfname))
         validations.check_filename(checkpoint_fullfname, '.json', False)
     checkpoint = checkpoints.CheckpointManager(
-        'evaluate',
+        checkpoint_namespace,
         checkpoint_fullfname,
         reset_checkpoint=reset_checkpoint,
         initial_content=checkpoint_init
@@ -258,8 +258,8 @@ def _evaluating(
 #########################################
 def main(
         segmenter, preproc_volume_fullfname, subvolume_dir, label_dirs, results_dir,
-        checkpoint_fullfname, reset_checkpoint, checkpoint_init, max_processes, max_batch_memory,
-        listener=ProgressListener(), debug_mode=False
+        checkpoint_fullfname, checkpoint_namespace, reset_checkpoint, checkpoint_init,
+        max_processes, max_batch_memory, listener=ProgressListener(), debug_mode=False
     ):
     '''
     Evaluate a trained segmenter on manually labelled slices.
@@ -277,9 +277,8 @@ def main(
         images.
     :param str results_dir: The path to the directory to contain the results of this command.
     :param str checkpoint_fullfname: Full file name (with path) to checkpoint pickle.
-    :param checkpoint_fullfname: Full file name (with path) to checkpoint pickle. If None then no
-        checkpointing is used.
-    :type checkpoint_fullfname: str or None
+        If None then no checkpointing is used.
+    :param str checkpoint_namespace: Namespace for the checkpoint file.
     :param bool reset_checkpoint: Whether to clear the checkpoint from the file (if it
         exists) and start afresh.
     :param dict checkpoint_init: The checkpoint data to initialise the checkpoint with,
@@ -310,7 +309,7 @@ def main(
             with times.Timer() as timer:
                 (full_volume, slice_shape, slice_size, segmenter, subvolume_fullfnames, labels_data, hash_function, evaluation, evaluation_results_file, checkpoint) = _loading_data(
                     segmenter, preproc_volume_fullfname, subvolume_dir, label_dirs, results_dir,
-                    checkpoint_fullfname, reset_checkpoint, checkpoint_init, max_processes, max_batch_memory,
+                    checkpoint_fullfname, checkpoint_namespace, reset_checkpoint, checkpoint_init, max_processes, max_batch_memory,
                     listener
                     )
             listener.log_output('Data loaded')
