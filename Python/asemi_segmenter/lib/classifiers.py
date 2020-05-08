@@ -420,6 +420,7 @@ class LogisticRegressionClassifier(Classifier):
                     solver='saga',
                     multi_class='multinomial',
                     penalty='l1',
+                    class_weight='balanced',
                     random_state=0
                     )
                 )
@@ -659,6 +660,7 @@ class DecisionTreeClassifier(Classifier):
                 sklearn.tree.DecisionTreeClassifier(
                     max_depth=max_depth,
                     min_samples_leaf=min_samples_leaf,
+                    class_weight='balanced',
                     random_state=0
                     )
                 )
@@ -769,6 +771,7 @@ class RandomForestClassifier(Classifier):
                     n_estimators=n_estimators,
                     max_depth=max_depth,
                     min_samples_leaf=min_samples_leaf,
+                    class_weight='balanced',
                     random_state=0
                     )
                 )
