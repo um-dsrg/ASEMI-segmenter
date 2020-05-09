@@ -3,12 +3,36 @@
 import subprocess
 import tempfile
 import platform
+import io
 import PIL.Image
 import numpy as np
 
 #########################################
 IMAGE_EXTS_IN = set('.tiff .tif .png .jp2'.split(' '))
 IMAGE_EXTS_OUT = set('.tiff .tif .png'.split(' '))
+
+
+#########################################
+def matplotlib_to_imagedata(figure):
+    '''
+    Convert a Matplotlib figure to a numpy array.
+    
+    :param matplotlib.pyplot.Figure figure: The figure to convert.
+    :return: The numpy array.
+    :rtype: numpy.ndarray
+    '''
+    with io.BytesIO() as io_buf:
+        figure.savefig(io_buf, format='raw')
+        io_buf.seek(0)
+        image_data = np.frombuffer(
+            io_buf.getvalue(),
+            dtype=np.uint8
+            ).reshape(
+                int(figure.bbox.bounds[3]),
+                int(figure.bbox.bounds[2]),
+                4
+                )[:,:,:3]
+    return image_data
 
 
 #########################################

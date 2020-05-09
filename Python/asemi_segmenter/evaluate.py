@@ -152,12 +152,18 @@ def _evaluating(
         )
     
     labels_palette = colours.LabelPalette(['unlabelled'] + segmenter.classifier.labels)
-    labels_palette.get_legend().savefig(
-        os.path.join(results_dir, 'labels_legend.png')
+    images.save_image(
+        os.path.join(results_dir, 'labels_legend.tiff'),
+        images.matplotlib_to_imagedata(labels_palette.get_legend()),
+        num_bits=8,
+        compress=True
         )
     confusion_map_saver = results.ConfusionMapSaver(segmenter.classifier.labels)
-    confusion_map_saver.palette.get_legend().savefig(
-        os.path.join(results_dir, 'confusion_map_legend.png')
+    images.save_image(
+        os.path.join(results_dir, 'confusion_map_legend.tiff'),
+        images.matplotlib_to_imagedata(confusion_map_saver.palette.get_legend()),
+        num_bits=8,
+        compress=True
         )
         
     start = checkpoint.get_next_to_process('evaluation_prog')

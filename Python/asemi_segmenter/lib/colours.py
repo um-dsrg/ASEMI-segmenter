@@ -29,27 +29,14 @@ class LabelPalette(object):
         '''
         self.label_names = label_names
         
-        self.names_palette_float = {
-            label: cmap[i]
+        self.names_palette = {
+            label: tuple(cmap[i])
             for (i, label) in enumerate(label_names)
             }
-        self.names_palette_int = {
-            label: tuple(
-                round(channel*255)
-                for channel in self.names_palette_float[label]
-                )
-            for (i, label) in enumerate(label_names)
-            }
-        
-        self.index_palette_float = [
-            self.names_palette_float[label]
+        self.index2colour = np.array([
+            self.names_palette[label]
             for label in self.label_names
-            ]
-        self.index_palette_int = [
-            self.names_palette_int[label]
-            for label in self.label_names
-            ]
-        self.index2colour = np.array(self.index_palette_int, np.uint8)
+            ], np.uint8)
     
     #########################################
     def get_legend(self):
@@ -62,12 +49,17 @@ class LabelPalette(object):
         (fig, ax) = plt.subplots(1, 1)
         ax.legend(
             handles=[
-                matplotlib.patches.Patch(color=self.names_palette_float[label], label=label)
+                matplotlib.patches.Patch(
+                    color=tuple(channel/255 for channel in self.names_palette[label]),
+                    label=label
+                    )
                 for label in self.label_names
                 ],
-            loc='center'
+            loc='center',
+            prop={'size': 16}
             )
         ax.axis('off')
+        
         return fig
 
     #########################################

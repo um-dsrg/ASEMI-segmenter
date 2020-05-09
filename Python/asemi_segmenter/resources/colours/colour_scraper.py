@@ -26,9 +26,6 @@ for colour_rgb in colour_rgbs:
     else:
         non_greys.append(colour_rgb)
 
-output = [
-    [channel/255 for channel in rgb]
-    for rgb in (non_greys + greys)[:253]
-    ]
+output = (non_greys + greys)[:253]
 with open('colours.json', 'w', encoding='utf-8') as f:
     json.dump(output, f)
