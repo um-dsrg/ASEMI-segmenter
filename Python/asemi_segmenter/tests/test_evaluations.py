@@ -3,6 +3,7 @@ import numpy as np
 import os
 import sys
 from asemi_segmenter.lib import evaluations
+from asemi_segmenter.lib import volumes
 
 #########################################
 class Evaluations(unittest.TestCase):
@@ -138,13 +139,8 @@ class Evaluations(unittest.TestCase):
         np.testing.assert_equal(ev.label_freqs, [6, 4])
         
         np.testing.assert_equal(
-            ev.get_global_result_per_label(),
-            [4/6, 2/4]
-            )
-        
-        np.testing.assert_equal(
-            ev.get_global_result(),
-            6/10
+            ev.get_global_results(),
+            ([4/6, 2/4], 6/10)
             )
     
     #########################################
@@ -170,13 +166,8 @@ class Evaluations(unittest.TestCase):
         np.testing.assert_equal(ev.label_freqs, [6, 4])
         
         np.testing.assert_equal(
-            ev.get_global_result_per_label(),
-            [4/8, 2/6]
-            )
-        
-        np.testing.assert_equal(
-            ev.get_global_result(),
-            6/10
+            ev.get_global_results(),
+            ([4/8, 2/6], 6/10)
             )
     
     

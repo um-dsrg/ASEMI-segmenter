@@ -346,8 +346,6 @@ def _tuning(
                     result = dict()
                     max_memory_mb = max(memory_profiler.memory_usage((memory_scope, (result,)), interval=0))
                     
-                    ious = evaluation.get_global_result_per_label()
-                    global_iou = evaluation.get_global_result()
                     tuning_results_file.add(
                         segmenter.get_config(),
                         result['featuriser_time'],

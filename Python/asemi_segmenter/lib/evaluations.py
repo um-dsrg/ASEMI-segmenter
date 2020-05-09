@@ -106,29 +106,18 @@ class Evaluation(object):
         Clear recorded slice metrics of object.
         '''
         raise NotImplementedError()
-        
+    
     #########################################
-    def get_global_result_per_label(self):
+    def get_global_results(self):
         '''
-        Convert all separate evaluations into a single number for each label.
+        Convert all separate evaluations into a single number for each label globally.
         
-        Missing labels in the ground truth will be given None.
+        Missing labels in the ground truth will be None in label result and ignored
+        in global result. If all labels are missing then global result will be None.
         
-        :return: A list of floats or Nones.
-        :rtype: list
-        '''
-        raise NotImplementedError()
-        
-    #########################################
-    def get_global_result(self):
-        '''
-        Get a single evaluation metric number.
-        
-        Missing labels in the ground truth will be ignored. If all labels
-        are missing then None will be returned.
-        
-        :return: A metric number.
-        :rtype: float or None
+        :return: A tuple consisting of a list of global scores (floats) for each label
+            and a float being the final global result.
+        :rtype: tuple
         '''
         raise NotImplementedError()
         
@@ -179,41 +168,33 @@ class AccuracyEvaluation(Evaluation):
         for label_index in range(num_labels):
             self.label_freqs[label_index] = 0
             self.num_correct[label_index] = 0
-        
+    
     #########################################
-    def get_global_result_per_label(self):
+    def get_global_results(self):
         '''
-        Convert all separate evaluations into a single number for each label.
+        Convert all separate evaluations into a single number for each label globally.
         
-        Missing labels in the ground truth will be given None.
+        Missing labels in the ground truth will be None in label result and ignored
+        in global result. If all labels are missing then global result will be None.
         
-        :return: A list of floats or Nones.
-        :rtype: list
-        '''
-        return [
-            self.num_correct[label_index]/self.label_freqs[label_index]
-            if self.label_freqs[label_index] > 0
-            else None
-            for label_index in range(self.num_labels)
-            ]
-        
-    #########################################
-    def get_global_result(self):
-        '''
-        Get a single evaluation metric number.
-        
-        Missing labels in the ground truth will be ignored. If all labels
-        are missing then None will be returned.
-        
-        :return: A metric number.
-        :rtype: float or None
+        :return: A tuple consisting of a list of global scores (floats) for each label
+            and a float being the final global result.
+        :rtype: tuple
         '''
         total_num_correct = sum(self.num_correct)
         total_label_freqs = sum(self.label_freqs)
         return (
-            total_num_correct/total_label_freqs
-            if total_label_freqs > 0
-            else None
+            [
+                self.num_correct[label_index]/self.label_freqs[label_index]
+                if self.label_freqs[label_index] > 0
+                else None
+                for label_index in range(self.num_labels)
+                ],
+            (
+                total_num_correct/total_label_freqs
+                if total_label_freqs > 0
+                else None
+                )
             )
         
     #########################################
@@ -287,39 +268,31 @@ class IntersectionOverUnionEvaluation(Evaluation):
             self.num_unioned[label_index] = 0
         
     #########################################
-    def get_global_result_per_label(self):
+    def get_global_results(self):
         '''
-        Convert all separate evaluations into a single number for each label.
+        Convert all separate evaluations into a single number for each label globally.
         
-        Missing labels in the ground truth will be given None.
+        Missing labels in the ground truth will be None in label result and ignored
+        in global result. If all labels are missing then global result will be None.
         
-        :return: A list of floats or Nones.
-        :rtype: list
-        '''
-        return [
-            self.num_intersecting[label_index]/self.num_unioned[label_index]
-            if self.num_unioned[label_index] > 0
-            else None
-            for label_index in range(self.num_labels)
-            ]
-        
-    #########################################
-    def get_global_result(self):
-        '''
-        Get a single evaluation metric number.
-        
-        Missing labels in the ground truth will be ignored. If all labels
-        are missing then None will be returned.
-        
-        :return: A metric number.
-        :rtype: float or None
+        :return: A tuple consisting of a list of global scores (floats) for each label
+            and a float being the final global result.
+        :rtype: tuple
         '''
         total_num_intersecting = sum(self.num_intersecting)
         total_valid = sum(self.label_freqs)
         return (
-            total_num_intersecting/total_valid
-            if total_valid > 0
-            else None
+            [
+                self.num_intersecting[label_index]/self.num_unioned[label_index]
+                if self.num_unioned[label_index] > 0
+                else None
+                for label_index in range(self.num_labels)
+                ],
+            (
+                total_num_intersecting/total_valid
+                if total_valid > 0
+                else None
+                )
             )
         
     #########################################
@@ -335,7 +308,7 @@ class IntersectionOverUnionEvaluation(Evaluation):
         :param numpy.ndarray true_labels: A 1D numpy array of label
             indexes given by the dataset.
         :return: A tuple consisting of a list of scores (floats) for each label
-            and a float being global result for this evaluation.
+            and a float being the global result for this evaluation.
         :rtype: tuple
         '''
         label_freqs = list()
@@ -359,5 +332,5 @@ class IntersectionOverUnionEvaluation(Evaluation):
             self.label_freqs[label_index] += label_freqs[label_index]
             self.num_intersecting[label_index] += num_intersecting[label_index]
             self.num_unioned[label_index] += num_unioned[label_index]
-        global_result = sum(num_intersecting)/sum(label_freqs) if any(f > 0 for f in label_freqs) else None
-        return (labels_result, global_result)
+        single_result = sum(num_intersecting)/sum(label_freqs) if any(f > 0 for f in label_freqs) else None
+        return (labels_result, single_result)

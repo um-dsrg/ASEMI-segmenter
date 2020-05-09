@@ -137,13 +137,11 @@ def _evaluating(
             listener.log_output('>>> {}: {}'.format(label, np.sum(subvolume_slice_labels[i*slice_size:(i+1)*slice_size] == label_index)))
     
     listener.log_output('> Evaluating')
-    output_result = dict()
     with checkpoint.apply('create_results_file') as skip:
         if skip is not None:
             listener.log_output('>> Continuing use of checkpointed results file')
             raise skip
         evaluation_results_file.create(segmenter.classifier.labels)
-    evaluation_results_file.load()
     best_block_shape = arrayprocs.get_optimal_block_size(
         slice_shape,
         full_volume.get_dtype(),
@@ -183,15 +181,14 @@ def _evaluating(
                 
                 slice_labels = subvolume_slice_labels[i*slice_size:(i+1)*slice_size]
                 
-                (ious, global_iou) = evaluation.evaluate(prediction, slice_labels)
                 evaluation_results_file.add(
-                    i + 1, volume_slice_index + 1,
-                    ious,
-                    global_iou,
+                    i + 1,
+                    volume_slice_index + 1,
+                    prediction,
+                    slice_labels,
                     sub_timer_featuriser.duration,
                     sub_timer_classifier.duration
                     )
-                output_result[i] = ious
                 
                 files.mkdir(os.path.join(results_dir, 'slice_{}'.format(i + 1)))
                 
@@ -249,13 +246,9 @@ def _evaluating(
                         )
 
         listener.current_progress_update(i+1)
-    with checkpoint.apply('add_results_conclusion') as skip:
-        if skip is not None:
-            raise skip
-        evaluation_results_file.conclude()
     listener.current_progress_end()
-        
-    return (output_result,)
+    
+    return ()
 
 
 #########################################
@@ -292,9 +285,6 @@ def main(
     :param float max_batch_memory: The maximum number of gigabytes to use between all processes.
     :param ProgressListener listener: The command's progress listener.
     :param bool debug_mode: Whether to show full error messages or just simple ones.
-    :return: The results as a dictionary of subvolume slice paths mapped to their
-        intersection-over-union scores.
-    :rtype: dict
     '''
     full_volume = None
     try:
@@ -347,7 +337,7 @@ def main(
             listener.log_output(times.get_timestamp())
             listener.log_output('Evaluating')
             with times.Timer() as timer:
-                (output_result,) = _evaluating(full_volume, segmenter, slice_shape, slice_size, subvolume_fullfnames, volume_slice_indexes_in_subvolume, subvolume_slice_labels, evaluation, checkpoint, evaluation_results_file, results_dir, max_processes, max_batch_memory, listener)
+                () = _evaluating(full_volume, segmenter, slice_shape, slice_size, subvolume_fullfnames, volume_slice_indexes_in_subvolume, subvolume_slice_labels, evaluation, checkpoint, evaluation_results_file, results_dir, max_processes, max_batch_memory, listener)
             listener.log_output('Evaluated')
             listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
             listener.log_output('')
@@ -359,8 +349,6 @@ def main(
         listener.log_output(times.get_timestamp())
 
         listener.overall_progress_end()
-
-        return output_result
     except Exception as ex:
         listener.error_output(str(ex))
         if debug_mode:
