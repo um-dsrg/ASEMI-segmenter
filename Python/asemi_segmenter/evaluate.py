@@ -155,7 +155,7 @@ def _evaluating(
     labels_palette.get_legend().savefig(
         os.path.join(results_dir, 'labels_legend.png')
         )
-    confusion_map_saver = results.ConfusionMapSaver()
+    confusion_map_saver = results.ConfusionMapSaver(segmenter.classifier.labels)
     confusion_map_saver.palette.get_legend().savefig(
         os.path.join(results_dir, 'confusion_map_legend.png')
         )

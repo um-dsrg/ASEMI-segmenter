@@ -49,18 +49,14 @@ class ConfusionMapSaver(object):
     '''
     
     #########################################
-    def __init__(self):
+    def __init__(self, label_names):
         '''
         Constructor.
+        
+        :param list label_names: The names of labels in order of their indexes.
         '''
-        labels = [
-            (evaluations.TRUE_POSITIVE, 'true +ve'),
-            (evaluations.TRUE_NEGATIVE, 'true -ve'),
-            (evaluations.FALSE_POSITIVE, 'false +ve'),
-            (evaluations.FALSE_NEGATIVE, 'false -ve')
-            ]
-        labels.sort()
-        self.palette = colours.LabelPalette([label for (_, label) in labels])
+        self.label_names = label_names
+        self.palette = colours.LabelPalette(label_names)
     
     #########################################
     def save(self, fullfname, confusion_map):

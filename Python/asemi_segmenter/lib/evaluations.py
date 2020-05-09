@@ -30,31 +30,30 @@ def get_confusion_matrix(predicted_labels, true_labels, num_labels):
 
 
 #########################################
-(TRUE_POSITIVE, TRUE_NEGATIVE, FALSE_POSITIVE, FALSE_NEGATIVE) = range(4)
-
-#########################################
 def get_confusion_map(predicted_labels, true_labels, label_index):
     '''
     Create a confusion map array for a given label.
     
+    A confusion map takes an array of predicted labels and of true labels and,
+    for a given reference label, replaces all correct predictions with the
+    reference label whilst preserving the incorrect prediction labels. This
+    let's one analyse where the errors were made.
+    
     :param numpy.ndarray predicted_labels: The array of labels given by the segmenter.
     :param numpy.ndarray true_labels: The array of labels given by the dataset.
     :param int label_index: The label index to consider.
-    :return: The confusion map with the following values for each element in the labels arrays:
-        evaluations.TRUE_POSITIVE, evaluations.TRUE_NEGATIVE, evaluations.FALSE_POSITIVE, evaluations.FALSE_NEGATIVE
+    :return: The confusion map.
     :rtype: numpy.ndarray
     '''
     predicted_label_mask = predicted_labels == label_index
-    not_predicted_label_mask = predicted_labels != label_index
     true_label_mask = true_labels == label_index
-    not_true_label_mask = true_labels != label_index
+    correct_predictions = (
+        (predicted_labels == label_index)
+        ==
+        (true_labels == label_index)
+        )
     
-    result = np.empty(predicted_labels.shape, np.uint8)
-    result[np.logical_and(predicted_label_mask, true_label_mask)]         = TRUE_POSITIVE
-    result[np.logical_and(not_predicted_label_mask, not_true_label_mask)] = TRUE_NEGATIVE
-    result[np.logical_and(predicted_label_mask, not_true_label_mask)]     = FALSE_POSITIVE
-    result[np.logical_and(not_predicted_label_mask, true_label_mask)]     = FALSE_NEGATIVE
-    return result
+    return np.where(correct_predictions, label_index, predicted_labels)
 
 
 #########################################
