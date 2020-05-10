@@ -11,10 +11,11 @@ import sklearn.neural_network
 import sklearn.tree
 import sklearn.ensemble
 from asemi_segmenter.lib import validations
+from asemi_segmenter.lib import samplers
 
 
 #########################################
-def load_classifier_from_config(labels, config, sklearn_model=None, allow_random=False):
+def load_classifier_from_config(labels, config, sklearn_model=None, as_samples=False):
     '''
     Load a classifier from a configuration dictionary.
     
@@ -27,32 +28,47 @@ def load_classifier_from_config(labels, config, sklearn_model=None, allow_random
     validations.validate_json_with_schema_file(config, 'classifier.json')
     rand = random.Random(0)
     
+    if as_samples and sklearn_model is not None:
+        raise ValueError('Cannot generate hyperparameters from samples when sklearn model is provided.')
+    
     if config['type'] == 'logistic_regression':
         c = None
         max_iter = None
         
-        if isinstance(config['params']['C'], dict):
-            if not allow_random:
-                raise ValueError('C must be a constant not a range.')
-            if (config['params']['C']['min'] >= config['params']['C']['max']):
-                raise ValueError('C min is not less than C max.')
-            c = lambda:10**rand.uniform(
-                np.log10(config['params']['C']['min']),
-                np.log10(config['params']['C']['max'])
-                )
+        if as_samples:
+            if isinstance(config['params']['C'], dict):
+                c = samplers.FloatSampler(
+                    config['params']['C']['min'],
+                    config['params']['C']['max'],
+                    'log10',
+                    seed=rand.random()
+                    )
+            else:
+                c = samplers.ConstantSampler(
+                    config['params']['C'],
+                    seed=rand.random()
+                    )
         else:
+            if isinstance(config['params']['C'], dict):
+                raise ValueError('C must be a constant not a range.')
             c = config['params']['C']
         
-        if isinstance(config['params']['max_iter'], dict):
-            if not allow_random:
-                raise ValueError('max_iter must be a constant not a range.')
-            if (config['params']['max_iter']['min'] >= config['params']['max_iter']['max']):
-                raise ValueError('max_iter min is not less than max_iter max.')
-            max_iter = lambda:rand.randrange(
-                config['params']['max_iter']['min'],
-                config['params']['max_iter']['max'] + 1
-                )
+        if as_samples:
+            if isinstance(config['params']['max_iter'], dict):
+                max_iter = samplers.IntegerSampler(
+                    config['params']['max_iter']['min'],
+                    config['params']['max_iter']['max'],
+                    'uniform',
+                    seed=rand.random()
+                    )
+            else:
+                max_iter = samplers.ConstantSampler(
+                    config['params']['max_iter'],
+                    seed=rand.random()
+                    )
         else:
+            if isinstance(config['params']['max_iter'], dict):
+                raise ValueError('max_iter must be a constant not a range.')
             max_iter = config['params']['max_iter']
         
         if sklearn_model is not None:
@@ -84,40 +100,58 @@ def load_classifier_from_config(labels, config, sklearn_model=None, allow_random
         alpha = None
         max_iter = None
         
-        if isinstance(config['params']['hidden_layer_size'], dict):
-            if not allow_random:
-                raise ValueError('hidden_layer_size must be a constant not a range.')
-            if (config['params']['hidden_layer_size']['min'] >= config['params']['hidden_layer_size']['max']):
-                raise ValueError('hidden_layer_size min is not less than hidden_layer_size max.')
-            hidden_layer_size = lambda:rand.randrange(
-                config['params']['hidden_layer_size']['min'],
-                config['params']['hidden_layer_size']['max'] + 1
-                )
+        if as_samples:
+            if isinstance(config['params']['hidden_layer_size'], dict):
+                hidden_layer_size = samplers.IntegerSampler(
+                    config['params']['hidden_layer_size']['min'],
+                    config['params']['hidden_layer_size']['max'],
+                    'uniform',
+                    seed=rand.random()
+                    )
+            else:
+                hidden_layer_size = samplers.ConstantSampler(
+                    config['params']['hidden_layer_size'],
+                    seed=rand.random()
+                    )
         else:
+            if isinstance(config['params']['hidden_layer_size'], dict):
+                raise ValueError('hidden_layer_size must be a constant not a range.')
             hidden_layer_size = config['params']['hidden_layer_size']
         
-        if isinstance(config['params']['alpha'], dict):
-            if not allow_random:
-                raise ValueError('alpha must be a constant not a range.')
-            if (config['params']['alpha']['min'] >= config['params']['alpha']['max']):
-                raise ValueError('alpha min is not less than alpha max.')
-            alpha = lambda:10**rand.uniform(
-                np.log10(config['params']['alpha']['min']),
-                np.log10(config['params']['alpha']['max'])
-                )
+        if as_samples:
+            if isinstance(config['params']['alpha'], dict):
+                alpha = samplers.FloatSampler(
+                    config['params']['alpha']['min'],
+                    config['params']['alpha']['max'],
+                    'log10',
+                    seed=rand.random()
+                    )
+            else:
+                alpha = samplers.ConstantSampler(
+                    config['params']['alpha'],
+                    seed=rand.random()
+                    )
         else:
+            if isinstance(config['params']['alpha'], dict):
+                raise ValueError('alpha must be a constant not a range.')
             alpha = config['params']['alpha']
         
-        if isinstance(config['params']['max_iter'], dict):
-            if not allow_random:
-                raise ValueError('max_iter must be a constant not a range.')
-            if (config['params']['max_iter']['min'] >= config['params']['max_iter']['max']):
-                raise ValueError('max_iter min is not less than max_iter max.')
-            max_iter = lambda:rand.randrange(
-                config['params']['max_iter']['min'],
-                config['params']['max_iter']['max'] + 1
-                )
+        if as_samples:
+            if isinstance(config['params']['max_iter'], dict):
+                max_iter = samplers.IntegerSampler(
+                    config['params']['max_iter']['min'],
+                    config['params']['max_iter']['max'],
+                    'uniform',
+                    seed=rand.random()
+                    )
+            else:
+                max_iter = samplers.ConstantSampler(
+                    config['params']['max_iter'],
+                    seed=rand.random()
+                    )
         else:
+            if isinstance(config['params']['max_iter'], dict):
+                raise ValueError('max_iter must be a constant not a range.')
             max_iter = config['params']['max_iter']
         
         if sklearn_model is not None:
@@ -150,28 +184,40 @@ def load_classifier_from_config(labels, config, sklearn_model=None, allow_random
         max_depth = None
         min_samples_leaf = None
         
-        if isinstance(config['params']['max_depth'], dict):
-            if not allow_random:
-                raise ValueError('max_depth must be a constant not a range.')
-            if (config['params']['max_depth']['min'] >= config['params']['max_depth']['max']):
-                raise ValueError('max_depth min is not less than max_depth max.')
-            max_depth = lambda:rand.randrange(
-                config['params']['max_depth']['min'],
-                config['params']['max_depth']['max'] + 1
-                )
+        if as_samples:
+            if isinstance(config['params']['max_depth'], dict):
+                max_depth = samplers.IntegerSampler(
+                    config['params']['max_depth']['min'],
+                    config['params']['max_depth']['max'],
+                    'uniform',
+                    seed=rand.random()
+                    )
+            else:
+                max_depth = samplers.ConstantSampler(
+                    config['params']['max_depth'],
+                    seed=rand.random()
+                    )
         else:
+            if isinstance(config['params']['max_depth'], dict):
+                raise ValueError('max_depth must be a constant not a range.')
             max_depth = config['params']['max_depth']
         
-        if isinstance(config['params']['min_samples_leaf'], dict):
-            if not allow_random:
-                raise ValueError('min_samples_leaf must be a constant not a range.')
-            if (config['params']['min_samples_leaf']['min'] >= config['params']['min_samples_leaf']['max']):
-                raise ValueError('min_samples_leaf min is not less than min_samples_leaf max.')
-            min_samples_leaf = lambda:rand.randrange(
-                config['params']['min_samples_leaf']['min'],
-                config['params']['min_samples_leaf']['max'] + 1
-                )
+        if as_samples:
+            if isinstance(config['params']['min_samples_leaf'], dict):
+                min_samples_leaf = samplers.IntegerSampler(
+                    config['params']['min_samples_leaf']['min'],
+                    config['params']['min_samples_leaf']['max'],
+                    'uniform',
+                    seed=rand.random()
+                    )
+            else:
+                min_samples_leaf = samplers.ConstantSampler(
+                    config['params']['min_samples_leaf'],
+                    seed=rand.random()
+                    )
         else:
+            if isinstance(config['params']['min_samples_leaf'], dict):
+                raise ValueError('min_samples_leaf must be a constant not a range.')
             min_samples_leaf = config['params']['min_samples_leaf']
         
         if sklearn_model is not None:
@@ -203,40 +249,58 @@ def load_classifier_from_config(labels, config, sklearn_model=None, allow_random
         max_depth = None
         min_samples_leaf = None
         
-        if isinstance(config['params']['n_estimators'], dict):
-            if not allow_random:
-                raise ValueError('n_estimators must be a constant not a range.')
-            if (config['params']['n_estimators']['min'] >= config['params']['n_estimators']['max']):
-                raise ValueError('n_estimators min is not less than n_estimators max.')
-            n_estimators = lambda:rand.randrange(
-                config['params']['n_estimators']['min'],
-                config['params']['n_estimators']['max'] + 1
-                )
+        if as_samples:
+            if isinstance(config['params']['n_estimators'], dict):
+                n_estimators = samplers.IntegerSampler(
+                    config['params']['n_estimators']['min'],
+                    config['params']['n_estimators']['max'],
+                    'uniform',
+                    seed=rand.random()
+                    )
+            else:
+                n_estimators = samplers.ConstantSampler(
+                    config['params']['n_estimators'],
+                    seed=rand.random()
+                    )
         else:
+            if isinstance(config['params']['n_estimators'], dict):
+                raise ValueError('n_estimators must be a constant not a range.')
             n_estimators = config['params']['n_estimators']
         
-        if isinstance(config['params']['max_depth'], dict):
-            if not allow_random:
-                raise ValueError('max_depth must be a constant not a range.')
-            if (config['params']['max_depth']['min'] >= config['params']['max_depth']['max']):
-                raise ValueError('max_depth min is not less than max_depth max.')
-            max_depth = lambda:rand.randrange(
-                config['params']['max_depth']['min'],
-                config['params']['max_depth']['max'] + 1
-                )
+        if as_samples:
+            if isinstance(config['params']['max_depth'], dict):
+                max_depth = samplers.IntegerSampler(
+                    config['params']['max_depth']['min'],
+                    config['params']['max_depth']['max'],
+                    'uniform',
+                    seed=rand.random()
+                    )
+            else:
+                max_depth = samplers.ConstantSampler(
+                    config['params']['max_depth'],
+                    seed=rand.random()
+                    )
         else:
+            if isinstance(config['params']['max_depth'], dict):
+                raise ValueError('max_depth must be a constant not a range.')
             max_depth = config['params']['max_depth']
         
-        if isinstance(config['params']['min_samples_leaf'], dict):
-            if not allow_random:
-                raise ValueError('min_samples_leaf must be a constant not a range.')
-            if (config['params']['min_samples_leaf']['min'] >= config['params']['min_samples_leaf']['max']):
-                raise ValueError('min_samples_leaf min is not less than min_samples_leaf max.')
-            min_samples_leaf = lambda:rand.randrange(
-                config['params']['min_samples_leaf']['min'],
-                config['params']['min_samples_leaf']['max'] + 1
-                )
+        if as_samples:
+            if isinstance(config['params']['min_samples_leaf'], dict):
+                min_samples_leaf = samplers.IntegerSampler(
+                    config['params']['min_samples_leaf']['min'],
+                    config['params']['min_samples_leaf']['max'],
+                    'uniform',
+                    seed=rand.random()
+                    )
+            else:
+                min_samples_leaf = samplers.ConstantSampler(
+                    config['params']['min_samples_leaf'],
+                    seed=rand.random()
+                    )
         else:
+            if isinstance(config['params']['min_samples_leaf'], dict):
+                raise ValueError('min_samples_leaf must be a constant not a range.')
             min_samples_leaf = config['params']['min_samples_leaf']
         
         if sklearn_model is not None:
@@ -434,10 +498,10 @@ class LogisticRegressionClassifier(Classifier):
         :param list labels: List of labels to be classified.
         :param c: The amount to regularise the model such that
             smaller numbers lead to stronger regularisation.
-        :type c: float or callable
+        :type c: float or samplers.Sampler
         :param max_iter: The number of iterations to spend on
             training.
-        :type max_iter: int or callable
+        :type max_iter: int or samplers.Sampler
         :param sklearn_model: The pretrained sklearn model to use, if any.
             If None then an untrained model will be created. Otherwise
             it is validated against the given parameters.
@@ -450,39 +514,39 @@ class LogisticRegressionClassifier(Classifier):
                 if sklearn_model is not None
                 else self.__MAKE_MODEL(c, max_iter)
                 if (
-                    c is not None
-                    and max_iter is not None
+                    not isinstance(c, samplers.Sampler)
+                    and not isinstance(max_iter, samplers.Sampler)
                     )
                 else None
                 )
             )
         
-        self.c = c if isinstance(c, float) else None
-        self.max_iter = max_iter if isinstance(max_iter, int) else None
-        
-        if isinstance(c, float):
-            self.c_generator = lambda:c
-        elif callable(c):
-            self.c_generator = c
+        self.c = None
+        self.max_iter = None
+        self.c_sampler = None
+        self.max_iter_sampler = None
+        if isinstance(c, samplers.Sampler):
+            self.c_sampler = c
         else:
-            raise ValueError('C must be float or callable.')
-        
-        if isinstance(max_iter, int):
-            self.max_iter_generator = lambda:max_iter
-        elif callable(max_iter):
-            self.max_iter_generator = max_iter
+            self.c = c
+        if isinstance(max_iter, samplers.Sampler):
+            self.max_iter_sampler = max_iter
         else:
-            raise ValueError('max_iter must be int or callable.')
+            self.max_iter = max_iter
     
     #########################################
     def regenerate(self):
         '''
         Regenerate parameters and resulting sklearn model with value generators provided.
         '''
-        self.c = self.c_generator()
-        self.max_iter = self.max_iter_generator()
+        self.c_sampler.resample()
+        self.c = self.c_sampler.get_value()
+        
+        self.max_iter_sampler.resample()
+        self.max_iter = self.max_iter_sampler.get_value()
+        
         self.sklearn_model = self.__MAKE_MODEL(self.c, self.max_iter)
-    
+        
     #########################################
     def get_config(self):
         '''
@@ -548,13 +612,13 @@ class NeuralNetworkClassifier(Classifier):
         :param list labels: List of labels to be classified.
         :param hidden_layer_size: The amount of neural units in the
             hidden layer.
-        :type hidden_layer_size: int or callable
+        :type hidden_layer_size: int or samplers.Sampler
         :param alpha: The amount to regularise the model such that
             larger numbers lead to stronger regularisation.
-        :type alpha: float or callable
+        :type alpha: float or samplers.Sampler
         :param max_iter: The number of iterations to spend on
             training.
-        :type max_iter: int or callable
+        :type max_iter: int or samplers.Sampler
         :param sklearn_model: The pretrained sklearn model to use, if any.
             If None then an untrained model will be created. Otherwise
             it is validated against the given parameters.
@@ -567,47 +631,47 @@ class NeuralNetworkClassifier(Classifier):
                 if sklearn_model is not None
                 else self.__MAKE_MODEL(hidden_layer_size, alpha, max_iter)
                 if (
-                    hidden_layer_size is not None
-                    and alpha is not None
-                    and max_iter is not None
+                    not isinstance(hidden_layer_size, samplers.Sampler)
+                    and not isinstance(alpha, samplers.Sampler)
+                    and not isinstance(max_iter, samplers.Sampler)
                     )
                 else None
                 )
             )
         
-        self.hidden_layer_size = hidden_layer_size if isinstance(hidden_layer_size, int) else None
-        self.alpha = alpha if isinstance(alpha, float) else None
-        self.max_iter = max_iter if isinstance(max_iter, int) else None
-        
-        if isinstance(hidden_layer_size, int):
-            self.hidden_layer_size_generator = lambda:hidden_layer_size
-        elif callable(hidden_layer_size):
-            self.hidden_layer_size_generator = hidden_layer_size
+        self.hidden_layer_size = None
+        self.alpha = None
+        self.max_iter = None
+        self.hidden_layer_size_sampler = None
+        self.alpha_sampler = None
+        self.max_iter_sampler = None
+        if isinstance(hidden_layer_size, samplers.Sampler):
+            self.hidden_layer_size_sampler = hidden_layer_size
         else:
-            raise ValueError('hidden_layer_size must be int or callable.')
-        
-        if isinstance(alpha, float):
-            self.alpha_generator = lambda:alpha
-        elif callable(alpha):
-            self.alpha_generator = alpha
+            self.hidden_layer_size = hidden_layer_size
+        if isinstance(alpha, samplers.Sampler):
+            self.alpha_sampler = alpha
         else:
-            raise ValueError('alpha must be float or callable.')
-        
-        if isinstance(max_iter, int):
-            self.max_iter_generator = lambda:max_iter
-        elif callable(max_iter):
-            self.max_iter_generator = max_iter
+            self.alpha = alpha
+        if isinstance(max_iter, samplers.Sampler):
+            self.max_iter_sampler = max_iter
         else:
-            raise ValueError('max_iter must be int or callable.')
-    
+            self.max_iter = max_iter
+        
     #########################################
     def regenerate(self):
         '''
         Regenerate parameters and resulting sklearn model with value generators provided.
         '''
-        self.hidden_layer_size = self.hidden_layer_size_generator()
-        self.alpha = self.alpha_generator()
-        self.max_iter = self.max_iter_generator()
+        self.hidden_layer_size_sampler.resample()
+        self.hidden_layer_size = self.hidden_layer_size_sampler.get_value()
+        
+        self.alpha_sampler.resample()
+        self.alpha = self.alpha_sampler.get_value()
+        
+        self.max_iter_sampler.resample()
+        self.max_iter = self.max_iter_sampler.get_value()
+        
         self.sklearn_model = self.__MAKE_MODEL(self.hidden_layer_size, self.alpha, self.max_iter)
     
     #########################################
@@ -673,9 +737,9 @@ class DecisionTreeClassifier(Classifier):
         
         :param list labels: List of labels to be classified.
         :param max_depth: The maximum depth of each tree.
-        :type max_depth: int or callable
+        :type max_depth: int or samplers.Sampler
         :param min_samples_leaf: The minimum number of items per leaf.
-        :type min_samples_leaf: int or callable
+        :type min_samples_leaf: int or samplers.Sampler
         :param sklearn_model: The pretrained sklearn model to use, if any.
             If None then an untrained model will be created. Otherwise
             it is validated against the given parameters.
@@ -688,37 +752,37 @@ class DecisionTreeClassifier(Classifier):
                 if sklearn_model is not None
                 else self.__MAKE_MODEL(max_depth, min_samples_leaf)
                 if (
-                    max_depth is not None
-                    and min_samples_leaf is not None
+                    not isinstance(max_depth, samplers.Sampler)
+                    and not isinstance(min_samples_leaf, samplers.Sampler)
                     )
                 else None
                 )
             )
         
-        self.max_depth = max_depth if isinstance(max_depth, int) else None
-        self.min_samples_leaf = min_samples_leaf if isinstance(min_samples_leaf, int) else None
-        
-        if isinstance(max_depth, int):
-            self.max_depth_generator = lambda:max_depth
-        elif callable(max_depth):
-            self.max_depth_generator = max_depth
+        self.max_depth = None
+        self.min_samples_leaf = None
+        self.max_depth_sampler = None
+        self.min_samples_leaf_sampler = None
+        if isinstance(max_depth, samplers.Sampler):
+            self.max_depth_sampler = max_depth
         else:
-            raise ValueError('max_depth must be int or callable.')
-        
-        if isinstance(min_samples_leaf, int):
-            self.min_samples_leaf_generator = lambda:min_samples_leaf
-        elif callable(min_samples_leaf):
-            self.min_samples_leaf_generator = min_samples_leaf
+            self.max_depth = max_depth
+        if isinstance(min_samples_leaf, samplers.Sampler):
+            self.min_samples_leaf_sampler = min_samples_leaf
         else:
-            raise ValueError('min_samples_leaf must be int or callable.')
-    
+            self.min_samples_leaf = min_samples_leaf
+        
     #########################################
     def regenerate(self):
         '''
         Regenerate parameters and resulting sklearn model with value generators provided.
         '''
-        self.max_depth = self.max_depth_generator()
-        self.min_samples_leaf = self.min_samples_leaf_generator()
+        self.max_depth_sampler.resample()
+        self.max_depth = self.max_depth_sampler.get_value()
+        
+        self.min_samples_leaf_sampler.resample()
+        self.min_samples_leaf = self.min_samples_leaf_sampler.get_value()
+        
         self.sklearn_model = self.__MAKE_MODEL(self.max_depth, self.min_samples_leaf)
     
     #########################################
@@ -784,11 +848,11 @@ class RandomForestClassifier(Classifier):
         
         :param list labels: List of labels to be classified.
         :param n_estimators: The number of trees in the forest.
-        :type n_estimators: int or callable
+        :type n_estimators: int or samplers.Sampler
         :param max_depth: The maximum depth of each tree.
-        :type max_depth: int or callable
+        :type max_depth: int or samplers.Sampler
         :param min_samples_leaf: The minimum number of items per leaf.
-        :type min_samples_leaf: int or callable
+        :type min_samples_leaf: int or samplers.Sampler
         :param sklearn_model: The pretrained sklearn model to use, if any.
             If None then an untrained model will be created. Otherwise
             it is validated against the given parameters.
@@ -801,47 +865,47 @@ class RandomForestClassifier(Classifier):
                 if sklearn_model is not None
                 else self.__MAKE_MODEL(n_estimators, max_depth, min_samples_leaf)
                 if (
-                    n_estimators is not None
-                    and max_depth is not None
-                    and min_samples_leaf is not None
+                    not isinstance(n_estimators, samplers.Sampler)
+                    and not isinstance(max_depth, samplers.Sampler)
+                    and not isinstance(min_samples_leaf, samplers.Sampler)
                     )
                 else None
                 )
             )
         
-        self.n_estimators = n_estimators if isinstance(n_estimators, int) else None
-        self.max_depth = max_depth if isinstance(max_depth, int) else None
-        self.min_samples_leaf = min_samples_leaf if isinstance(min_samples_leaf, int) else None
-        
-        if isinstance(n_estimators, int):
-            self.n_estimators_generator = lambda:n_estimators
-        elif callable(n_estimators):
-            self.n_estimators_generator = n_estimators
+        self.n_estimators = None
+        self.max_depth = None
+        self.min_samples_leaf = None
+        self.n_estimators_sampler = None
+        self.max_depth_sampler = None
+        self.min_samples_leaf_sampler = None
+        if isinstance(n_estimators, samplers.Sampler):
+            self.n_estimators_sampler = n_estimators
         else:
-            raise ValueError('n_estimators must be int or callable.')
-        
-        if isinstance(max_depth, int):
-            self.max_depth_generator = lambda:max_depth
-        elif callable(max_depth):
-            self.max_depth_generator = max_depth
+            self.n_estimators = n_estimators
+        if isinstance(max_depth, samplers.Sampler):
+            self.max_depth_sampler = max_depth
         else:
-            raise ValueError('max_depth must be int or callable.')
-        
-        if isinstance(min_samples_leaf, int):
-            self.min_samples_leaf_generator = lambda:min_samples_leaf
-        elif callable(min_samples_leaf):
-            self.min_samples_leaf_generator = min_samples_leaf
+            self.max_depth = max_depth
+        if isinstance(min_samples_leaf, samplers.Sampler):
+            self.min_samples_leaf_sampler = min_samples_leaf
         else:
-            raise ValueError('min_samples_leaf must be int or callable.')
-    
+            self.min_samples_leaf = min_samples_leaf
+        
     #########################################
     def regenerate(self):
         '''
         Regenerate parameters and resulting sklearn model with value generators provided.
         '''
-        self.n_estimators = self.n_estimators_generator()
-        self.max_depth = self.max_depth_generator()
-        self.min_samples_leaf = self.min_samples_leaf_generator()
+        self.n_estimators_sampler.resample()
+        self.n_estimators = self.n_estimators_sampler.get_value()
+        
+        self.max_depth_sampler.resample()
+        self.max_depth = self.max_depth_sampler.get_value()
+        
+        self.min_samples_leaf_sampler.resample()
+        self.min_samples_leaf = self.min_samples_leaf_sampler.get_value()
+        
         self.sklearn_model = self.__MAKE_MODEL(self.n_estimators, self.max_depth, self.min_samples_leaf)
     
     #########################################

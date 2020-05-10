@@ -7,13 +7,13 @@ from asemi_segmenter.lib import validations
 
 
 #########################################
-def load_segmenter_from_pickle_data(pickle_data, full_volume, allow_random=False):
+def load_segmenter_from_pickle_data(pickle_data, full_volume, as_samples=False):
     '''
     Load a segmenter from pickled data.
     
     :param dict pickle_data: The loaded contents of a segmenter pickle.
     :param FullVolume full_volume: The full volume object containing the voxels to work on.
-    :param bool allow_random: Whether to allow configurations that specify how to randomly generate parameters.
+    :param bool as_samples: Whether to allow configurations that specify how to randomly generate parameters.
     :return: A loaded segmenter object.
     :rtype: Segmenter
     '''
@@ -23,7 +23,7 @@ def load_segmenter_from_pickle_data(pickle_data, full_volume, allow_random=False
         if not isinstance(entry, str):
             raise ValueError('Pickle is invalid as label entry {} is not a string.'.format(i))
     
-    return Segmenter(pickle_data['labels'], full_volume, pickle_data['config'], pickle_data['sklearn_model'], allow_random)
+    return Segmenter(pickle_data['labels'], full_volume, pickle_data['config'], pickle_data['sklearn_model'], as_samples)
 
 
 #########################################
@@ -31,7 +31,7 @@ class Segmenter(object):
     '''An object that puts together everything needed to segment a volume after it has been processed.'''
 
     #########################################
-    def __init__(self, labels, full_volume, train_config, sklearn_model=None, allow_random=False):
+    def __init__(self, labels, full_volume, train_config, sklearn_model=None, as_samples=False):
         '''
         Constructor.
         
@@ -39,11 +39,11 @@ class Segmenter(object):
         :param FullVolume full_volume: Full volume on which the segmenter will be working.
         :param dict train_config: Loaded configuration of the training method.
         :param sklearn_model sklearn_model: sklearn model to use for machine learning, if pretrained.
-        :param bool allow_random: Whether to allow training configurations that specify how to randomly generate parameters.
+        :param bool as_samples: Whether to allow training configurations that specify how to randomly generate parameters.
         '''
         validations.validate_json_with_schema_file(train_config, 'train.json')
-        featuriser = featurisers.load_featuriser_from_config(train_config['featuriser'], allow_random)
-        classifier = classifiers.load_classifier_from_config(labels, train_config['classifier'], sklearn_model, allow_random)
+        featuriser = featurisers.load_featuriser_from_config(train_config['featuriser'], as_samples)
+        classifier = classifiers.load_classifier_from_config(labels, train_config['classifier'], sklearn_model, as_samples)
         
         scales_needed = featuriser.get_scales_needed()
         if None not in scales_needed and not scales_needed <= full_volume.get_scales():

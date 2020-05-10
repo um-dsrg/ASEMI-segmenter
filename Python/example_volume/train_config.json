@@ -10,28 +10,28 @@
                 {
                     "type": "histogram",
                     "params": {
-                        "radius": 14,
-                        "scale": 2,
-                        "num_bins": 32
+                        "radius": 25,
+                        "scale": 4,
+                        "num_bins": 19
                     }
                 },
                 {
                     "type": "lbp",
                     "params": {
                         "orientation": "flat",
-                        "radius": 17,
-                        "scale": 2
+                        "radius": 19,
+                        "scale": 4
                     }
                 }
             ]
         }
     },
     "classifier": {
-        "type": "neural_network",
+        "type": "random_forest",
         "params": {
-            "hidden_layer_size": 32,
-            "alpha": 0.016398435363483168,
-            "max_iter": 64
+            "n_estimators": 8,
+            "max_depth": 17,
+            "min_samples_leaf": 1
         }
     },
     "training_set": {

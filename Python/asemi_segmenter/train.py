@@ -56,7 +56,7 @@ def _loading_data(
             config_data = json.load(f)
     else:
         config_data = config
-    segmenter = segmenters.Segmenter(labels, full_volume, config_data, allow_random=False)
+    segmenter = segmenters.Segmenter(labels, full_volume, config_data, as_samples=False)
     if 'samples_to_skip_per_label' not in config_data['training_set']:
         config_data['training_set']['samples_to_skip_per_label'] = 0
 

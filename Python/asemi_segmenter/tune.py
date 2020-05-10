@@ -118,7 +118,7 @@ def _loading_data(
             'classifier': config_data['classifier'],
             'training_set': config_data['training_set'],
             },
-        allow_random=True
+        as_samples=True
         )
     hash_function.init(slice_shape, seed=0)
     training_set = datasets.DataSet(None)

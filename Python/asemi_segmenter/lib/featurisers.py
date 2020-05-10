@@ -8,10 +8,11 @@ from asemi_segmenter.lib import downscales
 from asemi_segmenter.lib import arrayprocs
 from asemi_segmenter.lib import regions
 from asemi_segmenter.lib import validations
+from asemi_segmenter.lib import samplers
 
 
 #########################################
-def load_featuriser_from_config(config, allow_random=False):
+def load_featuriser_from_config(config, as_samples=False):
     '''
     Load a featuriser from a configuration dictionary.
     
@@ -48,40 +49,58 @@ def load_featuriser_from_config(config, allow_random=False):
             scale = None
             num_bins = None
             
-            if isinstance(config['params']['radius'], dict):
-                if not allow_random:
-                    raise ValueError('radius must be a constant not a range.')
-                if (config['params']['radius']['min'] >= config['params']['radius']['max']):
-                    raise ValueError('radius min is not less than radius max.')
-                radius = lambda:rand.randrange(
-                    config['params']['radius']['min'],
-                    config['params']['radius']['max'] + 1
-                    )
+            if as_samples:
+                if isinstance(config['params']['radius'], dict):
+                    radius = samplers.IntegerSampler(
+                        config['params']['radius']['min'],
+                        config['params']['radius']['max'],
+                        'uniform',
+                        seed=rand.random()
+                        )
+                else:
+                    radius = samplers.ConstantSampler(
+                        config['params']['radius'],
+                        seed=rand.random()
+                        )
             else:
+                if isinstance(config['params']['radius'], dict):
+                    raise ValueError('radius must be a constant not a range.')
                 radius = config['params']['radius']
             
-            if isinstance(config['params']['scale'], dict):
-                if not allow_random:
-                    raise ValueError('scale must be a constant not a range.')
-                if (config['params']['scale']['min'] >= config['params']['scale']['max']):
-                    raise ValueError('scale min is not less than scale max.')
-                scale = lambda:rand.randrange(
-                    config['params']['scale']['min'],
-                    config['params']['scale']['max'] + 1
-                    )
+            if as_samples:
+                if isinstance(config['params']['scale'], dict):
+                    scale = samplers.IntegerSampler(
+                        config['params']['scale']['min'],
+                        config['params']['scale']['max'],
+                        'uniform',
+                        seed=rand.random()
+                        )
+                else:
+                    scale = samplers.ConstantSampler(
+                        config['params']['scale'],
+                        seed=rand.random()
+                        )
             else:
+                if isinstance(config['params']['scale'], dict):
+                    raise ValueError('scale must be a constant not a range.')
                 scale = config['params']['scale']
             
-            if isinstance(config['params']['num_bins'], dict):
-                if not allow_random:
-                    raise ValueError('num_bins must be a constant not a range.')
-                if (config['params']['num_bins']['min'] >= config['params']['num_bins']['max']):
-                    raise ValueError('num_bins min is not less than num_bins max.')
-                num_bins = lambda:rand.randrange(
-                    config['params']['num_bins']['min'],
-                    config['params']['num_bins']['max'] + 1
-                    )
+            if as_samples:
+                if isinstance(config['params']['num_bins'], dict):
+                    num_bins = samplers.IntegerSampler(
+                        config['params']['num_bins']['min'],
+                        config['params']['num_bins']['max'],
+                        'uniform',
+                        seed=rand.random()
+                        )
+                else:
+                    num_bins = samplers.ConstantSampler(
+                        config['params']['num_bins'],
+                        seed=rand.random()
+                        )
             else:
+                if isinstance(config['params']['num_bins'], dict):
+                    raise ValueError('num_bins must be a constant not a range.')
                 num_bins = config['params']['num_bins']
             
             return HistogramFeaturiser(radius, scale, num_bins)
@@ -91,28 +110,40 @@ def load_featuriser_from_config(config, allow_random=False):
             radius = None
             scale = None
             
-            if isinstance(config['params']['radius'], dict):
-                if not allow_random:
-                    raise ValueError('radius must be a constant not a range.')
-                if (config['params']['radius']['min'] >= config['params']['radius']['max']):
-                    raise ValueError('radius min is not less than radius max.')
-                radius = lambda:rand.randrange(
-                    config['params']['radius']['min'],
-                    config['params']['radius']['max'] + 1
-                    )
+            if as_samples:
+                if isinstance(config['params']['radius'], dict):
+                    radius = samplers.IntegerSampler(
+                        config['params']['radius']['min'],
+                        config['params']['radius']['max'],
+                        'uniform',
+                        seed=rand.random()
+                        )
+                else:
+                    radius = samplers.ConstantSampler(
+                        config['params']['radius'],
+                        seed=rand.random()
+                        )
             else:
+                if isinstance(config['params']['radius'], dict):
+                    raise ValueError('radius must be a constant not a range.')
                 radius = config['params']['radius']
             
-            if isinstance(config['params']['scale'], dict):
-                if not allow_random:
-                    raise ValueError('scale must be a constant not a range.')
-                if (config['params']['scale']['min'] >= config['params']['scale']['max']):
-                    raise ValueError('scale min is not less than scale max.')
-                scale = lambda:rand.randrange(
-                    config['params']['scale']['min'],
-                    config['params']['scale']['max'] + 1
-                    )
+            if as_samples:
+                if isinstance(config['params']['scale'], dict):
+                    scale = samplers.IntegerSampler(
+                        config['params']['scale']['min'],
+                        config['params']['scale']['max'],
+                        'uniform',
+                        seed=rand.random()
+                        )
+                else:
+                    scale = samplers.ConstantSampler(
+                        config['params']['scale'],
+                        seed=rand.random()
+                        )
             else:
+                if isinstance(config['params']['scale'], dict):
+                    raise ValueError('scale must be a constant not a range.')
                 scale = config['params']['scale']
             
             return LocalBinaryPatternFeaturiser(neighbouring_dims, radius, scale)
@@ -493,46 +524,44 @@ class HistogramFeaturiser(Featuriser):
         Constructor.
         
         :param radius: The neighbourhood radius or a function that generates it.
-        :type radius: int or callable
+        :type radius: int or samplers.Sampler
         :param scale: The scale of the volume from which to extract this neighbourhood or a function that generates it.
-        :type scale: int or callable
+        :type scale: int or samplers.Sampler
         :param num_bins: num_bins is the number of bins in the histogram or a function that generates it.
-        :type num_bins: int or callable
+        :type num_bins: int or samplers.Sampler
         '''
-        self.radius = radius if isinstance(radius, int) else None
-        self.scale = scale if isinstance(scale, int) else None
-        self.num_bins = num_bins if isinstance(scale, int) else None
-        
-        if isinstance(radius, int):
-            self.radius_generator = lambda:radius
-        elif callable(radius):
-            self.radius_generator = radius
+        self.radius = None
+        self.scale = None
+        self.num_bins = None
+        self.radius_sampler = None
+        self.scale_sampler = None
+        self.num_bins_sampler = None
+        if isinstance(radius, samplers.Sampler):
+            self.radius_sampler = radius
         else:
-            raise ValueError('radius must be int or callable.')
-        
-        if isinstance(scale, int):
-            self.scale_generator = lambda:scale
-        elif callable(scale):
-            self.scale_generator = scale
+            self.radius = radius
+        if isinstance(scale, samplers.Sampler):
+            self.scale_sampler = scale
         else:
-            raise ValueError('scale must be int or callable.')
-        
-        if isinstance(num_bins, int):
-            self.num_bins_generator = lambda:num_bins
-        elif callable(num_bins):
-            self.num_bins_generator = num_bins
+            self.scale = scale
+        if isinstance(num_bins, samplers.Sampler):
+            self.num_bins_sampler = num_bins
         else:
-            raise ValueError('num_bins must be int or callable.')
-        
+            self.num_bins = num_bins
         
     #########################################
     def regenerate(self):
         '''
         Regenerate parameters with value generators provided.
         '''
-        self.radius = self.radius_generator()
-        self.scale = self.scale_generator()
-        self.num_bins = self.num_bins_generator()
+        self.radius_sampler.resample()
+        self.radius = self.radius_sampler.get_value()
+        
+        self.scale_sampler.resample()
+        self.scale = self.scale_sampler.get_value()
+        
+        self.num_bins_sampler.resample()
+        self.num_bins = self.num_bins_sampler.get_value()
     
     #########################################
     def get_feature_size(self):
@@ -705,30 +734,25 @@ class LocalBinaryPatternFeaturiser(Featuriser):
         :param scale: The scale of the volume from which to extract this neighbourhood or a function that generates it.
         :type scale: int or callable
         '''
-        self.neighbouring_dims = neighbouring_dims
-        self.radius = radius if isinstance(radius, int) else None
-        self.scale = scale if isinstance(scale, int) else None
-        
         if isinstance(neighbouring_dims, set):
             if len(neighbouring_dims) != 2 or not neighbouring_dims < {0,1,2}:
                 raise ValueError('neighbouring_dims must be {0,1}, {0,2}, or {1,2}.')
-            self.neighbouring_dims_generator = lambda:neighbouring_dims
         else:
             raise ValueError('neighbouring_dims must be a set.')
         
-        if isinstance(radius, int):
-            self.radius_generator = lambda:radius
-        elif callable(radius):
-            self.radius_generator = radius
+        self.neighbouring_dims = neighbouring_dims
+        self.radius = None
+        self.scale = None
+        self.radius_sampler = None
+        self.scale_sampler = None
+        if isinstance(radius, samplers.Sampler):
+            self.radius_sampler = radius
         else:
-            raise ValueError('radius must be int or callable.')
-        
-        if isinstance(scale, int):
-            self.scale_generator = lambda:scale
-        elif callable(scale):
-            self.scale_generator = scale
+            self.radius = radius
+        if isinstance(scale, samplers.Sampler):
+            self.scale_sampler = scale
         else:
-            raise ValueError('scale must be int or callable.')
+            self.scale = scale
         
         
     #########################################
@@ -736,9 +760,12 @@ class LocalBinaryPatternFeaturiser(Featuriser):
         '''
         Regenerate parameters with value generators provided.
         '''
-        self.radius = self.radius_generator()
-        self.scale = self.scale_generator()
-    
+        self.radius_sampler.resample()
+        self.radius = self.radius_sampler.get_value()
+        
+        self.scale_sampler.resample()
+        self.scale = self.scale_sampler.get_value()
+        
     #########################################
     def get_feature_size(self):
         '''
