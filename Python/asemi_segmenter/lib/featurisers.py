@@ -1,6 +1,5 @@
 '''Module containing different methods to turn voxels in a volume into feature vectors.'''
 
-import random
 import numpy as np
 import skimage.feature
 from asemi_segmenter.lib import histograms
@@ -12,16 +11,17 @@ from asemi_segmenter.lib import samplers
 
 
 #########################################
-def load_featuriser_from_config(config, as_samples=False):
+def load_featuriser_from_config(config, sampler_factory=None):
     '''
     Load a featuriser from a configuration dictionary.
     
     :param dict config: Configuration of the featuriser.
+    :param samplers.SamplerFactory sampler_factory: The factory to use to create samplers
+        for the featuriser parameters. If None then only constant parameters can be used.
     :return: A featuriser object.
     :rtype: Featuriser
     '''
     validations.validate_json_with_schema_file(config, 'featuriser.json')
-    rand = random.Random(0)
     
     def orientation_to_neighbouringdims(orientation):
         '''Convert a config orientation string into a neighbouring dims set.'''
@@ -49,54 +49,48 @@ def load_featuriser_from_config(config, as_samples=False):
             scale = None
             num_bins = None
             
-            if as_samples:
+            if sampler_factory is not None:
                 if isinstance(config['params']['radius'], dict):
-                    radius = samplers.IntegerSampler(
+                    radius = sampler_factory.create_integer_sampler(
                         config['params']['radius']['min'],
                         config['params']['radius']['max'],
-                        'uniform',
-                        seed=rand.random()
+                        'uniform'
                         )
                 else:
-                    radius = samplers.ConstantSampler(
-                        config['params']['radius'],
-                        seed=rand.random()
+                    radius = sampler_factory.create_constant_sampler(
+                        config['params']['radius']
                         )
             else:
                 if isinstance(config['params']['radius'], dict):
                     raise ValueError('radius must be a constant not a range.')
                 radius = config['params']['radius']
             
-            if as_samples:
+            if sampler_factory is not None:
                 if isinstance(config['params']['scale'], dict):
-                    scale = samplers.IntegerSampler(
+                    scale = sampler_factory.create_integer_sampler(
                         config['params']['scale']['min'],
                         config['params']['scale']['max'],
-                        'uniform',
-                        seed=rand.random()
+                        'uniform'
                         )
                 else:
-                    scale = samplers.ConstantSampler(
-                        config['params']['scale'],
-                        seed=rand.random()
+                    scale = sampler_factory.create_constant_sampler(
+                        config['params']['scale']
                         )
             else:
                 if isinstance(config['params']['scale'], dict):
                     raise ValueError('scale must be a constant not a range.')
                 scale = config['params']['scale']
             
-            if as_samples:
+            if sampler_factory is not None:
                 if isinstance(config['params']['num_bins'], dict):
-                    num_bins = samplers.IntegerSampler(
+                    num_bins = sampler_factory.create_integer_sampler(
                         config['params']['num_bins']['min'],
                         config['params']['num_bins']['max'],
-                        'uniform',
-                        seed=rand.random()
+                        'uniform'
                         )
                 else:
-                    num_bins = samplers.ConstantSampler(
-                        config['params']['num_bins'],
-                        seed=rand.random()
+                    num_bins = sampler_factory.create_constant_sampler(
+                        config['params']['num_bins']
                         )
             else:
                 if isinstance(config['params']['num_bins'], dict):
@@ -110,36 +104,32 @@ def load_featuriser_from_config(config, as_samples=False):
             radius = None
             scale = None
             
-            if as_samples:
+            if sampler_factory is not None:
                 if isinstance(config['params']['radius'], dict):
-                    radius = samplers.IntegerSampler(
+                    radius = sampler_factory.create_integer_sampler(
                         config['params']['radius']['min'],
                         config['params']['radius']['max'],
-                        'uniform',
-                        seed=rand.random()
+                        'uniform'
                         )
                 else:
-                    radius = samplers.ConstantSampler(
-                        config['params']['radius'],
-                        seed=rand.random()
+                    radius = sampler_factory.create_constant_sampler(
+                        config['params']['radius']
                         )
             else:
                 if isinstance(config['params']['radius'], dict):
                     raise ValueError('radius must be a constant not a range.')
                 radius = config['params']['radius']
             
-            if as_samples:
+            if sampler_factory is not None:
                 if isinstance(config['params']['scale'], dict):
-                    scale = samplers.IntegerSampler(
+                    scale = sampler_factory.create_integer_sampler(
                         config['params']['scale']['min'],
                         config['params']['scale']['max'],
-                        'uniform',
-                        seed=rand.random()
+                        'uniform'
                         )
                 else:
-                    scale = samplers.ConstantSampler(
-                        config['params']['scale'],
-                        seed=rand.random()
+                    scale = sampler_factory.create_constant_sampler(
+                        config['params']['scale']
                         )
             else:
                 if isinstance(config['params']['scale'], dict):
@@ -171,9 +161,9 @@ class Featuriser(object):
         pass
     
     #########################################
-    def regenerate(self):
+    def refresh_parameters(self):
         '''
-        Regenerate parameters with value generators provided.
+        Refresh parameter values from the samplers provided.
         '''
         raise NotImplementedError()
     
@@ -395,9 +385,9 @@ class VoxelFeaturiser(Featuriser):
         pass
     
     #########################################
-    def regenerate(self):
+    def refresh_parameters(self):
         '''
-        Regenerate parameters with value generators provided.
+        Refresh parameter values from the samplers provided.
         '''
         pass
     
@@ -550,17 +540,12 @@ class HistogramFeaturiser(Featuriser):
             self.num_bins = num_bins
         
     #########################################
-    def regenerate(self):
+    def refresh_parameters(self):
         '''
-        Regenerate parameters with value generators provided.
+        Refresh parameter values from the samplers provided.
         '''
-        self.radius_sampler.resample()
         self.radius = self.radius_sampler.get_value()
-        
-        self.scale_sampler.resample()
         self.scale = self.scale_sampler.get_value()
-        
-        self.num_bins_sampler.resample()
         self.num_bins = self.num_bins_sampler.get_value()
     
     #########################################
@@ -728,17 +713,16 @@ class LocalBinaryPatternFeaturiser(Featuriser):
         Constructor.
         
         :param neighbouring_dims: The neighbourhood dimensions to keep or a function that generates it.
-        :type neighbouring_dims: set or callable
+        :type neighbouring_dims: set
         :param radius: The neighbourhood radius or a function that generates it.
-        :type radius: int or callable
+        :type radius: int or samplers.Sampler
         :param scale: The scale of the volume from which to extract this neighbourhood or a function that generates it.
-        :type scale: int or callable
+        :type scale: int or samplers.Sampler
         '''
-        if isinstance(neighbouring_dims, set):
-            if len(neighbouring_dims) != 2 or not neighbouring_dims < {0,1,2}:
-                raise ValueError('neighbouring_dims must be {0,1}, {0,2}, or {1,2}.')
-        else:
+        if not isinstance(neighbouring_dims, set):
             raise ValueError('neighbouring_dims must be a set.')
+        if len(neighbouring_dims) != 2 or not neighbouring_dims < {0,1,2}:
+            raise ValueError('neighbouring_dims must be {0,1}, {0,2}, or {1,2}.')
         
         self.neighbouring_dims = neighbouring_dims
         self.radius = None
@@ -756,14 +740,11 @@ class LocalBinaryPatternFeaturiser(Featuriser):
         
         
     #########################################
-    def regenerate(self):
+    def refresh_parameters(self):
         '''
-        Regenerate parameters with value generators provided.
+        Refresh parameter values from the samplers provided.
         '''
-        self.radius_sampler.resample()
         self.radius = self.radius_sampler.get_value()
-        
-        self.scale_sampler.resample()
         self.scale = self.scale_sampler.get_value()
         
     #########################################
@@ -946,12 +927,12 @@ class CompositeFeaturiser(Featuriser):
         self.featuriser_list = featuriser_list
     
     #########################################
-    def regenerate(self):
+    def refresh_parameters(self):
         '''
-        Regenerate parameters with value generators provided.
+        Refresh parameter values from the samplers provided.
         '''
         for featuriser in self.featuriser_list:
-            featuriser.regenerate()
+            featuriser.refresh_parameters()
     
     #########################################
     def get_feature_size(self):

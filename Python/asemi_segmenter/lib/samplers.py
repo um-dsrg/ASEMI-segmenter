@@ -4,6 +4,92 @@ import random
 import math
 
 #########################################
+class SamplerFactory(object):
+    '''Factory for samplers to collectively resample.'''
+    
+    #########################################
+    def __init__(self, seed):
+        '''
+        Constructor.
+        
+        :param object seed: Seed to the random number generator.
+        '''
+        self.seed = seed
+        self.rand = random.Random(seed)
+        self.samplers = list()
+    
+    #########################################
+    def create_constant_sampler(self, value):
+        '''
+        Create a ConstantSampler.
+        
+        :param generic value: Value to return.
+        :return: The Sampler object.
+        :rtype: ConstantSampler.
+        '''
+        sampler = ConstantSampler(
+            value,
+            seed=self.rand.random()
+            )
+        self.samplers.append(sampler)
+        return sampler
+    
+    #########################################
+    def create_integer_sampler(self, min, max, distribution):
+        '''
+        Create an IntegerSampler.
+        
+        :param int min: Minimum value (inclusive).
+        :param int max: Maximum value (inclusive).
+        :param string distribution: One of the following values:
+            'uniform': All values between min and max are
+            equally likely to be sampled.
+            'log2': Only powers of 2 between min and max will be sampled.
+        :return: The Sampler object.
+        :rtype: IntegerSampler.
+        '''
+        sampler = IntegerSampler(
+            min,
+            max,
+            distribution,
+            seed=self.rand.random()
+            )
+        self.samplers.append(sampler)
+        return sampler
+    
+    #########################################
+    def create_float_sampler(self, min, max, distribution):
+        '''
+        Create a FloatSampler.
+        
+        :param int min: Minimum value (inclusive).
+        :param int max: Maximum value (exclusive).
+        :param string distribution: One of the following values:
+            'uniform': All values between min and max are
+            equally likely to be sampled.
+            'log10': A logarithmic bias of base 10 is used.
+        :return: The Sampler object.
+        :rtype: FloatSampler.
+        '''
+        sampler = FloatSampler(
+            min,
+            max,
+            distribution,
+            seed=self.rand.random()
+            )
+        self.samplers.append(sampler)
+        return sampler
+    
+    #########################################
+    def resample_all(self):
+        '''
+        Resample all generated samplers.
+        '''
+        for sampler in self.samplers:
+            sampler.resample()
+    
+
+#########################################
 class Sampler(object):
     '''Super class for samplers.'''
     
@@ -11,6 +97,7 @@ class Sampler(object):
     def __init__(self, seed):
         '''
         Constructor.
+        :param object seed: Seed to the random number generator.
         '''
         self.seed = seed
         self.initialised = False

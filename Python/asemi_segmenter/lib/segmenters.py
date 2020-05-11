@@ -4,6 +4,7 @@ import pickle
 from asemi_segmenter.lib import featurisers
 from asemi_segmenter.lib import classifiers
 from asemi_segmenter.lib import validations
+from asemi_segmenter.lib import samplers
 
 
 #########################################
@@ -31,7 +32,7 @@ class Segmenter(object):
     '''An object that puts together everything needed to segment a volume after it has been processed.'''
 
     #########################################
-    def __init__(self, labels, full_volume, train_config, sklearn_model=None, as_samples=False):
+    def __init__(self, labels, full_volume, train_config, sklearn_model=None, as_samples=False, seed=None):
         '''
         Constructor.
         
@@ -40,10 +41,16 @@ class Segmenter(object):
         :param dict train_config: Loaded configuration of the training method.
         :param sklearn_model sklearn_model: sklearn model to use for machine learning, if pretrained.
         :param bool as_samples: Whether to allow training configurations that specify how to randomly generate parameters.
+        :param object seed: Seed to the random number generator.
         '''
+        if as_samples:
+            self.factory = samplers.SamplerFactory(seed)
+        else:
+            self.factory = None
+        
         validations.validate_json_with_schema_file(train_config, 'train.json')
-        featuriser = featurisers.load_featuriser_from_config(train_config['featuriser'], as_samples)
-        classifier = classifiers.load_classifier_from_config(labels, train_config['classifier'], sklearn_model, as_samples)
+        featuriser = featurisers.load_featuriser_from_config(train_config['featuriser'], self.factory)
+        classifier = classifiers.load_classifier_from_config(labels, train_config['classifier'], sklearn_model, self.factory)
         
         scales_needed = featuriser.get_scales_needed()
         if None not in scales_needed and not scales_needed <= full_volume.get_scales():
@@ -62,10 +69,11 @@ class Segmenter(object):
     #########################################
     def regenerate(self):
         '''
-        Regenerate parameters with value generators provided.
+        Regenerate new parameters for featuriser and classifier.
         '''
-        self.featuriser.regenerate()
-        self.classifier.regenerate()
+        self.factory.resample_all()
+        self.featuriser.refresh_parameters()
+        self.classifier.refresh_parameters()
         
         scales_needed = self.featuriser.get_scales_needed()
         if not scales_needed <= self.full_volume.get_scales():
