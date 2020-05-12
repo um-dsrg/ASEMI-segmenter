@@ -2,11 +2,69 @@
     "$schema": "http://json-schema.org/draft-07/schema#",
     "$id": "train.json",
     "definitions": {
+        "integer_variable": {
+            "type": "object",
+            "properties": {
+                "type": {
+                    "const": "integer"
+                },
+                "min": {
+                    "type": "integer",
+                    "minimum": 0
+                },
+                "max": {
+                    "type": "integer",
+                    "minimum": 0
+                },
+                "distribution": {
+                    "type": "string",
+                    "enum": ["uniform", "log2"]
+                }
+            },
+            "required": ["type", "min", "max", "distribution"],
+            "additionalProperties": false
+        },
+        
+        "float_variable": {
+            "type": "object",
+            "properties": {
+                "type": {
+                    "const": "float"
+                },
+                "min": {
+                    "type": "number",
+                    "exclusiveMinimum": 0.0
+                },
+                "max": {
+                    "type": "number",
+                    "exclusiveMinimum": 0.0
+                },
+                "distribution": {
+                    "type": "string",
+                    "enum": ["uniform", "log10"]
+                }
+            },
+            "required": ["type", "min", "max", "distribution"],
+            "additionalProperties": false
+        },
+        
         "evaluation_set": { "$ref": "dataset.json#definitions/dataset" }
     },
     
     "type": "object",
     "properties": {
+        "variables": {
+            "type": "object",
+            "patternProperties": {
+                "^[a-z_]+$": {
+                    "oneOf": [
+                        { "$ref": "#definitions/integer_variable" },
+                        { "$ref": "#definitions/float_variable" }
+                    ]
+                }
+            },
+            "additionalProperties": false
+        },
         "featuriser": { "$ref": "featuriser.json#" },
         "classifier": { "$ref": "classifier.json#" },
         "training_set": { "$ref": "train.json#definitions/training_set" },
@@ -21,6 +79,6 @@
             }
         }
     },
-    "required": ["featuriser", "classifier", "training_set", "tuning"],
+    "required": ["variables", "featuriser", "classifier", "training_set", "tuning"],
     "additionalProperties": false
 }

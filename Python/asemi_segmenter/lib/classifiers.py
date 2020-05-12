@@ -41,7 +41,12 @@ def load_classifier_from_config(labels, config, sklearn_model=None, sampler_fact
                 c = sampler_factory.create_float_sampler(
                     config['params']['C']['min'],
                     config['params']['C']['max'],
-                    'log10'
+                    config['params']['C']['distribution']
+                    )
+            elif isinstance(config['params']['C'], str):
+                c = sampler_factory.get_named_sampler(
+                    config['params']['C'],
+                    'float'
                     )
             else:
                 c = sampler_factory.create_constant_sampler(
@@ -57,7 +62,12 @@ def load_classifier_from_config(labels, config, sklearn_model=None, sampler_fact
                 max_iter = sampler_factory.create_integer_sampler(
                     config['params']['max_iter']['min'],
                     config['params']['max_iter']['max'],
-                    'uniform'
+                    config['params']['max_iter']['distribution']
+                    )
+            elif isinstance(config['params']['max_iter'], str):
+                max_iter = sampler_factory.get_named_sampler(
+                    config['params']['max_iter'],
+                    'integer'
                     )
             else:
                 max_iter = sampler_factory.create_constant_sampler(
@@ -102,7 +112,12 @@ def load_classifier_from_config(labels, config, sklearn_model=None, sampler_fact
                 hidden_layer_size = sampler_factory.create_integer_sampler(
                     config['params']['hidden_layer_size']['min'],
                     config['params']['hidden_layer_size']['max'],
-                    'uniform'
+                    config['params']['hidden_layer_size']['distribution']
+                    )
+            elif isinstance(config['params']['hidden_layer_size'], str):
+                hidden_layer_size = sampler_factory.get_named_sampler(
+                    config['params']['hidden_layer_size'],
+                    'integer'
                     )
             else:
                 hidden_layer_size = sampler_factory.create_constant_sampler(
@@ -118,7 +133,12 @@ def load_classifier_from_config(labels, config, sklearn_model=None, sampler_fact
                 alpha = sampler_factory.create_float_sampler(
                     config['params']['alpha']['min'],
                     config['params']['alpha']['max'],
-                    'log10'
+                    config['params']['alpha']['distribution']
+                    )
+            elif isinstance(config['params']['alpha'], str):
+                alpha = sampler_factory.get_named_sampler(
+                    config['params']['alpha'],
+                    'float'
                     )
             else:
                 alpha = sampler_factory.create_constant_sampler(
@@ -134,7 +154,12 @@ def load_classifier_from_config(labels, config, sklearn_model=None, sampler_fact
                 max_iter = sampler_factory.create_integer_sampler(
                     config['params']['max_iter']['min'],
                     config['params']['max_iter']['max'],
-                    'uniform'
+                    config['params']['max_iter']['distribution']
+                    )
+            elif isinstance(config['params']['max_iter'], str):
+                max_iter = sampler_factory.get_named_sampler(
+                    config['params']['max_iter'],
+                    'integer'
                     )
             else:
                 max_iter = sampler_factory.create_constant_sampler(
@@ -180,7 +205,12 @@ def load_classifier_from_config(labels, config, sklearn_model=None, sampler_fact
                 max_depth = sampler_factory.create_integer_sampler(
                     config['params']['max_depth']['min'],
                     config['params']['max_depth']['max'],
-                    'uniform'
+                    config['params']['max_depth']['distribution']
+                    )
+            elif isinstance(config['params']['max_depth'], str):
+                max_depth = sampler_factory.get_named_sampler(
+                    config['params']['max_depth'],
+                    'integer'
                     )
             else:
                 max_depth = sampler_factory.create_constant_sampler(
@@ -196,7 +226,12 @@ def load_classifier_from_config(labels, config, sklearn_model=None, sampler_fact
                 min_samples_leaf = sampler_factory.create_integer_sampler(
                     config['params']['min_samples_leaf']['min'],
                     config['params']['min_samples_leaf']['max'],
-                    'uniform'
+                    config['params']['min_samples_leaf']['distribution']
+                    )
+            elif isinstance(config['params']['min_samples_leaf'], str):
+                min_samples_leaf = sampler_factory.get_named_sampler(
+                    config['params']['min_samples_leaf'],
+                    'integer'
                     )
             else:
                 min_samples_leaf = sampler_factory.create_constant_sampler(
@@ -241,7 +276,12 @@ def load_classifier_from_config(labels, config, sklearn_model=None, sampler_fact
                 n_estimators = sampler_factory.create_integer_sampler(
                     config['params']['n_estimators']['min'],
                     config['params']['n_estimators']['max'],
-                    'uniform'
+                    config['params']['n_estimators']['distribution']
+                    )
+            elif isinstance(config['params']['n_estimators'], str):
+                n_estimators = sampler_factory.get_named_sampler(
+                    config['params']['n_estimators'],
+                    'integer'
                     )
             else:
                 n_estimators = sampler_factory.create_constant_sampler(
@@ -257,7 +297,12 @@ def load_classifier_from_config(labels, config, sklearn_model=None, sampler_fact
                 max_depth = sampler_factory.create_integer_sampler(
                     config['params']['max_depth']['min'],
                     config['params']['max_depth']['max'],
-                    'uniform'
+                    config['params']['max_depth']['distribution']
+                    )
+            elif isinstance(config['params']['max_depth'], str):
+                max_depth = sampler_factory.get_named_sampler(
+                    config['params']['max_depth'],
+                    'integer'
                     )
             else:
                 max_depth = sampler_factory.create_constant_sampler(
@@ -273,7 +318,12 @@ def load_classifier_from_config(labels, config, sklearn_model=None, sampler_fact
                 min_samples_leaf = sampler_factory.create_integer_sampler(
                     config['params']['min_samples_leaf']['min'],
                     config['params']['min_samples_leaf']['max'],
-                    'uniform'
+                    config['params']['min_samples_leaf']['distribution']
+                    )
+            elif isinstance(config['params']['min_samples_leaf'], str):
+                min_samples_leaf = sampler_factory.get_named_sampler(
+                    config['params']['min_samples_leaf'],
+                    'integer'
                     )
             else:
                 min_samples_leaf = sampler_factory.create_constant_sampler(

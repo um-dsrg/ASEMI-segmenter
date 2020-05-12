@@ -17,13 +17,16 @@ class SamplerFactory(object):
         self.seed = seed
         self.rand = random.Random(seed)
         self.samplers = list()
+        self.named_samplers = dict()
     
     #########################################
-    def create_constant_sampler(self, value):
+    def create_constant_sampler(self, value, name=None):
         '''
         Create a ConstantSampler.
         
         :param generic value: Value to return.
+        :param str name: Name to use to refer to created sampler.
+            If None then will not be referrable.
         :return: The Sampler object.
         :rtype: ConstantSampler.
         '''
@@ -32,10 +35,14 @@ class SamplerFactory(object):
             seed=self.rand.random()
             )
         self.samplers.append(sampler)
+        if name is not None:
+            if name in self.named_samplers:
+                raise ValueError('The variable name {} already exists.'.format(name))
+            self.named_samplers[name] = sampler
         return sampler
     
     #########################################
-    def create_integer_sampler(self, min, max, distribution):
+    def create_integer_sampler(self, min, max, distribution, name=None):
         '''
         Create an IntegerSampler.
         
@@ -45,6 +52,8 @@ class SamplerFactory(object):
             'uniform': All values between min and max are
             equally likely to be sampled.
             'log2': Only powers of 2 between min and max will be sampled.
+        :param str name: Name to use to refer to created sampler.
+            If None then will not be referrable.
         :return: The Sampler object.
         :rtype: IntegerSampler.
         '''
@@ -55,10 +64,14 @@ class SamplerFactory(object):
             seed=self.rand.random()
             )
         self.samplers.append(sampler)
+        if name is not None:
+            if name in self.named_samplers:
+                raise ValueError('The variable name {} already exists.'.format(name))
+            self.named_samplers[name] = sampler
         return sampler
     
     #########################################
-    def create_float_sampler(self, min, max, distribution):
+    def create_float_sampler(self, min, max, distribution, name=None):
         '''
         Create a FloatSampler.
         
@@ -68,6 +81,8 @@ class SamplerFactory(object):
             'uniform': All values between min and max are
             equally likely to be sampled.
             'log10': A logarithmic bias of base 10 is used.
+        :param str name: Name to use to refer to created sampler.
+            If None then will not be referrable.
         :return: The Sampler object.
         :rtype: FloatSampler.
         '''
@@ -78,7 +93,30 @@ class SamplerFactory(object):
             seed=self.rand.random()
             )
         self.samplers.append(sampler)
+        if name is not None:
+            if name in self.named_samplers:
+                raise ValueError('The variable name {} already exists.'.format(name))
+            self.named_samplers[name] = sampler
         return sampler
+    
+    #########################################
+    def get_named_sampler(self, name, expected_type):
+        '''
+        Get a named sampler that was previously created.
+        
+        :param str name: The name of the sampler.
+        :param str expected_type: The expected type of the sampler. Can
+            be 'float' or 'integer'.
+        '''
+        if name not in self.named_samplers:
+            raise ValueError('The variable name {} was not defined.'.format(name))
+        if expected_type == 'integer':
+            if not isinstance(self.named_samplers[name], IntegerSampler):
+                raise ValueError('Parameter {} can only refer to an integer variable.')
+        elif expected_type == 'float':
+            if not isinstance(self.named_samplers[name], FloatSampler):
+                raise ValueError('Parameter {} can only refer to a float variable.')
+        return self.named_samplers[name]
     
     #########################################
     def resample_all(self):

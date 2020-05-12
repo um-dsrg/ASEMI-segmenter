@@ -1,41 +1,49 @@
 {
-    "featuriser": {
-        "type": "composite",
-        "params": {
-            "featuriser_list": [
-                {
-                    "type": "voxel",
-                    "params": {}
-                },
-                {
-                    "type": "histogram",
-                    "params": {
-                        "radius": 25,
-                        "scale": 1,
-                        "num_bins": 14
-                    }
-                },
-                {
-                    "type": "lbp",
-                    "params": {
-                        "orientation": "front",
-                        "radius": 32,
-                        "scale": 1
-                    }
-                }
-            ]
-        }
-    },
-    "classifier": {
-        "type": "random_forest",
-        "params": {
-            "n_estimators": 30,
-            "max_depth": 21,
-            "min_samples_leaf": 1
-        }
-    },
-    "training_set": {
-        "sample_size_per_label": 20,
-        "samples_to_skip_per_label": 0
-    }
+	"featuriser": {
+		"type": "composite",
+		"params": {
+			"featuriser_list": [
+				{
+					"type": "voxel",
+					"params": {}
+				},
+				{
+					"type": "histogram",
+					"params": {
+						"radius": 19,
+						"scale": 4,
+						"num_bins": 32
+					}
+				},
+				{
+					"type": "lbp",
+					"params": {
+						"orientation": "front",
+						"radius": 25,
+						"scale": 4
+					}
+				},
+				{
+					"type": "lbp",
+					"params": {
+						"orientation": "flat",
+						"radius": 25,
+						"scale": 4
+					}
+				}
+			]
+		}
+	},
+	"classifier": {
+		"type": "random_forest",
+		"params": {
+			"n_estimators": 13,
+			"max_depth": 27,
+			"min_samples_leaf": 1
+		}
+	},
+	"training_set": {
+		"sample_size_per_label": 20,
+		"samples_to_skip_per_label": 0
+	}
 }

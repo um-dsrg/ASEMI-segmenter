@@ -8,13 +8,12 @@ from asemi_segmenter.lib import samplers
 
 
 #########################################
-def load_segmenter_from_pickle_data(pickle_data, full_volume, as_samples=False):
+def load_segmenter_from_pickle_data(pickle_data, full_volume):
     '''
     Load a segmenter from pickled data.
     
     :param dict pickle_data: The loaded contents of a segmenter pickle.
     :param FullVolume full_volume: The full volume object containing the voxels to work on.
-    :param bool as_samples: Whether to allow configurations that specify how to randomly generate parameters.
     :return: A loaded segmenter object.
     :rtype: Segmenter
     '''
@@ -24,7 +23,12 @@ def load_segmenter_from_pickle_data(pickle_data, full_volume, as_samples=False):
         if not isinstance(entry, str):
             raise ValueError('Pickle is invalid as label entry {} is not a string.'.format(i))
     
-    return Segmenter(pickle_data['labels'], full_volume, pickle_data['config'], pickle_data['sklearn_model'], as_samples)
+    return Segmenter(
+        pickle_data['labels'],
+        full_volume,
+        pickle_data['config'],
+        sklearn_model=pickle_data['sklearn_model']
+        )
 
 
 #########################################
@@ -32,25 +36,23 @@ class Segmenter(object):
     '''An object that puts together everything needed to segment a volume after it has been processed.'''
 
     #########################################
-    def __init__(self, labels, full_volume, train_config, sklearn_model=None, as_samples=False, seed=None):
+    def __init__(self, labels, full_volume, train_config, sklearn_model=None, sampler_factory=None):
         '''
         Constructor.
         
         :param list labels: List of labels for the classifier.
         :param FullVolume full_volume: Full volume on which the segmenter will be working.
         :param dict train_config: Loaded configuration of the training method.
-        :param sklearn_model sklearn_model: sklearn model to use for machine learning, if pretrained.
-        :param bool as_samples: Whether to allow training configurations that specify how to randomly generate parameters.
-        :param object seed: Seed to the random number generator.
+        :param sklearn_model sklearn_model: sklearn model to use for machine learning, if
+            pretrained.
+        :param samplers.SamplerFactory sampler_factory: The factory to create samplers
+            to randomly generate parameters.
         '''
-        if as_samples:
-            self.factory = samplers.SamplerFactory(seed)
-        else:
-            self.factory = None
+        self.sampler_factory = sampler_factory
         
         validations.validate_json_with_schema_file(train_config, 'train.json')
-        featuriser = featurisers.load_featuriser_from_config(train_config['featuriser'], self.factory)
-        classifier = classifiers.load_classifier_from_config(labels, train_config['classifier'], sklearn_model, self.factory)
+        featuriser = featurisers.load_featuriser_from_config(train_config['featuriser'], self.sampler_factory)
+        classifier = classifiers.load_classifier_from_config(labels, train_config['classifier'], sklearn_model, self.sampler_factory)
         
         scales_needed = featuriser.get_scales_needed()
         if None not in scales_needed and not scales_needed <= full_volume.get_scales():
@@ -71,7 +73,7 @@ class Segmenter(object):
         '''
         Regenerate new parameters for featuriser and classifier.
         '''
-        self.factory.resample_all()
+        self.sampler_factory.resample_all()
         self.featuriser.refresh_parameters()
         self.classifier.refresh_parameters()
         

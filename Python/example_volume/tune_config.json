@@ -1,4 +1,18 @@
 {
+    "variables": {
+        "lbp_radius": {
+            "type": "integer",
+            "min": 2,
+            "max": 32,
+            "distribution": "uniform"
+        },
+        "lbp_scale": {
+            "type": "integer",
+            "min": 0,
+            "max": 4,
+            "distribution": "uniform"
+        }
+    },
     "featuriser": {
         "type": "composite",
         "params": {
@@ -11,17 +25,37 @@
                 {
                     "type": "histogram",
                     "params": {
-                        "radius": { "min": 2, "max": 32 },
-                        "scale": { "min": 0, "max": 4 },
-                        "num_bins": { "min": 2, "max": 32 }
+                        "radius": {
+                            "min": 2,
+                            "max": 32,
+                            "distribution": "uniform"
+                        },
+                        "scale": {
+                            "min": 0,
+                            "max": 4,
+                            "distribution": "uniform"
+                        },
+                        "num_bins": {
+                            "min": 2,
+                            "max": 32,
+                            "distribution": "log2"
+                        }
                     }
                 },
                 {
                     "type": "lbp",
                     "params": {
                         "orientation": "front",
-                        "radius": { "min": 2, "max": 32 },
-                        "scale": { "min": 0, "max": 4 }
+                        "radius": "lbp_radius",
+                        "scale": "lbp_scale"
+                    }
+                },
+                {
+                    "type": "lbp",
+                    "params": {
+                        "orientation": "flat",
+                        "radius": "lbp_radius",
+                        "scale": "lbp_scale"
                     }
                 }
             ]
@@ -30,8 +64,16 @@
     "classifier": {
         "type": "random_forest",
         "params": {
-            "n_estimators": { "min": 1, "max": 32 },
-            "max_depth": { "min": 1, "max": 32 },
+            "n_estimators": {
+                "min": 1,
+                "max": 32,
+                "distribution": "uniform"
+            },
+            "max_depth": {
+                "min": 1,
+                "max": 32,
+                "distribution": "uniform"
+            },
             "min_samples_leaf": 1
         }
     },

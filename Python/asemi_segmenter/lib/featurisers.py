@@ -54,7 +54,12 @@ def load_featuriser_from_config(config, sampler_factory=None):
                     radius = sampler_factory.create_integer_sampler(
                         config['params']['radius']['min'],
                         config['params']['radius']['max'],
-                        'uniform'
+                        config['params']['radius']['distribution']
+                        )
+                elif isinstance(config['params']['radius'], str):
+                    radius = sampler_factory.get_named_sampler(
+                        config['params']['radius'],
+                        'integer'
                         )
                 else:
                     radius = sampler_factory.create_constant_sampler(
@@ -70,7 +75,12 @@ def load_featuriser_from_config(config, sampler_factory=None):
                     scale = sampler_factory.create_integer_sampler(
                         config['params']['scale']['min'],
                         config['params']['scale']['max'],
-                        'uniform'
+                        config['params']['scale']['distribution']
+                        )
+                elif isinstance(config['params']['scale'], str):
+                    scale = sampler_factory.get_named_sampler(
+                        config['params']['scale'],
+                        'integer'
                         )
                 else:
                     scale = sampler_factory.create_constant_sampler(
@@ -86,7 +96,12 @@ def load_featuriser_from_config(config, sampler_factory=None):
                     num_bins = sampler_factory.create_integer_sampler(
                         config['params']['num_bins']['min'],
                         config['params']['num_bins']['max'],
-                        'uniform'
+                        config['params']['num_bins']['distribution']
+                        )
+                elif isinstance(config['params']['num_bins'], str):
+                    num_bins = sampler_factory.get_named_sampler(
+                        config['params']['num_bins'],
+                        'integer'
                         )
                 else:
                     num_bins = sampler_factory.create_constant_sampler(
@@ -109,7 +124,12 @@ def load_featuriser_from_config(config, sampler_factory=None):
                     radius = sampler_factory.create_integer_sampler(
                         config['params']['radius']['min'],
                         config['params']['radius']['max'],
-                        'uniform'
+                        config['params']['radius']['distribution']
+                        )
+                elif isinstance(config['params']['radius'], str):
+                    radius = sampler_factory.get_named_sampler(
+                        config['params']['radius'],
+                        'integer'
                         )
                 else:
                     radius = sampler_factory.create_constant_sampler(
@@ -125,7 +145,12 @@ def load_featuriser_from_config(config, sampler_factory=None):
                     scale = sampler_factory.create_integer_sampler(
                         config['params']['scale']['min'],
                         config['params']['scale']['max'],
-                        'uniform'
+                        config['params']['scale']['distribution']
+                        )
+                elif isinstance(config['params']['scale'], str):
+                    scale = sampler_factory.get_named_sampler(
+                        config['params']['scale'],
+                        'integer'
                         )
                 else:
                     scale = sampler_factory.create_constant_sampler(

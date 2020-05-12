@@ -17,6 +17,10 @@
                                     "exclusiveMinimum": 0.0
                                 },
                                 {
+                                    "type": "string",
+                                    "pattern": "^[a-z_]+$"
+                                },
+                                {
                                     "type": "object",
                                     "properties": {
                                         "min": {
@@ -26,9 +30,13 @@
                                         "max": {
                                             "type": "number",
                                             "exclusiveMinimum": 0.0
+                                        },
+                                        "distribution": {
+                                            "type": "string",
+                                            "enum": ["uniform", "log10"]
                                         }
                                     },
-                                    "required": ["min", "max"],
+                                    "required": ["min", "max", "distribution"],
                                     "additionalProperties": false
                                 }
                             ]
@@ -37,21 +45,29 @@
                             "oneOf": [
                                 {
                                     "type": "integer",
-                                    "minimum": 1
+                                    "minimum": 0
+                                },
+                                {
+                                    "type": "string",
+                                    "pattern": "^[a-z_]+$"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "min": {
                                             "type": "integer",
-                                            "minimum": 1
+                                            "minimum": 0
                                         },
                                         "max": {
                                             "type": "integer",
-                                            "minimum": 1
+                                            "minimum": 0
+                                        },
+                                        "distribution": {
+                                            "type": "string",
+                                            "enum": ["uniform", "log2"]
                                         }
                                     },
-                                    "required": ["min", "max"],
+                                    "required": ["min", "max", "distribution"],
                                     "additionalProperties": false
                                 }
                             ]
@@ -76,21 +92,29 @@
                             "oneOf": [
                                 {
                                     "type": "integer",
-                                    "minimum": 1
+                                    "minimum": 0
+                                },
+                                {
+                                    "type": "string",
+                                    "pattern": "^[a-z_]+$"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "min": {
                                             "type": "integer",
-                                            "minimum": 1
+                                            "minimum": 0
                                         },
                                         "max": {
                                             "type": "integer",
-                                            "minimum": 1
+                                            "minimum": 0
+                                        },
+                                        "distribution": {
+                                            "type": "string",
+                                            "enum": ["uniform", "log2"]
                                         }
                                     },
-                                    "required": ["min", "max"],
+                                    "required": ["min", "max", "uniform"],
                                     "additionalProperties": false
                                 }
                             ]
@@ -102,6 +126,10 @@
                                     "exclusiveMinimum": 0.0
                                 },
                                 {
+                                    "type": "string",
+                                    "pattern": "^[a-z_]+$"
+                                },
+                                {
                                     "type": "object",
                                     "properties": {
                                         "min": {
@@ -111,9 +139,13 @@
                                         "max": {
                                             "type": "number",
                                             "exclusiveMinimum": 0.0
+                                        },
+                                        "distribution": {
+                                            "type": "string",
+                                            "enum": ["uniform", "log10"]
                                         }
                                     },
-                                    "required": ["min", "max"],
+                                    "required": ["min", "max", "distribution"],
                                     "additionalProperties": false
                                 }
                             ]
@@ -122,21 +154,29 @@
                             "oneOf": [
                                 {
                                     "type": "integer",
-                                    "minimum": 1
+                                    "minimum": 0
+                                },
+                                {
+                                    "type": "string",
+                                    "pattern": "^[a-z_]+$"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "min": {
                                             "type": "integer",
-                                            "minimum": 1
+                                            "minimum": 0
                                         },
                                         "max": {
                                             "type": "integer",
-                                            "minimum": 1
+                                            "minimum": 0
+                                        },
+                                        "distribution": {
+                                            "type": "string",
+                                            "enum": ["uniform", "log2"]
                                         }
                                     },
-                                    "required": ["min", "max"],
+                                    "required": ["min", "max", "distribution"],
                                     "additionalProperties": false
                                 }
                             ]
@@ -161,21 +201,29 @@
                             "oneOf": [
                                 {
                                     "type": "integer",
-                                    "minimum": 1
+                                    "minimum": 0
+                                },
+                                {
+                                    "type": "string",
+                                    "pattern": "^[a-z_]+$"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "min": {
                                             "type": "integer",
-                                            "minimum": 1
+                                            "minimum": 0
                                         },
                                         "max": {
                                             "type": "integer",
-                                            "minimum": 1
+                                            "minimum": 0
+                                        },
+                                        "distribution": {
+                                            "type": "string",
+                                            "enum": ["uniform", "log2"]
                                         }
                                     },
-                                    "required": ["min", "max"],
+                                    "required": ["min", "max", "distribution"],
                                     "additionalProperties": false
                                 }
                             ]
@@ -184,21 +232,29 @@
                             "oneOf": [
                                 {
                                     "type": "integer",
-                                    "minimum": 1
+                                    "minimum": 0
+                                },
+                                {
+                                    "type": "string",
+                                    "pattern": "^[a-z_]+$"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "min": {
                                             "type": "integer",
-                                            "minimum": 1
+                                            "minimum": 0
                                         },
                                         "max": {
                                             "type": "integer",
-                                            "minimum": 1
+                                            "minimum": 0
+                                        },
+                                        "distribution": {
+                                            "type": "string",
+                                            "enum": ["uniform", "log2"]
                                         }
                                     },
-                                    "required": ["min", "max"],
+                                    "required": ["min", "max", "distribution"],
                                     "additionalProperties": false
                                 }
                             ]
@@ -223,21 +279,29 @@
                             "oneOf": [
                                 {
                                     "type": "integer",
-                                    "minimum": 1
+                                    "minimum": 0
+                                },
+                                {
+                                    "type": "string",
+                                    "pattern": "^[a-z_]+$"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "min": {
                                             "type": "integer",
-                                            "minimum": 1
+                                            "minimum": 0
                                         },
                                         "max": {
                                             "type": "integer",
-                                            "minimum": 1
+                                            "minimum": 0
+                                        },
+                                        "distribution": {
+                                            "type": "string",
+                                            "enum": ["uniform", "log2"]
                                         }
                                     },
-                                    "required": ["min", "max"],
+                                    "required": ["min", "max", "distribution"],
                                     "additionalProperties": false
                                 }
                             ]
@@ -246,21 +310,29 @@
                             "oneOf": [
                                 {
                                     "type": "integer",
-                                    "minimum": 1
+                                    "minimum": 0
+                                },
+                                {
+                                    "type": "string",
+                                    "pattern": "^[a-z_]+$"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "min": {
                                             "type": "integer",
-                                            "minimum": 1
+                                            "minimum": 0
                                         },
                                         "max": {
                                             "type": "integer",
-                                            "minimum": 1
+                                            "minimum": 0
+                                        },
+                                        "distribution": {
+                                            "type": "string",
+                                            "enum": ["uniform", "log2"]
                                         }
                                     },
-                                    "required": ["min", "max"],
+                                    "required": ["min", "max", "distribution"],
                                     "additionalProperties": false
                                 }
                             ]
@@ -269,21 +341,29 @@
                             "oneOf": [
                                 {
                                     "type": "integer",
-                                    "minimum": 1
+                                    "minimum": 0
+                                },
+                                {
+                                    "type": "string",
+                                    "pattern": "^[a-z_]+$"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "min": {
                                             "type": "integer",
-                                            "minimum": 1
+                                            "minimum": 0
                                         },
                                         "max": {
                                             "type": "integer",
-                                            "minimum": 1
+                                            "minimum": 0
+                                        },
+                                        "distribution": {
+                                            "type": "string",
+                                            "enum": ["uniform", "log2"]
                                         }
                                     },
-                                    "required": ["min", "max"],
+                                    "required": ["min", "max", "distribution"],
                                     "additionalProperties": false
                                 }
                             ]

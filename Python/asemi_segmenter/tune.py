@@ -13,6 +13,7 @@ from asemi_segmenter.lib import results
 from asemi_segmenter.lib import segmenters
 from asemi_segmenter.lib import times
 from asemi_segmenter.lib import datasets
+from asemi_segmenter.lib import samplers
 from asemi_segmenter.lib import validations
 from asemi_segmenter.lib import volumes
 
@@ -110,15 +111,31 @@ def _loading_data(
         )
 
     listener.log_output('> Initialising')
+    sampler_factory = samplers.SamplerFactory(seed=0)
+    for variable_name in config_data['variables']:
+        if config_data['variables'][variable_name]['type'] == 'integer':
+            sampler_factory.create_integer_sampler(
+                config_data['variables'][variable_name]['min'],
+                config_data['variables'][variable_name]['max'],
+                config_data['variables'][variable_name]['distribution'],
+                name=variable_name
+                )
+        elif config_data['variables'][variable_name]['type'] == 'float':
+            sampler_factory.create_float_sampler(
+                config_data['variables'][variable_name]['min'],
+                config_data['variables'][variable_name]['max'],
+                config_data['variables'][variable_name]['distribution'],
+                name=variable_name
+                )
     segmenter = segmenters.Segmenter(
         labels,
         full_volume,
         {
             'featuriser': config_data['featuriser'],
             'classifier': config_data['classifier'],
-            'training_set': config_data['training_set'],
+            'training_set': config_data['training_set']
             },
-        as_samples=True
+        sampler_factory=sampler_factory
         )
     hash_function.init(slice_shape, seed=0)
     training_set = datasets.DataSet(None)
@@ -363,7 +380,7 @@ def _saving_best_config(best_result_fullfname, tuning_results_file, listener):
     '''Saving best config stage.'''
     if best_result_fullfname is not None:
         with open(best_result_fullfname, 'w', encoding='utf-8') as f:
-            json.dump(tuning_results_file.best_config, f)
+            json.dump(tuning_results_file.best_config, f, indent='\t')
     else:
         listener.log_output('Config not to be saved')
     
