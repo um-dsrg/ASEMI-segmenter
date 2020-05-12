@@ -103,11 +103,12 @@ class EvaluationResultsFile(object):
                 *['{} {}'.format(label, self.evaluation.name) for label in labels],
                 'featurisation duration (s)',
                 'prediction duration (s)',
+                'total duration (s)',
                 sep='\t', file=f
                 )
     
     #########################################
-    def add(self, subvolume_slice_num, volume_slice_num, predicted_labels, true_labels, featuriser_duration, classifier_duration):
+    def add(self, subvolume_slice_num, volume_slice_num, predicted_labels, true_labels, featuriser_duration, classifier_duration, total_duration):
         '''
         Add a new slice's result to the file.
 
@@ -119,6 +120,7 @@ class EvaluationResultsFile(object):
         :param numpy.ndarray true_labels: The true labels of the slice.
         :param float featuriser_duration: The duration of the featurisation process.
         :param float classifier_duration: The duration of the classification process.
+        :param float total_duration: The total duration of the slice's evaluation process.
         '''
         (label_scores, single_score) = self.evaluation.evaluate(predicted_labels, true_labels)
         with open(self.results_fullfname, 'a', encoding='utf-8') as f:
@@ -149,6 +151,7 @@ class EvaluationResultsFile(object):
                     ],
                 '{:.1f}'.format(featuriser_duration),
                 '{:.1f}'.format(classifier_duration),
+                '{:.1f}'.format(total_duration),
                 sep='\t', file=f
                 )
 
@@ -187,6 +190,7 @@ class TuningResultsFile(object):
                 *['{} {}'.format(label, self.evaluation.name) for label in labels],
                 'featuriser duration (s)',
                 'classifier duration (s)',
+                'total duration (s)',
                 'max memory (MB)',
                 *extra_col_names,
                 sep='\t', file=f
@@ -209,13 +213,14 @@ class TuningResultsFile(object):
             self.best_config = json.loads(best_jsonconfig)
     
     #########################################
-    def add(self, config, featuriser_duration, classifier_duration, max_memory_mb, extra_col_values=[]):
+    def add(self, config, featuriser_duration, classifier_duration, total_duration, max_memory_mb, extra_col_values=[]):
         '''
         Add a new result to the file.
 
         :param dict config: The configuation dictionary used to produce these results.
         :param float featuriser_duration: The duration of the featurisation process.
         :param float classifier_duration: The duration of the classification process.
+        :param float total_duration: The total duration to compute the row.
         :param float max_memory_mb: The maximum number of megabytes of memory used
             during featurisation and classification.
         :param list extra_col_values: A list of extra columns to add.
@@ -252,6 +257,7 @@ class TuningResultsFile(object):
                     ],
                 '{:.1f}'.format(featuriser_duration),
                 '{:.1f}'.format(classifier_duration),
+                '{:.1f}'.format(total_duration),
                 '{:.3f}'.format(max_memory_mb),
                 *extra_col_values,
                 sep='\t', file=f

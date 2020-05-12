@@ -187,19 +187,10 @@ def _evaluating(
                 
                 slice_labels = subvolume_slice_labels[i*slice_size:(i+1)*slice_size]
                 
-                evaluation_results_file.add(
-                    i + 1,
-                    volume_slice_index + 1,
-                    prediction,
-                    slice_labels,
-                    sub_timer_featuriser.duration,
-                    sub_timer_classifier.duration
-                    )
-                
                 files.mkdir(os.path.join(results_dir, 'slice_{}'.format(i + 1)))
                 
-                prediction = prediction.reshape(slice_shape)
-                slice_labels = slice_labels.reshape(slice_shape)
+                reshaped_prediction = prediction.reshape(slice_shape)
+                reshaped_slice_labels = slice_labels.reshape(slice_shape)
                 
                 images.save_image(
                     os.path.join(results_dir, 'slice_{}'.format(i + 1), 'input_slice.tiff'),
@@ -211,9 +202,9 @@ def _evaluating(
                     os.path.join(results_dir, 'slice_{}'.format(i + 1), 'true_slice.tiff'),
                     labels_palette.label_indexes_to_colours(
                         np.where(
-                            slice_labels >= volumes.FIRST_CONTROL_LABEL,
+                            reshaped_slice_labels >= volumes.FIRST_CONTROL_LABEL,
                             0,
-                            slice_labels + 1
+                            reshaped_slice_labels + 1
                             )
                         ),
                     num_bits=8,
@@ -223,15 +214,15 @@ def _evaluating(
                 images.save_image(
                     os.path.join(results_dir, 'slice_{}'.format(i + 1), 'predicted_slice.tiff'),
                     labels_palette.label_indexes_to_colours(
-                        prediction + 1
+                        reshaped_prediction + 1
                         ),
                     num_bits=8,
                     compress=True
                     )
                 
                 confusion_matrix = evaluations.get_confusion_matrix(
-                    prediction,
-                    slice_labels,
+                    reshaped_prediction,
+                    reshaped_slice_labels,
                     len(segmenter.classifier.labels)
                     )
                 results.save_confusion_matrix(
@@ -242,14 +233,24 @@ def _evaluating(
                 
                 for (label_index, label) in enumerate(segmenter.classifier.labels):
                     confusion_map = evaluations.get_confusion_map(
-                        prediction,
-                        slice_labels,
+                        reshaped_prediction,
+                        reshaped_slice_labels,
                         label_index
                         )
                     confusion_map_saver.save(
                         os.path.join(results_dir, 'slice_{}'.format(i + 1), 'confusion_map_{}.tiff'.format(label)),
                         confusion_map
                         )
+                
+            evaluation_results_file.add(
+                i + 1,
+                volume_slice_index + 1,
+                prediction,
+                slice_labels,
+                sub_timer_featuriser.duration,
+                sub_timer_classifier.duration,
+                sub_timer.duration
+                )
 
         listener.current_progress_update(i+1)
     listener.current_progress_end()

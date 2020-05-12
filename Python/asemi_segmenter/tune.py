@@ -363,13 +363,14 @@ def _tuning(
                     result = dict()
                     max_memory_mb = max(memory_profiler.memory_usage((memory_scope, (result,)), interval=0))
                     
-                    tuning_results_file.add(
-                        segmenter.get_config(),
-                        result['featuriser_time'],
-                        result['classifier_time'],
-                        max_memory_mb,
-                        extra_col_values
-                        )
+                tuning_results_file.add(
+                    segmenter.get_config(),
+                    result['featuriser_time'],
+                    result['classifier_time'],
+                    sub_timer.duration,
+                    max_memory_mb,
+                    extra_col_values
+                    )
             listener.current_progress_update(iteration)
         listener.current_progress_end()
     
