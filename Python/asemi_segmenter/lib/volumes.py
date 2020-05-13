@@ -241,24 +241,28 @@ def load_labels(labels_data):
             ))
     num_slices = len(label_fullfnames[labels[0]])
     subvolume_slice_labels = np.full([slice_size*num_slices], UNINIT_LABEL, np.uint8)
-
-    for i in range(num_slices):
-        slice_labels = np.full([slice_size], UNINIT_LABEL, np.uint8)
-        for (label_index, label) in enumerate(labels):
-            label_img = images.load_image(label_fullfnames[label][i]).reshape([-1])
-            label_flags = label_img > np.min(label_img)
-
-            slice_labels = np.where(
-                np.logical_and(slice_labels != UNINIT_LABEL, label_flags),
-                MULTILABEL,
-                slice_labels
-                )
-            slice_labels = np.where(
-                np.logical_and(slice_labels != MULTILABEL, label_flags),
-                np.array(label_index, np.uint8),
-                slice_labels
-                )
-        subvolume_slice_labels[i*slice_size:(i+1)*slice_size] = slice_labels
+    subvolume_label_slice_values = np.empty([slice_size*num_slices], np.uint16)
+    for (label_index, label) in enumerate(labels):
+        for i in range(num_slices):
+            image_data = images.load_image(label_fullfnames[label][i])
+            subvolume_label_slice_values[i*slice_size:(i+1)*slice_size] = image_data.reshape([-1])
+        min_value = np.min(subvolume_label_slice_values)
+        max_value = np.max(subvolume_label_slice_values)
+        if min_value == max_value:
+            raise ValueError('All pixels of labelled slices of the label {} are the same value so background cannot be identified.'.format(label))
+        
+        subvolume_label_flags = subvolume_label_slice_values > min_value
+        
+        subvolume_slice_labels = np.where(
+            np.logical_and(subvolume_slice_labels != UNINIT_LABEL, subvolume_label_flags),
+            MULTILABEL,
+            subvolume_slice_labels
+            )
+        subvolume_slice_labels = np.where(
+            np.logical_and(subvolume_slice_labels != MULTILABEL, subvolume_label_flags),
+            np.array(label_index, np.uint8),
+            subvolume_slice_labels
+            )
 
     labels_found = {
         labels[label_index]
@@ -291,13 +295,20 @@ def get_label_overlap(labels_data):
     label_fullfnames = {label_data.name: label_data.fullfnames for label_data in labels_data}
     labels = sorted(label_fullfnames.keys())
     num_slices = len(label_fullfnames[labels[0]])
+    
+    min_value = 0
+    for i in range(num_slices):
+        for (label_index, label) in enumerate(labels):
+            label_img = images.load_image(label_fullfnames[label][i]).reshape([-1])
+            min_value = min(min_value, np.min(label_img))
+    
     overlap_matrices = list()
     for i in range(num_slices):
         overlap_matrix = {label: {label: 0 for label in labels} for label in labels}
         slice_labels = np.empty(slice_shape+(len(labels),), np.bool)
         for (label_index, label) in enumerate(labels):
             label_img = images.load_image(label_fullfnames[label][i])
-            slice_labels[:, :, label_index] = label_img > np.min(label_img)
+            slice_labels[:, :, label_index] = label_img > min_value
         for (label_index1, label1) in enumerate(labels):
             num_overlaps = np.sum(slice_labels[slice_labels[:, :, label_index1]], axis=0).tolist()
             for (label_index2, label2) in enumerate(labels):
