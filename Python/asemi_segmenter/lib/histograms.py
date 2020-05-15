@@ -10,7 +10,7 @@ from asemi_segmenter.lib import regions
 def histogram(array, num_bins, value_range):
     '''
     Compute a histogram from a range and number of bins.
-    
+
     :param numpy.ndarray array: The array of values.
     :param int num_bins: The number of bins in the histogram.
     :param tuple value_range: A 2-tuple consisting of the minimum and maximum values to consider
@@ -25,44 +25,50 @@ def histogram(array, num_bins, value_range):
 #########################################
 def apply_histogram_to_all_neighbourhoods_in_slice_3d(array_3d, slice_index, radius, neighbouring_dims, min_range, max_range, num_bins, pad=0, row_slice=slice(None), col_slice=slice(None)):
     '''
-    Find a histograms of the values in the neighbourhood around every element in a volume slice.
-    
-    Given a slice of voxels in a volume, this function will find the histogram of values around
-    every voxel in the slice. The histogram around a voxel is computed using a cube of a given
-    radius centered around the voxel. Radius defined such that the side of the cube is
-    radius + 1 + radius long.
-    
-    Histograms of neighbourhoods around every voxel in a slice can be computed efficiently using a
-    rolling algorithm that reuses histograms in other neighbouring voxels. Consider if we had to
-    use this function on a 2D image instead of a volume and using a 2D square neighbourhood instead
+    Find a histograms of the values in the neighbourhood around every element
+    in a volume slice.
+
+    Given a slice of voxels in a volume, this function will find the histogram
+    of values around every voxel in the slice. The histogram around a voxel is
+    computed using a cube of a given radius centered around the voxel. Radius
+    defined such that the side of the cube is radius + 1 + radius long.
+
+    Histograms of neighbourhoods around every voxel in a slice can be computed
+    efficiently using a rolling algorithm that reuses histograms in other
+    neighbouring voxels. Consider if we had to use this function on a 2D
+    image instead of a volume and using a 2D square neighbourhood instead
     of a cube. We'll be using this 3x3 image as an example:
         [a,b,c]
         [d,e,f]
         [g,h,i]
-    The neighbourhood around the pixel at (0,0) with radius 1 has the following frequencies:
+    The neighbourhood around the pixel at (0,0) with radius 1 has the
+    following frequencies:
         PAD=5, a=1, b=1, c=0, d=1, e=1, f=0, g=0, h=0, i=0 => [5,1,1,0,1,1,0,0,0,0]
-    The neighbourhood around (0,1) has values in common with the neighbourhood around (0,0) so we
-    can avoid counting all the elements in this neighbourhood by instead counting only what has
-    changed from the previous neighbourhood and update the frequencies with new information in the
-    dropped and new columns:
+    The neighbourhood around (0,1) has values in common with the
+    neighbourhood around (0,0) so we can avoid counting all the elements in
+    this neighbourhood by instead counting only what has changed from the
+    previous neighbourhood and update the frequencies with new information
+    in the dropped and new columns:
         histogram_01 = histogram_00 - histogram([PAD,a,d]) + histogram([PAD,c,f])
-    Likewise, the neighbourhood around (1,0) has values in common with (0,0) as well and can be
-    calculated by subtracting the dropped row and adding the new column:
+    Likewise, the neighbourhood around (1,0) has values in common with (0,0)
+    as well and can be calculated by subtracting the dropped row and adding
+    the new column:
         histogram_10 = histogram_00 - histogram([PAD,PAD,PAD]) + histogram([g,h,i])
-    This means that we only need to perform a full histogram count for the top left corner as
-    everything else can be computed by rolling the values.
-    
-    For extracting histograms in 3D space, we will still be only processing a single slice but
-    with adjacent slices for context. Given a 3D array A, the neighbourhood around A[r,c] (in the
-    slice of interest) with radius R and neighbouring_dims d is hist(A[r,c], R, d). For each d,
-    the following optimisations can be performed:
+    This means that we only need to perform a full histogram count for the
+    top left corner as everything else can be computed by rolling the values.
+
+    For extracting histograms in 3D space, we will still be only processing
+    a single slice but with adjacent slices for context. Given a 3D array A,
+    the neighbourhood around A[r,c] (in the slice of interest) with radius R
+    and neighbouring_dims d is hist(A[r,c], R, d). For each d, the following
+    optimisations can be performed:
         hist(A[r,c], R, {0,1,2}) = hist(A[r-1,c], R, {0,1,2})
                                     - hist(A[r-1-R,c], R, {0,2})
                                     + hist(A[r+R,c], R, {0,2})
                           (also) = hist(A[r,c-1], R, {0,1,2})
                                     - hist(A[r,c-1-R], R, {0,1})
                                     + hist(A[r,c+R], R, {0,1})
-    
+
     :param numpy.ndarray array_3d: The volume from which to extract the histograms.
     :param int slice_index: The index of the slice to use within the volume.
     :param int radius: The radius of the neighbourhood around each voxel.
@@ -88,9 +94,9 @@ def apply_histogram_to_all_neighbourhoods_in_slice_3d(array_3d, slice_index, rad
         )
     num_rows_out = row_slice.stop - row_slice.start
     num_cols_out = col_slice.stop - col_slice.start
-    
+
     result = np.empty([ num_rows_out, num_cols_out, num_bins ], np.float32)
-    
+
     if neighbouring_dims == {0,1,2}:
         for (row_out, row_in) in enumerate(range(row_slice.start, row_slice.stop)):
             for (col_out, col_in) in enumerate(range(col_slice.start, col_slice.stop)):
@@ -126,7 +132,7 @@ def apply_histogram_to_all_neighbourhoods_in_slice_3d(array_3d, slice_index, rad
                             +
                             histogram(regions.get_neighbourhood_array_3d(array_3d, (slice_index, row_in+radius, col_in), radius, {0}, pad), num_bins, (min_range, max_range)) #Include effect of new row
                         )
-        
+
     elif neighbouring_dims == {0,2}:
         for (row_out, row_in) in enumerate(range(row_slice.start, row_slice.stop)):
             for (col_out, col_in) in enumerate(range(col_slice.start, col_slice.stop)):
@@ -140,7 +146,7 @@ def apply_histogram_to_all_neighbourhoods_in_slice_3d(array_3d, slice_index, rad
                             +
                             histogram(regions.get_neighbourhood_array_3d(array_3d, (slice_index, row_in, col_in+radius), radius, {0}, pad), num_bins, (min_range, max_range)) #Include effect of new column
                         )
-        
+
     elif neighbouring_dims == {1,2}:
         for (row_out, row_in) in enumerate(range(row_slice.start, row_slice.stop)):
             for (col_out, col_in) in enumerate(range(col_slice.start, col_slice.stop)):
@@ -162,8 +168,8 @@ def apply_histogram_to_all_neighbourhoods_in_slice_3d(array_3d, slice_index, rad
                             +
                             histogram(regions.get_neighbourhood_array_3d(array_3d, (slice_index, row_in, col_in+radius), radius, {1}, pad), num_bins, (min_range, max_range)) #Include effect of new column
                         )
-    
+
     else:
         raise NotImplementedError('Only neighbouring dimensions of {0,1}, {0,2}, {1,2}, and {0,1,2} implemented.')
-        
+
     return result
