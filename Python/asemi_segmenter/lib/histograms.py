@@ -185,7 +185,7 @@ def gpu_apply_histogram_to_all_neighbourhoods_in_slice_3d(array_3d, slice_index,
 
     # CUDA code
     mod = SourceModule("""
-#define MAXBINLIMS_ 41
+    #define MAXBINLIMS_ 41
     int MAXBINLIMS = MAXBINLIMS_ ;
 
     __device__ __constant__ float bins_limits[MAXBINLIMS_];
@@ -197,12 +197,12 @@ def gpu_apply_histogram_to_all_neighbourhoods_in_slice_3d(array_3d, slice_index,
 
     extern __shared__ float SHARED[];
 
-#define SLICE SHARED
+    #define SLICE SHARED
 
     //  WW_Y e WW_X sono le dimensioni del pezzo di slice che si legge.
     // Al di sopra si pone anche l'istogramma privatizzato ( i e' l'indice dell'istogramma, tid e' il numero della thread)
 
-#define myhisto(i)     SHARED[WW_Y*WW_X + (i)*blockDim.y*blockDim.x + tid ]
+    #define myhisto(i)     SHARED[WW_Y*WW_X + (i)*blockDim.y*blockDim.x + tid ]
 
     // ========================================================================
     // update_slice : FUNZIONE AUSILIARIA CHIAMATA DAL KERNEL PRINCIPALE
@@ -217,7 +217,6 @@ def gpu_apply_histogram_to_all_neighbourhoods_in_slice_3d(array_3d, slice_index,
 
                                   // posizione thread all interno del blocco
                                   int tiy, int tix,
-
 
                                   // le dimensioni del pezzo di slice che si legge
                                   //   WW_Y =   RADIUS_H+blockDimY+RADIUS_H ;
@@ -244,52 +243,49 @@ def gpu_apply_histogram_to_all_neighbourhoods_in_slice_3d(array_3d, slice_index,
                                   int blockDimY ,
                                   int blockDimX ,
 
-
                                   // input data
                                   float *d_volume_in,
 
                                   // dimensioni slice
                                   int NY,
                                   int NX
- ) {
+    ) {
+        int i_in_tile = tid;
+        while(i_in_tile< WW_Y*WW_X) {
 
-          int i_in_tile = tid;
-          while(i_in_tile< WW_Y*WW_X) {
+            int global_x =block_cx + (i_in_tile % WW_X) - RADIUS_H;
+            int global_y =block_cy + (i_in_tile / WW_X) - RADIUS_H ;
 
-              int global_x =block_cx + (i_in_tile % WW_X) - RADIUS_H;
-              int global_y =block_cy + (i_in_tile / WW_X) - RADIUS_H ;
+            float res = -1;
+            float val=0;   // padding to zero
 
-              float res = -1;
+            if( global_x >= 0 && global_x < NX && global_y >= 0 && global_y < NY ) {
+              val =   d_volume_in[ global_x +NX*( global_y+ NY*islice)]  ;
+            }
+            for(int i=0; i<NBINS+1; i++) {
+                if( val>= bins_limits[i]) res=i;
+            }
 
-              float val=0;   // padding to zero
+            SLICE[i_in_tile] = res;
+            i_in_tile += blockDimY *blockDimX ;
+        }
 
-              if( global_x >= 0 && global_x < NX && global_y >= 0 && global_y < NY     ) {
-                val =   d_volume_in[ global_x +NX*( global_y+ NY*islice)]  ;
-              }
-              for(int i=0; i<NBINS+1; i++) {
-                  if( val>= bins_limits[i]) res=i;
-              }
+        __syncthreads();    // la slice e' caricata completamente
 
-              SLICE[i_in_tile] = res;
-              i_in_tile += blockDimY *blockDimX ;
-          }
+        for(int sx=-RADIUS_H; sx<=RADIUS_H; sx++) {
+            for(int sy=-RADIUS_H ; sy<=RADIUS_H ; sy++) {
 
-          __syncthreads();    // la slice e' caricata completamente
+               float v  = SLICE[     tix+sx +RADIUS_H + WW_X * (tiy+sy+RADIUS_H) ];
 
+               if(v >= 0 && v < NBINS ) {
+                   myhisto( ((int) v ) ) += iadd;
+               }
+            }
+        }
 
-          for(int sx=-RADIUS_H; sx<=RADIUS_H; sx++) {
-              for(int sy=-RADIUS_H ; sy<=RADIUS_H ; sy++) {
-
-                 float v  = SLICE[     tix+sx +RADIUS_H + WW_X * (tiy+sy+RADIUS_H) ];
-
-                 if(v >= 0 && v < NBINS ) {
-                     myhisto( ((int) v ) ) += iadd;
-                 }
-              }
-          }
-
-          __syncthreads();      // la slice e' stata utilizzata. Dopo questo semaforo la si potra cambiare con la prossima.
+        __syncthreads();      // la slice e' stata utilizzata. Dopo questo semaforo la si potra cambiare con la prossima.
     }
+
     __device__ void update_slice_with_zeros(   // FOR THE ZERO PADDING
                                   // iadd=1 --> aggiungi    iadd=-1 --> togli
                                   int iadd ,
@@ -299,7 +295,6 @@ def gpu_apply_histogram_to_all_neighbourhoods_in_slice_3d(array_3d, slice_index,
 
                                   // posizione thread all interno del blocco
                                   int tiy, int tix,
-
 
                                   // le dimensioni del pezzo di slice che si legge
                                   //   WW_Y =   RADIUS_H+blockDimY+RADIUS_H ;
@@ -326,50 +321,45 @@ def gpu_apply_histogram_to_all_neighbourhoods_in_slice_3d(array_3d, slice_index,
                                   int blockDimY ,
                                   int blockDimX ,
 
-
                                   // input data
                                   float *d_volume_in,
 
                                   // dimensioni slice
                                   int NY,
                                   int NX
- ) {
+    ) {
+        int i_in_tile = tid;
+        while(i_in_tile< WW_Y*WW_X) {
 
-          int i_in_tile = tid;
-          while(i_in_tile< WW_Y*WW_X) {
+            int global_x =block_cx + (i_in_tile % WW_X) - RADIUS_H;
+            int global_y =block_cy + (i_in_tile / WW_X) - RADIUS_H ;
 
-              int global_x =block_cx + (i_in_tile % WW_X) - RADIUS_H;
-              int global_y =block_cy + (i_in_tile / WW_X) - RADIUS_H ;
+            float res = -1;
+            float val=0;   // padding to zero
 
-              float res = -1;
+            for(int i=0; i<NBINS+1; i++) {
+                if( val>= bins_limits[i]) res=i;
+            }
 
-              float val=0;   // padding to zero
+            SLICE[i_in_tile] = res;
+            i_in_tile += blockDimY *blockDimX ;
+        }
 
-              for(int i=0; i<NBINS+1; i++) {
-                  if( val>= bins_limits[i]) res=i;
-              }
+        __syncthreads();    // la slice e' caricata completamente
 
-              SLICE[i_in_tile] = res;
-              i_in_tile += blockDimY *blockDimX ;
-          }
+        for(int sx=-RADIUS_H; sx<=RADIUS_H; sx++) {
+            for(int sy=-RADIUS_H ; sy<=RADIUS_H ; sy++) {
 
-          __syncthreads();    // la slice e' caricata completamente
+               float v  = SLICE[     tix+sx +RADIUS_H + WW_X * (tiy+sy+RADIUS_H) ];
 
+               if(v >= 0 && v < NBINS ) {
+                   myhisto( ((int) v ) ) += iadd;
+               }
+            }
+        }
 
-          for(int sx=-RADIUS_H; sx<=RADIUS_H; sx++) {
-              for(int sy=-RADIUS_H ; sy<=RADIUS_H ; sy++) {
-
-                 float v  = SLICE[     tix+sx +RADIUS_H + WW_X * (tiy+sy+RADIUS_H) ];
-
-                 if(v >= 0 && v < NBINS ) {
-                     myhisto( ((int) v ) ) += iadd;
-                 }
-              }
-          }
-
-          __syncthreads();      // la slice e' stata utilizzata. Dopo questo semaforo la si potra cambiare con la prossima.
+        __syncthreads();      // la slice e' stata utilizzata. Dopo questo semaforo la si potra cambiare con la prossima.
     }
-
 
     //  =======================================
     // ISTOGRAMMA: Kernel principale
@@ -390,91 +380,83 @@ def gpu_apply_histogram_to_all_neighbourhoods_in_slice_3d(array_3d, slice_index,
 
                                  // il raggio della zone di interesse intorno al voxel
                                  int RADIUS_H
-
     ) {
+        const int WW_Y = RADIUS_H+ blockDim.y  +RADIUS_H ;
+        const int WW_X = RADIUS_H+ blockDim.x  +RADIUS_H ;
 
-      const int WW_Y = RADIUS_H+ blockDim.y  +RADIUS_H ;
-      const int WW_X = RADIUS_H+ blockDim.x  +RADIUS_H ;
+        const int tix = threadIdx.x;
+        const int tiy = threadIdx.y;
 
+        const int bidx = blockIdx.x;
+        const int bidy = blockIdx.y;
 
-      const int tix = threadIdx.x;
-      const int tiy = threadIdx.y;
+        int block_cx = bidx* blockDim.x;
+        int block_cy = bidy* blockDim.y;
 
-      const int bidx = blockIdx.x;
-      const int bidy = blockIdx.y;
+        int ix = block_cx + tix ;
+        int iy = block_cy + tiy ;
 
-      int block_cx = bidx* blockDim.x;
-      int block_cy = bidy* blockDim.y;
+        const int tid =  tiy *  blockDim.x + tix;
 
-      int ix = block_cx + tix ;
-      int iy = block_cy + tiy ;
-
-      const int tid =  tiy *  blockDim.x + tix;
-
-
-      for( int i=0; i< NBINS; i++) {
-         myhisto(i) = 0;
-      }
-
-      // prologo
-      for(int islice = 0; islice< 2*RADIUS_H+1 ; islice++) {
-          update_slice_with_zeros( +1, tid, tiy, tix,  WW_Y, WW_X,  RADIUS_H , block_cy, block_cx , 0,  NBINS, blockDim.y , blockDim.x , d_volume_in, NY, NX ) ;
-      }
-
-      for(int islice = 0; islice< RADIUS_H ; islice++) {
-        if(islice<NZ) {
-          update_slice_with_zeros( -1, tid, tiy, tix,  WW_Y, WW_X,  RADIUS_H , block_cy, block_cx , 0,  NBINS, blockDim.y , blockDim.x , d_volume_in, NY, NX ) ;
-          update_slice( +1, tid, tiy, tix,  WW_Y, WW_X,  RADIUS_H , block_cy, block_cx , islice, /* bottom, step,*/ NBINS, blockDim.y , blockDim.x , d_volume_in, NY, NX ) ;
+        for( int i=0; i< NBINS; i++) {
+            myhisto(i) = 0;
         }
-      }
-      // logo
-      for(int iz = 0; iz<NZ; iz++) {
-        if(iz-1-RADIUS_H >=0 ) {
-          update_slice( -1, tid, tiy, tix,WW_Y, WW_X,  RADIUS_H , block_cy, block_cx , iz-1 - RADIUS_H ,/* bottom, step,*/ NBINS, blockDim.y , blockDim.x  , d_volume_in, NY, NX  ) ;
-        } else {
-          update_slice_with_zeros( -1, tid, tiy, tix,  WW_Y, WW_X,  RADIUS_H , block_cy, block_cx , 0,  NBINS, blockDim.y , blockDim.x , d_volume_in, NY, NX ) ;
+
+        // prologo
+        for(int islice = 0; islice< 2*RADIUS_H+1 ; islice++) {
+            update_slice_with_zeros( +1, tid, tiy, tix,  WW_Y, WW_X,  RADIUS_H , block_cy, block_cx , 0,  NBINS, blockDim.y , blockDim.x , d_volume_in, NY, NX ) ;
         }
-        if(iz+RADIUS_H <NZ ) {
-          update_slice( +1, tid, tiy, tix, WW_Y, WW_X,  RADIUS_H , block_cy, block_cx , iz + RADIUS_H ,  /*bottom, step,*/ NBINS, blockDim.y , blockDim.x   , d_volume_in, NY, NX ) ;
-        }else {
-          update_slice_with_zeros( +1, tid, tiy, tix,  WW_Y, WW_X,  RADIUS_H , block_cy, block_cx , 0,  NBINS, blockDim.y , blockDim.x , d_volume_in, NY, NX ) ;
+
+        for(int islice = 0; islice< RADIUS_H ; islice++) {
+            if(islice<NZ) {
+                update_slice_with_zeros( -1, tid, tiy, tix,  WW_Y, WW_X,  RADIUS_H , block_cy, block_cx , 0,  NBINS, blockDim.y , blockDim.x , d_volume_in, NY, NX ) ;
+                update_slice( +1, tid, tiy, tix,  WW_Y, WW_X,  RADIUS_H , block_cy, block_cx , islice, /* bottom, step,*/ NBINS, blockDim.y , blockDim.x , d_volume_in, NY, NX ) ;
+            }
         }
-        for(int ibin = 0; ibin < NBINS ; ibin++) {
-            if(ix< NX && iy < NY )
-                   // d_volume_histo[     ix  + NX*( iy + (long int) NY*( ibin + NBINS*iz ) ) ] = myhisto(ibin);  // scrittura cohalesced
-                   d_volume_histo[     ibin + NBINS*( ix + (long int) NX*( iy + NY*iz ) ) ] = myhisto(ibin);  // scrittura NON cohalesced
+        // logo
+        for(int iz = 0; iz<NZ; iz++) {
+            if(iz-1-RADIUS_H >=0 ) {
+                update_slice( -1, tid, tiy, tix,WW_Y, WW_X,  RADIUS_H , block_cy, block_cx , iz-1 - RADIUS_H ,/* bottom, step,*/ NBINS, blockDim.y , blockDim.x  , d_volume_in, NY, NX  ) ;
+            } else {
+                update_slice_with_zeros( -1, tid, tiy, tix,  WW_Y, WW_X,  RADIUS_H , block_cy, block_cx , 0,  NBINS, blockDim.y , blockDim.x , d_volume_in, NY, NX ) ;
+            }
+            if(iz+RADIUS_H <NZ ) {
+                update_slice( +1, tid, tiy, tix, WW_Y, WW_X,  RADIUS_H , block_cy, block_cx , iz + RADIUS_H ,  /*bottom, step,*/ NBINS, blockDim.y , blockDim.x   , d_volume_in, NY, NX ) ;
+            }else {
+                update_slice_with_zeros( +1, tid, tiy, tix,  WW_Y, WW_X,  RADIUS_H , block_cy, block_cx , 0,  NBINS, blockDim.y , blockDim.x , d_volume_in, NY, NX ) ;
+            }
+            for(int ibin = 0; ibin < NBINS ; ibin++) {
+                if(ix< NX && iy < NY )
+                    // d_volume_histo[ ix  + NX*( iy + (long int) NY*( ibin + NBINS*iz ) ) ] = myhisto(ibin);  // scrittura cohalesced
+                    d_volume_histo[ ibin + NBINS*( ix + (long int) NX*( iy + NY*iz ) ) ] = myhisto(ibin);  // scrittura NON cohalesced
+            }
         }
-      }
     }
-
 
     #define TILE_DIM 16
     #define TILE_HEIGHT 4
-    __global__ void myTranspose(float *odata, const float *idata, int NZ, int NY , int  NX)
-    {
-      __shared__ float tile[TILE_DIM * TILE_DIM];
+    __global__ void myTranspose(float *odata, const float *idata, int NZ, int NY , int  NX) {
+        __shared__ float tile[TILE_DIM * TILE_DIM];
 
-      int CX = blockIdx.x * TILE_DIM     ;
-      int CY = blockIdx.y * TILE_DIM  ;
-      int CZ = blockIdx.z * TILE_HEIGHT  ;
+        int CX = blockIdx.x * TILE_DIM     ;
+        int CY = blockIdx.y * TILE_DIM  ;
+        int CZ = blockIdx.z * TILE_HEIGHT  ;
 
-      int x =    + threadIdx.x;
-      int y =    + threadIdx.y;
-      int z = CZ + threadIdx.z;
+        int x =    + threadIdx.x;
+        int y =    + threadIdx.y;
+        int z = CZ + threadIdx.z;
 
         if( CY+y<NY && CX+x<NX  && z<NZ    ) {
-           tile[( TILE_DIM*(z-CZ)  +  y)*TILE_DIM + x ] = idata[((long int)( z*NY + (long int) CY+y))*NX + CX+x];
+            tile[( TILE_DIM*(z-CZ)  +  y)*TILE_DIM + x ] = idata[((long int)( z*NY + (long int) CY+y))*NX + CX+x];
         }
 
-       __syncthreads();
-
+        __syncthreads();
 
         if( CX+y<NX && CY+x<NY && z<NZ  ) {
-          odata[  ((long int)( z*NX + (long int) CX+y))*NY + CY+x    ] = tile[( TILE_DIM*(z-CZ)  + x)*TILE_DIM + y];
+            odata[  ((long int)( z*NX + (long int) CX+y))*NY + CY+x    ] = tile[( TILE_DIM*(z-CZ)  + x)*TILE_DIM + y];
         }
-       __syncthreads();
-
-     }
+        __syncthreads();
+    }
     """)
 
     return result
