@@ -50,6 +50,7 @@ def load_featuriser_from_config(config, sampler_factory=None):
             radius = None
             scale = None
             num_bins = None
+            use_gpu = False
 
             if sampler_factory is not None:
                 if isinstance(config['params']['radius'], dict):
@@ -114,7 +115,12 @@ def load_featuriser_from_config(config, sampler_factory=None):
                     raise ValueError('num_bins must be a constant not a range.')
                 num_bins = config['params']['num_bins']
 
-            return HistogramFeaturiser(radius, scale, num_bins)
+            if 'use_gpu' in config['params']:
+                if isinstance(config['params']['use_gpu'], bool):
+                    raise ValueError('use_gpu must be a boolean.')
+                use_gpu = config['params']['use_gpu']
+
+            return HistogramFeaturiser(radius, scale, num_bins, use_gpu)
 
         elif config['type'] == 'lbp':
             neighbouring_dims = orientation_to_neighbouringdims(config['params']['orientation'])
@@ -649,7 +655,7 @@ class HistogramFeaturiser(Featuriser):
     '''
 
     #########################################
-    def __init__(self, radius, scale, num_bins):
+    def __init__(self, radius, scale, num_bins, use_gpu):
         '''
         Constructor.
 
@@ -659,10 +665,13 @@ class HistogramFeaturiser(Featuriser):
         :type scale: int or samplers.Sampler
         :param num_bins: num_bins is the number of bins in the histogram or a function that generates it.
         :type num_bins: int or samplers.Sampler
+        :param use_gpu: flag indicating the use of GPU implementation.
+        :type use_gpu: bool
         '''
         self.radius = None
         self.scale = None
         self.num_bins = None
+        self.use_gpu = None
         self.radius_sampler = None
         self.scale_sampler = None
         self.num_bins_sampler = None
@@ -678,6 +687,7 @@ class HistogramFeaturiser(Featuriser):
             self.num_bins_sampler = num_bins
         else:
             self.num_bins = num_bins
+        self.use_gpu = use_gpu
 
     #########################################
     def refresh_parameters(self):
@@ -742,7 +752,8 @@ class HistogramFeaturiser(Featuriser):
             'params': {
                 'radius': self.radius,
                 'scale': self.scale,
-                'num_bins': self.num_bins
+                'num_bins': self.num_bins,
+                'use_gpu': self.use_gpu
                 }
             }
 
@@ -754,7 +765,7 @@ class HistogramFeaturiser(Featuriser):
         :return: The parameters.
         :rtype: tuple
         '''
-        return (self.radius, self.scale, self.num_bins)
+        return (self.radius, self.scale, self.num_bins, self.use_gpu)
 
     #########################################
     def featurise_voxels(self, data_scales, indexes, output=None, output_start_row_index=0, output_start_col_index=0, dataset_name=None, features_table=None):
