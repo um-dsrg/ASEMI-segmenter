@@ -842,15 +842,27 @@ class HistogramFeaturiser(Featuriser):
         def processor(params, radius, scale, num_bins, full_input_ranges, output_start_row_index, output_start_col_index):
             '''Processor for process_array_in_blocks_single_slice.'''
             [ num_rows_out, num_cols_out ] = params[0]['contextless_shape']
-            hists = histograms.apply_histogram_to_all_neighbourhoods_in_slice_3d(
-                params[scale]['block'],
-                params[scale]['contextless_slices_wrt_block'][0],
-                radius,
-                {0,1,2},
-                0, 2**16,
-                num_bins,
-                row_slice=params[scale]['contextless_slices_wrt_block'][1], col_slice=params[scale]['contextless_slices_wrt_block'][2]
-                )
+
+            if self.use_gpu:
+                hists = histograms.gpu_apply_histogram_to_all_neighbourhoods_in_slice_3d(
+                    params[scale]['block'],
+                    params[scale]['contextless_slices_wrt_block'][0],
+                    radius,
+                    {0,1,2},
+                    0, 2**16,
+                    num_bins,
+                    row_slice=params[scale]['contextless_slices_wrt_block'][1], col_slice=params[scale]['contextless_slices_wrt_block'][2]
+                    )
+            else:
+                hists = histograms.apply_histogram_to_all_neighbourhoods_in_slice_3d(
+                    params[scale]['block'],
+                    params[scale]['contextless_slices_wrt_block'][0],
+                    radius,
+                    {0,1,2},
+                    0, 2**16,
+                    num_bins,
+                    row_slice=params[scale]['contextless_slices_wrt_block'][1], col_slice=params[scale]['contextless_slices_wrt_block'][2]
+                    )
             features = np.reshape(downscales.grow_array(hists, scale, [0, 1], params[0]['contextless_shape']), (-1, num_bins)).astype(np.float32)
 
             out_indexes = (
