@@ -1,3 +1,10 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+#
+# Copyright © 2020 Marc Tanti
+#
+# This file is part of ASEMI-segmenter.
+
 import argparse
 import os
 import sys
