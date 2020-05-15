@@ -1,11 +1,17 @@
-python ../bin/preprocess.py \
+#!/bin/sh
+#
+# Copyright © 2020 Marc Tanti
+#
+# This file is part of ASEMI-segmenter.
+
+../bin/preprocess.py \
     --volume_dir "volume" \
     --config_fullfname "preprocess_config.json" \
     --result_data_fullfname "preprocess/volume.hdf" \
     --max_processes 2 \
     --max_batch_memory 0.1
 
-python ../bin/analyse_data.py \
+../bin/analyse_data.py \
     --subvolume_dir "tune/train/subvolume" \
     --label_dirs \
         "tune/train/labels/air" \
@@ -14,7 +20,7 @@ python ../bin/analyse_data.py \
     --highlight_radius 3 \
     --results_dir "analyse_data"
 
-python ../bin/tune.py \
+../bin/tune.py \
     --preproc_volume_fullfname "preprocess/volume.hdf" \
     --train_subvolume_dir "tune/train/subvolume" \
     --train_label_dirs \
@@ -30,7 +36,7 @@ python ../bin/tune.py \
     --max_processes 2 \
     --max_batch_memory 0.1
 
-python ../bin/train.py \
+../bin/train.py \
     --preproc_volume_fullfname "preprocess/volume.hdf" \
     --subvolume_dir "train/subvolume" \
     --label_dirs \
@@ -42,7 +48,7 @@ python ../bin/train.py \
     --max_processes 2 \
     --max_batch_memory 0.1
 
-python ../bin/evaluate.py \
+../bin/evaluate.py \
     --segmenter_fullfname "train/segmenter.pkl" \
     --preproc_volume_fullfname "preprocess/volume.hdf" \
     --subvolume_dir "evaluate/subvolume" \
@@ -53,7 +59,7 @@ python ../bin/evaluate.py \
     --max_processes 2 \
     --max_batch_memory 0.1
 
-python ../bin/segment.py \
+../bin/segment.py \
     --segmenter_fullfname "train/segmenter.pkl" \
     --preproc_volume_fullfname "preprocess/volume.hdf" \
     --config_fullfname "segment_config.json" \
