@@ -475,6 +475,141 @@ def process_array_in_blocks(
         )
     return out_array
 
+
+#########################################
+class SliceBasedArrayCacher(object):
+    '''
+    Decorate a slow array with a seemless cache for slice array processor.
+    
+    An example of a slow array is an HDF file.
+    '''
+
+    #########################################
+    def __init__(self, slow_array, context_needed=0):
+        '''
+        Constructor.
+        
+        :param array_like slow_array: A 3D array that is loaded from a slow medium.
+        :param int context_needed: The maximum amount of extra context slices from each
+            side when loading one slice.
+        '''
+        self.slow_array = slow_array
+        self.context_needed = context_needed
+        
+        self.shape = slow_array.shape
+        self.dtype = slow_array.dtype
+        
+        (num_slcs, num_rows, num_cols) = slow_array.shape
+        self.cache = np.empty((2*context_needed + 1, num_rows, num_cols), slow_array.dtype)
+        self.cached_slice = None
+    
+    #########################################
+    def fetch(self, slice_index):
+        '''
+        Fetch a slice from the slow array and load it into cache.
+        
+        :param int slice_index: The index of the slice to fetch.
+        '''
+        if self.cached_slice is not None:
+            if slice_index == self.cached_slice:
+                return
+            
+            displacement = abs(slice_index - self.cached_slice)
+            if displacement <= self.context_needed:
+                if slice_index < self.cached_slice:
+                    cache_slices_to_move = slice(
+                        0,
+                        self.cache.shape[0] - displacement
+                        )
+                    cache_slices_destination = slice(
+                        displacement,
+                        self.cache.shape[0]
+                        )
+                    cache_slices_to_update = slice(
+                        0,
+                        displacement
+                        )
+                    volume_slices_to_copy = slice(
+                        slice_index - self.context_needed,
+                        slice_index - self.context_needed + displacement
+                        )
+                else:
+                    cache_slices_to_move = slice(
+                        displacement,
+                        self.cache.shape[0]
+                        )
+                    cache_slices_destination = slice(
+                        0,
+                        self.cache.shape[0] - displacement
+                        )
+                    cache_slices_to_update = slice(
+                        self.cache.shape[0] - displacement,
+                        self.cache.shape[0]
+                        )
+                    volume_slices_to_copy = slice(
+                        slice_index + self.context_needed + 1 - displacement,
+                        slice_index + self.context_needed + 1
+                        )
+                self.cache[cache_slices_to_move, :, :] = self.cache[cache_slices_destination, :, :]
+            else:
+                cache_slices_to_update = slice(
+                    None
+                    )
+                volume_slices_to_copy = slice(
+                    slice_index - self.context_needed,
+                    slice_index + self.context_needed + 1
+                    )
+        else:
+            cache_slices_to_update = slice(
+                None
+                )
+            volume_slices_to_copy = slice(
+                slice_index - self.context_needed,
+                slice_index + self.context_needed + 1
+                )
+        
+        self.cache[cache_slices_to_update, :, :] = regions.get_subarray_3d(
+            self.slow_array,
+            volume_slices_to_copy,
+            slice(None),
+            slice(None)
+            )
+        self.cached_slice = slice_index
+    
+    #########################################
+    def __getitem__(self, index):
+        '''
+        Get an subarray from the cache, fetching new data to cache if necessary.
+        
+        Note that the fetch will be on the slice at the index
+        (index[0].start + index[1].stop)//2.
+        
+        :param tuple index: Tuple with 3 Python slices specifying which subarray
+            to return with respect to the slow array.
+        :return: The subarray.
+        :rtype: numpy.ndarray
+        '''
+        (slc, row, col) = index
+        if self.cached_slice is not None:
+            cache_range = slice(
+                self.cached_slice - self.context_needed,
+                self.cached_slice + self.context_needed + 1
+                )
+            if (
+                self.cached_slice is None
+                or slc.start < cache_range.start
+                or slc.stop >= cache_range.stop
+                ):
+                self.fetch((slc.start + slc.stop)//2)
+        else:
+            self.fetch((slc.start + slc.stop)//2)
+        slc = slice(
+            slc.start - (self.cached_slice - self.context_needed),
+            slc.stop - (self.cached_slice - self.context_needed)
+            )
+        return self.cache[slc, row, col]
+
+
 #########################################
 def process_array_in_blocks_single_slice(
         in_array_scales, out_array, processor, block_shape, slice_index, scales=None,
