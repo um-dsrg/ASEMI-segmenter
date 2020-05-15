@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import memory_profiler
 from asemi_segmenter.lib import times
@@ -91,7 +92,7 @@ featuriser_config = {
 print('Running...')
 
 extract_features(
-    '../example_volume/preprocess/volume.hdf',
+    os.path.join('..', 'example_volume', 'output', 'preprocess', 'volume.hdf'),
     featuriser_config,
     volume_slice_index=0,
     save_as='features.txt', #Can be a full file name to a text file (.txt) or to a numpy file (.npy) or None

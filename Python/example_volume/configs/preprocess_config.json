@@ -1,0 +1,15 @@
+{
+    "num_downsamples": 3,
+    "downsample_filter": {
+            "type": "gaussian",
+            "params": {
+                    "sigma": 1.4142135623730951
+                }
+        },
+    "hash_function": {
+            "type": "random_indexing",
+            "params": {
+                    "hash_size": 10
+                }
+        }
+}

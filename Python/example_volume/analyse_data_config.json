@@ -1,6 +1,0 @@
-{
-    "dataset": {
-        "sample_size_per_label": 10,
-        "samples_to_skip_per_label": 0
-    }
-}

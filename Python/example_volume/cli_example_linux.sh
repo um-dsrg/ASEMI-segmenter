@@ -6,63 +6,68 @@
 
 ../bin/preprocess.py \
     --volume_dir "volume" \
-    --config_fullfname "preprocess_config.json" \
-    --result_data_fullfname "preprocess/volume.hdf" \
-    --max_processes 2 \
-    --max_batch_memory 0.1
+    --config_fullfname "configs/preprocess_config.json" \
+    --result_data_fullfname "output/preprocess/volume.hdf" \
+    --max_processes 4 \
+    --max_batch_memory 1.0
 
 ../bin/analyse_data.py \
-    --subvolume_dir "tune/train/subvolume" \
+    --subvolume_dir "training_set/subvolume" \
     --label_dirs \
-        "tune/train/labels/air" \
-        "tune/train/labels/terracotta" \
-    --config "analyse_data_config.json" \
+        "training_set/labels/air" \
+        "training_set/labels/tissues" \
+        "training_set/labels/bones" \
+    --config "configs/analyse_data_config.json" \
     --highlight_radius 3 \
-    --results_dir "analyse_data"
+    --results_dir "output/analyse_data"
 
 ../bin/tune.py \
-    --preproc_volume_fullfname "preprocess/volume.hdf" \
-    --train_subvolume_dir "tune/train/subvolume" \
+    --preproc_volume_fullfname "output/preprocess/volume.hdf" \
+    --train_subvolume_dir "training_set/subvolume" \
     --train_label_dirs \
-        "tune/train/labels/air" \
-        "tune/train/labels/terracotta" \
-    --eval_subvolume_dir "tune/eval/subvolume" \
+        "training_set/labels/air" \
+        "training_set/labels/tissues" \
+        "training_set/labels/bones" \
+    --eval_subvolume_dir "validation_set/subvolume" \
     --eval_label_dirs \
-        "tune/eval/labels/air" \
-        "tune/eval/labels/terracotta" \
-    --config_fullfname "tune_config.json" \
-    --search_results_fullfname "tune/results.txt" \
-    --best_result_fullfname "tune/result.json" \
-    --max_processes 2 \
-    --max_batch_memory 0.1
+        "validation_set/labels/air" \
+        "validation_set/labels/tissues" \
+        "validation_set/labels/bones" \
+    --config_fullfname "configs/tune_config.json" \
+    --search_results_fullfname "output/tune/results.txt" \
+    --best_result_fullfname "output/tune/result.json" \
+    --max_processes 4 \
+    --max_batch_memory 1.0
 
 ../bin/train.py \
-    --preproc_volume_fullfname "preprocess/volume.hdf" \
-    --subvolume_dir "train/subvolume" \
+    --preproc_volume_fullfname "output/preprocess/volume.hdf" \
+    --subvolume_dir "training_set/subvolume" \
     --label_dirs \
-        "train/labels/air" \
-        "train/labels/terracotta" \
-    --config_fullfname "train_config.json" \
-    --result_segmenter_fullfname "train/segmenter.pkl" \
-    --trainingset_file_fullfname "train/trainingset.hdf" \
-    --max_processes 2 \
-    --max_batch_memory 0.1
+        "training_set/labels/air" \
+        "training_set/labels/tissues" \
+        "training_set/labels/bones" \
+    --config_fullfname "configs/train_config.json" \
+    --result_segmenter_fullfname "output/train/segmenter.pkl" \
+    --trainingset_file_fullfname "output/train/trainingset.hdf" \
+    --max_processes 4 \
+    --max_batch_memory 1.0
 
 ../bin/evaluate.py \
-    --segmenter_fullfname "train/segmenter.pkl" \
-    --preproc_volume_fullfname "preprocess/volume.hdf" \
-    --subvolume_dir "evaluate/subvolume" \
+    --segmenter_fullfname "output/train/segmenter.pkl" \
+    --preproc_volume_fullfname "output/preprocess/volume.hdf" \
+    --subvolume_dir "testing_set/subvolume" \
     --label_dirs \
-        "evaluate/labels/air" \
-        "evaluate/labels/terracotta" \
-    --results_dir "evaluate/results" \
-    --max_processes 2 \
-    --max_batch_memory 0.1
+        "testing_set/labels/air" \
+        "testing_set/labels/tissues" \
+        "testing_set/labels/bones" \
+    --results_dir "output/evaluate" \
+    --max_processes 4 \
+    --max_batch_memory 1.0
 
 ../bin/segment.py \
-    --segmenter_fullfname "train/segmenter.pkl" \
-    --preproc_volume_fullfname "preprocess/volume.hdf" \
-    --config_fullfname "segment_config.json" \
-    --results_dir "segment" \
-    --max_processes 2 \
-    --max_batch_memory 0.1
+    --segmenter_fullfname "output/train/segmenter.pkl" \
+    --preproc_volume_fullfname "output/preprocess/volume.hdf" \
+    --config_fullfname "configs/segment_config.json" \
+    --results_dir "output/segment" \
+    --max_processes 4 \
+    --max_batch_memory 1.0

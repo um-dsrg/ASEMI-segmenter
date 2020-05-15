@@ -86,7 +86,7 @@ def display_volume(in_array, relative_intensities=True, cross_section=None):
 
 #########################################
 
-full_volume = volumes.FullVolume(os.path.join('..', 'example_volume', 'preprocess', 'volume.hdf'))
+full_volume = volumes.FullVolume(os.path.join('..', 'example_volume', 'output', 'preprocess', 'volume.hdf'))
 full_volume.load()
 in_array = full_volume.get_scale_array(1)[:]
 
