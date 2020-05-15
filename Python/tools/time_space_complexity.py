@@ -1,3 +1,8 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+#
+# Copyright © 2020 Marc Tanti
+
 import numpy as np
 import memory_profiler
 import tempfile
@@ -36,19 +41,19 @@ def measure(side_length, num_training_slices, num_labels, num_runs, train_config
                 }
         }
     del featuriser
-    
+
     with tempfile.TemporaryDirectory() as temp_dir:
         print('Creating full volume slices')
         files.mkdir(os.path.join(temp_dir, 'volume'))
         r = np.random.RandomState(0)
         for i in range(side_length):
             images.save_image(os.path.join(temp_dir, 'volume', '{}.tif'.format(i)), r.randint(0, 2**16, size=[side_length,side_length], dtype=np.uint16))
-        
+
         print('Creating sub volume slices')
         files.mkdir(os.path.join(temp_dir, 'subvolume'))
         for i in range(0, side_length-side_length%num_training_slices, side_length//num_training_slices):
             shutil.copy(os.path.join(temp_dir, 'volume', '{}.tif'.format(i)), os.path.join(temp_dir, 'subvolume', '{}.tif'.format(i)))
-        
+
         print('Creating label slices')
         files.mkdir(os.path.join(temp_dir, 'labels'))
         r = np.random.RandomState(0)
@@ -56,7 +61,7 @@ def measure(side_length, num_training_slices, num_labels, num_runs, train_config
             files.mkdir(os.path.join(temp_dir, 'labels', '_{}'.format(label)))
             for i in range(0, side_length-side_length%num_training_slices, side_length//num_training_slices):
                 images.save_image(os.path.join(temp_dir, 'labels', '_{}'.format(label), '{}.tif'.format(i)), r.randint(0, 2, size=[side_length,side_length], dtype=np.uint16))
-        
+
         print('Preprocessing volume')
         preprocess.main(
                 volume_dir=os.path.join(temp_dir, 'volume'),
@@ -68,9 +73,9 @@ def measure(side_length, num_training_slices, num_labels, num_runs, train_config
                 max_batch_memory=max_batch_memory,
                 listener=Listener()
             )
-        
+
         files.mkdir(os.path.join(temp_dir, 'segmentation'))
-        
+
         print('Starting measurements')
         for run in range(1, num_runs+1):
             print('Measuring run', run)
@@ -94,10 +99,10 @@ def measure(side_length, num_training_slices, num_labels, num_runs, train_config
                         )
                     )
                 )
-                
+
             train_time = timer.duration
             train_memory = max(mem_usage)
-            
+
             with times.Timer() as timer:
                 mem_usage = memory_profiler.memory_usage(
                     (
@@ -118,9 +123,9 @@ def measure(side_length, num_training_slices, num_labels, num_runs, train_config
                 )
             segment_time = timer.duration
             segment_memory = max(mem_usage)
-            
+
             listener(run, train_time, train_memory, segment_time, segment_memory)
-        
+
         print()
 
 
@@ -178,7 +183,7 @@ for max_batch_memory in [ 0.1, 0.5, 1.0 ]:
             def listener(run, train_time, train_memory, segment_time, segment_memory):
                 with open('time_space_complexity.txt', 'a', encoding='utf-8') as f:
                     print(max_batch_memory, max_processes, side_length, side_length**2, side_length**3, run, train_time, train_memory, segment_time, segment_memory, sep='\t', file=f)
-                
+
             measure(side_length, num_training_slices, num_labels, num_runs, train_config, max_processes, max_batch_memory, listener)
 
 print('Ready.')

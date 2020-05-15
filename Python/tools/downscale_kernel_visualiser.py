@@ -1,3 +1,8 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+#
+# Copyright © 2020 Marc Tanti
+
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
@@ -37,7 +42,7 @@ def visualise(in_array, sigma):
             axs[row,col].set_ylabel([ 'column', 'column', 'slice' ][col])
             axs[row,col].set_xticks([], [])
             axs[row,col].set_yticks([], [])
-    
+
     fig.tight_layout()
     fig.show()
 

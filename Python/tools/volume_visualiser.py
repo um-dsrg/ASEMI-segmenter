@@ -1,3 +1,8 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+#
+# Copyright © 2020 Marc Tanti
+
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
@@ -13,11 +18,11 @@ matplotlib.use('TkAgg')
 #########################################
 def _expand_slice(s):
     return slice(s.start, s.stop + 1)
-        
+
 #########################################
 def display_volume(in_array, relative_intensities=True, cross_section=None):
     shape = in_array.shape
-    
+
     mask = np.full(shape, True, np.bool)
     if len(shape) == 3 and cross_section is not None:
         if cross_section == 'diagonal':
@@ -35,14 +40,14 @@ def display_volume(in_array, relative_intensities=True, cross_section=None):
         max_value = dtype_info.max
         min_value = dtype_info.min
     corrected_values = (in_array - min_value)/(max_value - min_value + 1e-200)
-    
+
     cmap = plt.cm.get_cmap('plasma')
     colours = cmap(corrected_values, 1.0)
 
     if len(shape) == 3:
         print('This may take a while...')
         fig = plt.figure(figsize=(12,8))
-        
+
         ax = fig.add_subplot(2, 2, 1, projection='3d')
         indices = np.mgrid[0:shape[0]+1, 0:shape[1]+1, 0:shape[2]+1]
         ax.voxels(indices[0], indices[1], indices[2], mask, facecolors=colours)
@@ -52,28 +57,28 @@ def display_volume(in_array, relative_intensities=True, cross_section=None):
         ax.set_xticks([], [])
         ax.set_yticks([], [])
         ax.set_zticks([], [])
-        
+
         ax = fig.add_subplot(2, 2, 2)
         ax.imshow(np.rot90(colours[shape[0]//2,:,:]))
         ax.set_xlabel('row')
         ax.set_ylabel('column')
         ax.set_xticks([], [])
         ax.set_yticks([], [])
-        
+
         ax = fig.add_subplot(2, 2, 3)
         ax.imshow(np.rot90(colours[:,shape[1]//2,:]))
         ax.set_xlabel('slice')
         ax.set_ylabel('column')
         ax.set_xticks([], [])
         ax.set_yticks([], [])
-        
+
         ax = fig.add_subplot(2, 2, 4)
         ax.imshow(np.rot90(colours[:,:,shape[2]//2]))
         ax.set_xlabel('row')
         ax.set_ylabel('slice')
         ax.set_xticks([], [])
         ax.set_yticks([], [])
-        
+
         fig.tight_layout()
         fig.show()
     else:

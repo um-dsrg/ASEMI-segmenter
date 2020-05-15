@@ -1,3 +1,8 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+#
+# Copyright © 2020 Marc Tanti
+
 import os
 import numpy as np
 import memory_profiler
@@ -11,9 +16,9 @@ from asemi_segmenter.lib import arrayprocs
 def extract_features(preproc_volume_fullfname, featuriser_config, volume_slice_index, max_processes, max_batch_memory, save_as=None):
     full_volume = volumes.FullVolume(preproc_volume_fullfname)
     full_volume.load()
-    
+
     featuriser = featurisers.load_featuriser_from_config(featuriser_config)
-    
+
     best_block_shape = arrayprocs.get_optimal_block_size(
         full_volume.get_shape(),
         full_volume.get_dtype(),
@@ -22,7 +27,7 @@ def extract_features(preproc_volume_fullfname, featuriser_config, volume_slice_i
         max_batch_memory,
         implicit_depth=True
         )
-    
+
     result = []
     def f(result):
         result.append(
@@ -34,14 +39,14 @@ def extract_features(preproc_volume_fullfname, featuriser_config, volume_slice_i
                 n_jobs=max_processes
                 )
             )
-    
+
     with times.Timer() as timer:
         mem_usage = memory_profiler.memory_usage((f, (result,)))
     feature_vectors = result[0]
-    
+
     print('duration:', round(timer.duration, 1), 's')
     print('memory:', round(max(mem_usage), 2), 'MB')
-    
+
     if save_as is not None:
         if save_as.endswith('.txt'):
             with open(save_as, 'w', encoding='utf-8') as f:

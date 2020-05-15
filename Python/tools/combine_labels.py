@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
-# Copyright © 2020 Johann A. Briffa <johann.briffa@um.edu.mt>
+# Copyright © 2020 Johann A. Briffa
 
 import sys
 import os
