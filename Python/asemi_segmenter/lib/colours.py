@@ -20,17 +20,19 @@ class LabelPalette(object):
     '''Create a colour palette in 8-bit RGB, one colour for each label.'''
     
     #########################################
-    def __init__(self, label_names):
+    def __init__(self, label_names, skip_colours=0):
         '''
         Constructor.
     
         :param list label_names: A list of label names in a desired order such that
             the index of the label name is the label index of that label.
+        :param int skip_colours: The number of colours in the sequence to skip
+            (colours are in a fixed sequence).
         '''
         self.label_names = label_names
         
         self.names_palette = {
-            label: tuple(cmap[i])
+            label: tuple(cmap[i + skip_colours])
             for (i, label) in enumerate(label_names)
             }
         self.index2colour = np.array([

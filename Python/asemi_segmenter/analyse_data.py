@@ -91,7 +91,7 @@ def _analysing(
             seed=0
             )
         
-        label_palette = colours.LabelPalette(labels)
+        label_palette = colours.LabelPalette(labels, skip_colours=1)
         images.save_image(
             os.path.join(results_dir, 'legend.tiff'),
             images.matplotlib_to_imagedata(label_palette.get_legend()),

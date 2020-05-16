@@ -158,7 +158,7 @@ def _evaluating(
         num_bits=8,
         compress=True
         )
-    confusion_map_saver = results.ConfusionMapSaver(segmenter.classifier.labels)
+    confusion_map_saver = results.ConfusionMapSaver(segmenter.classifier.labels, skip_colours=1)
     images.save_image(
         os.path.join(results_dir, 'confusion_map_legend.tiff'),
         images.matplotlib_to_imagedata(confusion_map_saver.palette.get_legend()),

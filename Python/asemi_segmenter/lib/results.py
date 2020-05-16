@@ -49,14 +49,15 @@ class ConfusionMapSaver(object):
     '''
     
     #########################################
-    def __init__(self, label_names):
+    def __init__(self, label_names, skip_colours=0):
         '''
         Constructor.
         
         :param list label_names: The names of labels in order of their indexes.
+        :param int skip_colours: The number of colours in the sequence to skip.
         '''
         self.label_names = label_names
-        self.palette = colours.LabelPalette(label_names)
+        self.palette = colours.LabelPalette(label_names, skip_colours)
     
     #########################################
     def save(self, fullfname, confusion_map):
