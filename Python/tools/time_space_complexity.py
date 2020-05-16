@@ -168,7 +168,7 @@ train_config = {
         }
     }
 
-with open('results.txt', 'w', encoding='utf-8') as f:
+with open('time_space_complexity.txt', 'w', encoding='utf-8') as f:
     print('max_batch_memory', 'max_processes', 'side_length', 'slice_area', 'cube_volume', 'run', 'train_time', 'train_memory', 'segment_time', 'segment_memory', sep='\t', file=f)
 
 for max_batch_memory in [ 0.1, 0.5, 1.0 ]:
@@ -176,9 +176,9 @@ for max_batch_memory in [ 0.1, 0.5, 1.0 ]:
         for side_length in [ 10, 20, 30, 40, 50, 60, 70, 80, 90, 100 ]:
             print('max_batch_memory', max_batch_memory, '-', 'max_processes', max_processes, '-', 'side_length', side_length)
             def listener(run, train_time, train_memory, segment_time, segment_memory):
-                with open('results.txt', 'a', encoding='utf-8') as f:
+                with open('time_space_complexity.txt', 'a', encoding='utf-8') as f:
                     print(max_batch_memory, max_processes, side_length, side_length**2, side_length**3, run, train_time, train_memory, segment_time, segment_memory, sep='\t', file=f)
                 
             measure(side_length, num_training_slices, num_labels, num_runs, train_config, max_processes, max_batch_memory, listener)
 
-input('Press enter to exit.')
+print('Ready.')

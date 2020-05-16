@@ -95,9 +95,9 @@ extract_features(
     os.path.join('..', 'example_volume', 'output', 'preprocess', 'volume.hdf'),
     featuriser_config,
     volume_slice_index=0,
-    save_as='features.txt', #Can be a full file name to a text file (.txt) or to a numpy file (.npy) or None
+    save_as='feature_extractor.txt', #Can be a full file name to a text file (.txt) or to a numpy file (.npy) or None
     max_processes=2,
     max_batch_memory=0.1
     )
 
-input('Press enter to exit.')
+print('Ready.')
