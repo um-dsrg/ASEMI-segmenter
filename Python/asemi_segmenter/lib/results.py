@@ -86,6 +86,11 @@ class EvaluationResultsFile(object):
         '''
         self.results_fullfname = results_fullfname
         self.evaluation = evaluation
+        
+        self.num_rows = 0
+        self.total_featuriser_duration = 0
+        self.total_classifier_duration = 0
+        self.total_total_duration = 0
 
     #########################################
     def create(self, labels):
@@ -109,6 +114,29 @@ class EvaluationResultsFile(object):
                 )
     
     #########################################
+    def load(self, all_predicted_labels, all_true_labels):
+        '''
+        Load the intermediate results for computing the global scores.
+        
+        :param list all_predicted_labels: List of numpy array predicted labels
+            for every evaluated slice.
+        :param list all_true_labels: List of numpy array true labels
+            for every evaluated slice.
+        '''
+        with open(self.results_fullfname, 'r', encoding='utf-8') as f:
+            for (i, line) in enumerate(f.read().strip().split('\n')[1:]):
+                fields = line.split('\t')
+                if int(fields[0]) == -1:
+                    continue
+                
+                self.num_rows += 1
+                self.total_featuriser_duration += float(fields[-3])
+                self.total_classifier_duration += float(fields[-2])
+                self.total_total_duration += float(fields[-1])
+        
+                self.evaluation.evaluate(all_predicted_labels[i], all_true_labels[i])
+    
+    #########################################
     def add(self, subvolume_slice_num, volume_slice_num, predicted_labels, true_labels, featuriser_duration, classifier_duration, total_duration):
         '''
         Add a new slice's result to the file.
@@ -123,6 +151,11 @@ class EvaluationResultsFile(object):
         :param float classifier_duration: The duration of the classification process.
         :param float total_duration: The total duration of the slice's evaluation process.
         '''
+        self.num_rows += 1
+        self.total_featuriser_duration += featuriser_duration
+        self.total_classifier_duration += classifier_duration
+        self.total_total_duration += total_duration
+        
         (label_scores, single_score) = self.evaluation.evaluate(predicted_labels, true_labels)
         with open(self.results_fullfname, 'a', encoding='utf-8') as f:
             print(
@@ -153,6 +186,44 @@ class EvaluationResultsFile(object):
                 '{:.1f}'.format(featuriser_duration),
                 '{:.1f}'.format(classifier_duration),
                 '{:.1f}'.format(total_duration),
+                sep='\t', file=f
+                )
+    
+    #########################################
+    def conclude(self):
+        '''
+        Add a global result to the file.
+        '''
+        (label_scores, single_score) = self.evaluation.get_global_results()
+        with open(self.results_fullfname, 'a', encoding='utf-8') as f:
+            print(
+                -1,
+                -1,
+                '{:.3{}}'.format(
+                    single_score,
+                    '%' if self.evaluation.is_percentage else 'f'
+                    ),
+                '{:.3{}}'.format(
+                    min([r for r in label_scores if r is not None]),
+                    '%' if self.evaluation.is_percentage else 'f'
+                    ),
+                '{:.3{}}'.format(
+                    np.std([r for r in label_scores if r is not None]).tolist(),
+                    '%' if self.evaluation.is_percentage else 'f'
+                    ),
+                *[
+                    (
+                        '{:.3{}}'.format(
+                            result,
+                            '%' if self.evaluation.is_percentage else 'f'
+                            )
+                        if result is not None else ''
+                        )
+                    for result in label_scores
+                    ],
+                '{:.1f}'.format(self.total_featuriser_duration/self.num_rows),
+                '{:.1f}'.format(self.total_classifier_duration/self.num_rows),
+                '{:.1f}'.format(self.total_total_duration/self.num_rows),
                 sep='\t', file=f
                 )
 

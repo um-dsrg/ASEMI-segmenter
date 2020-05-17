@@ -39,6 +39,10 @@ class LabelPalette(object):
             self.names_palette[label]
             for label in self.label_names
             ], np.uint8)
+        self.colour2index = {
+            self.names_palette[label]: i + skip_colours
+            for (i, label) in enumerate(self.label_names)
+            }
     
     #########################################
     def get_legend(self):
@@ -71,7 +75,23 @@ class LabelPalette(object):
         
         :param numpy.ndarray label_indexes: Numpy array (of any shape) of integer label
             indexes.
-        :return: Numpy array of same shape plus an extra dimension for the RGB channels.
+        :return: Numpy array of same shape as label_indexes plus an extra dimension for
+            the RGB channels.
         :rtype: numpy.ndarray
         '''
         return self.index2colour[label_indexes]
+    
+    #########################################
+    def colours_to_label_indexes(self, colours):
+        '''
+        Convert an 8-bit RGB array to an array of label indexes.
+        
+        :param numpy.ndarray colours: Numpy array (of any shape) of RGB channels.
+        :return: Numpy array of same shape as colours minues the extra dimension
+            for the RGB channels.
+        :rtype: numpy.ndarray
+        '''
+        result = np.empty(colours.shape[:-1], np.uint8)
+        for (i, _) in np.ndenumerate(result):
+            result[i] = self.colour2index[tuple(colours[i].tolist())]
+        return result

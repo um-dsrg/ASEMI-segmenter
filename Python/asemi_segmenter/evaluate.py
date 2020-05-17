@@ -143,6 +143,7 @@ def _evaluating(
             listener.log_output('>> Continuing use of checkpointed results file')
             raise skip
         evaluation_results_file.create(segmenter.classifier.labels)
+    
     best_block_shape = arrayprocs.get_optimal_block_size(
         slice_shape,
         full_volume.get_dtype(),
@@ -160,8 +161,27 @@ def _evaluating(
         compress=True
         )
     confusion_map_saver = results.ConfusionMapSaver(segmenter.classifier.labels, skip_colours=1)
-        
+    
     start = checkpoint.get_next_to_process('evaluation_prog')
+    
+    all_predicted_labels = list()
+    all_true_labels = list()
+    for i in range(start):
+        all_predicted_labels.append(
+            labels_palette.colours_to_label_indexes(
+                images.load_image(
+                    os.path.join(results_dir, 'slice_{}'.format(i + 1), 'predicted_labels.tiff'),
+                    num_bits=8
+                    )
+                ) - 1
+            )
+        all_true_labels.append(
+            subvolume_slice_labels[i*slice_size:(i+1)*slice_size].reshape(slice_shape)
+            )
+    evaluation_results_file.load(all_predicted_labels, all_true_labels)
+    del all_predicted_labels
+    del all_true_labels
+    
     listener.current_progress_start(start, len(subvolume_fullfnames))
     for (i, volume_slice_index) in enumerate(volume_slice_indexes_in_subvolume):
         if i < start:
@@ -253,6 +273,11 @@ def _evaluating(
 
         listener.current_progress_update(i+1)
     listener.current_progress_end()
+    
+    with checkpoint.apply('conclude') as skip:
+        if skip is not None:
+            raise skip
+        evaluation_results_file.conclude()
     
     return ()
 
