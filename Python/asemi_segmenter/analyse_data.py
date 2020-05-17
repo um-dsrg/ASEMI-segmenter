@@ -70,6 +70,8 @@ def _analysing(
     '''Analysing stage.'''
     sample_size_per_label = config_data['dataset']['sample_size_per_label']
     labels = sorted(label_data.name for label_data in labels_data)
+    slice_shape = labels_data[0].shape
+    slice_size = np.prod(labels_data[0].shape).tolist()
     
     overlap_matrices = volumes.get_label_overlap(labels_data)
     for (i, overlap_matrix) in enumerate(overlap_matrices):
@@ -77,6 +79,32 @@ def _analysing(
             print('', *labels, sep='\t', file=f)
             for label1 in labels:
                 print(label1, *[overlap_matrix[label1][label2] for label2 in labels], sep='\t', file=f)
+    
+    label_palette = colours.LabelPalette(['unlabelled'] + labels)
+    images.save_image(
+        os.path.join(results_dir, 'legend.tiff'),
+        images.matplotlib_to_imagedata(label_palette.get_legend()),
+        num_bits=8,
+        compress=True
+        )
+    loaded_labels = volumes.load_labels(labels_data)
+    for slice_index in range(len(subvolume_fullfnames)):
+        reshaped_slice_labels = np.reshape(
+            loaded_labels[slice_index*slice_size:(slice_index + 1)*slice_size],
+            slice_shape
+            )
+        images.save_image(
+            os.path.join(results_dir, 'full_slice_{}.tiff'.format(slice_index + 1)),
+            label_palette.label_indexes_to_colours(
+                np.where(
+                    reshaped_slice_labels >= volumes.FIRST_CONTROL_LABEL,
+                    0,
+                    reshaped_slice_labels + 1
+                    )
+                ),
+            num_bits=8,
+            compress=True
+            )
     
     if sample_size_per_label != -1:
         subvolume_slice_labels = volumes.load_labels(labels_data)
@@ -92,12 +120,6 @@ def _analysing(
             )
         
         label_palette = colours.LabelPalette(labels, skip_colours=1)
-        images.save_image(
-            os.path.join(results_dir, 'legend.tiff'),
-            images.matplotlib_to_imagedata(label_palette.get_legend()),
-            num_bits=8,
-            compress=True
-            )
         
         sample_labels = np.empty((len(voxel_indexes),), np.uint8)
         for (label_index, pos) in enumerate(label_positions):
