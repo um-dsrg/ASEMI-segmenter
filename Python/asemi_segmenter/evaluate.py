@@ -13,6 +13,7 @@ from asemi_segmenter.lib import results
 from asemi_segmenter.lib import segmenters
 from asemi_segmenter.lib import colours
 from asemi_segmenter.lib import times
+from asemi_segmenter.lib import downscales
 from asemi_segmenter.lib import files
 from asemi_segmenter.lib import validations
 from asemi_segmenter.lib import volumes
@@ -153,18 +154,12 @@ def _evaluating(
     
     labels_palette = colours.LabelPalette(['unlabelled'] + segmenter.classifier.labels)
     images.save_image(
-        os.path.join(results_dir, 'labels_legend.tiff'),
+        os.path.join(results_dir, 'legend.tiff'),
         images.matplotlib_to_imagedata(labels_palette.get_legend()),
         num_bits=8,
         compress=True
         )
     confusion_map_saver = results.ConfusionMapSaver(segmenter.classifier.labels, skip_colours=1)
-    images.save_image(
-        os.path.join(results_dir, 'confusion_map_legend.tiff'),
-        images.matplotlib_to_imagedata(confusion_map_saver.palette.get_legend()),
-        num_bits=8,
-        compress=True
-        )
         
     start = checkpoint.get_next_to_process('evaluation_prog')
     listener.current_progress_start(start, len(subvolume_fullfnames))
@@ -192,14 +187,18 @@ def _evaluating(
                 reshaped_prediction = prediction.reshape(slice_shape)
                 reshaped_slice_labels = slice_labels.reshape(slice_shape)
                 
-                images.save_image(
-                    os.path.join(results_dir, 'slice_{}'.format(i + 1), 'input_slice.tiff'),
-                    full_volume.get_scale_array(0)[volume_slice_index, :, :],
-                    compress=True
-                    )
+                for scale in segmenter.featuriser.get_scales_needed():
+                    images.save_image(
+                        os.path.join(results_dir, 'slice_{}'.format(i + 1), 'input_slice_scale_{}.tiff'.format(scale)),
+                        full_volume.get_scale_array(scale)[
+                            downscales.downscale_pos(volume_slice_index, scale),
+                            :, :
+                            ],
+                        compress=True
+                        )
                 
                 images.save_image(
-                    os.path.join(results_dir, 'slice_{}'.format(i + 1), 'true_slice.tiff'),
+                    os.path.join(results_dir, 'slice_{}'.format(i + 1), 'true_labels.tiff'),
                     labels_palette.label_indexes_to_colours(
                         np.where(
                             reshaped_slice_labels >= volumes.FIRST_CONTROL_LABEL,
@@ -212,7 +211,7 @@ def _evaluating(
                     )
                 
                 images.save_image(
-                    os.path.join(results_dir, 'slice_{}'.format(i + 1), 'predicted_slice.tiff'),
+                    os.path.join(results_dir, 'slice_{}'.format(i + 1), 'predicted_labels.tiff'),
                     labels_palette.label_indexes_to_colours(
                         reshaped_prediction + 1
                         ),
