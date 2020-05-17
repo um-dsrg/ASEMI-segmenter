@@ -211,6 +211,108 @@ class FullVolume(object):
 
 
 #########################################
+def load_volume_dir(volume_dir):
+    '''
+    Load and validate volume meta data.
+
+    Validation consists of checking
+    * that the slice images are all greyscale and
+    * that the slice images are all of the same shape.
+
+    :param str volume_dir: The path to the volume directory.
+    :return: A volume data object.
+    :rtype: VolumeData
+    '''
+    if not files.fexists(volume_dir):
+        raise ValueError('Volume directory does not exist.')
+
+    volume_fullfnames = []
+    with os.scandir(volume_dir) as it:
+        for entry in it:
+            if entry.name.startswith('.'):
+                continue
+            if not images.check_image_ext(entry.name, images.IMAGE_EXTS_IN):
+                continue
+            if entry.is_file():
+                volume_fullfnames.append(os.path.join(volume_dir, entry.name))
+    if not volume_fullfnames:
+        raise ValueError('Volume directory does not have any images.')
+    volume_fullfnames.sort()
+
+    slice_shape = None
+    for fullfname in volume_fullfnames:
+        with PIL.Image.open(fullfname) as f:
+            shape = (f.height, f.width)
+            if f.mode[0] not in 'LI':
+                raise ValueError('Found volume slice that is not a greyscale image ' \
+                    '({}).'.format(fullfname))
+        if slice_shape is not None:
+            if shape != slice_shape:
+                raise ValueError('Found differently shaped volume slices ' \
+                    '({} and {}).'.format(
+                        volume_fullfnames[0], fullfname
+                        ))
+        else:
+            slice_shape = shape
+
+    return VolumeData(volume_fullfnames, slice_shape)
+
+
+#########################################
+def load_label_dir(label_dir):
+    '''
+    Load and validate label meta data of a single label directory.
+
+    Validation consists of checking
+    * that the slice images are all greyscale and
+    * that all of slice images are of the same shape.
+
+    :param str label_dir: The path to the label directory.
+    :return: A label data object.
+    :rtype: LabelData
+    '''
+    if not files.fexists(label_dir):
+        raise ValueError('Label directory does not exist.')
+    
+    label_name = os.path.split(label_dir)[1]
+    if label_name == '':  #If directory ends with a '/' then label name will be an empty string.
+        label_name = os.path.split(label_dir[:-1])[1]
+
+    label_fullfnames = []
+    with os.scandir(label_dir) as it:
+        for entry in it:
+            if entry.name.startswith('.'):
+                continue
+            if not images.check_image_ext(entry.name, images.IMAGE_EXTS_IN):
+                continue
+            if entry.is_file():
+                label_fullfnames.append(os.path.join(label_dir, entry.name))
+    if not label_fullfnames:
+        raise ValueError('Label directory does not have any images.')
+    label_fullfnames.sort()
+
+    slice_shape = None
+    for fullfname in label_fullfnames:
+        with PIL.Image.open(fullfname) as f:
+            shape = (f.height, f.width)
+            if f.mode[0] not in 'LI':
+                raise ValueError('Found label slice that is not a greyscale image ' \
+                    '({}).'.format(
+                        fullfname
+                        ))
+        if slice_shape is not None:
+            if shape != slice_shape:
+                raise ValueError('Found differently shaped label slices ' \
+                    '({} and {}).'.format(
+                        label_fullfnames[0], fullfname
+                        ))
+        else:
+            slice_shape = shape
+
+    return LabelData(label_fullfnames, slice_shape, label_name)
+
+
+#########################################
 def load_labels(labels_data):
     '''
     Load label slices as a flattened index array.
@@ -291,78 +393,55 @@ def get_label_overlap(labels_data):
         two keys.
     :rtype: list
     '''
-    slice_shape = labels_data[0].shape
+    slice_size = np.prod(labels_data[0].shape).tolist()
     label_fullfnames = {label_data.name: label_data.fullfnames for label_data in labels_data}
     labels = sorted(label_fullfnames.keys())
+    if len(labels) != len(labels_data):
+        raise ValueError('Some labels were declared more than once ([{}]).'.format(
+            ', '.join(
+                label
+                for (label, freq) in collections.Counter(
+                    label_data.name for label_data in labels_data
+                    )
+                if freq > 1
+                )
+            ))
     num_slices = len(label_fullfnames[labels[0]])
+    subvolume_slice_labels = [set() for i in range(slice_size*num_slices)]
+    subvolume_label_slice_values = np.empty([slice_size*num_slices], np.uint16)
+    for (label_index, label) in enumerate(labels):
+        for i in range(num_slices):
+            image_data = images.load_image(label_fullfnames[label][i])
+            subvolume_label_slice_values[i*slice_size:(i+1)*slice_size] = image_data.reshape([-1])
+        min_value = np.min(subvolume_label_slice_values)
+        max_value = np.max(subvolume_label_slice_values)
+        if min_value == max_value:
+            raise ValueError('All pixels of labelled slices of the label {} are the same value so background cannot be identified.'.format(label))
+        
+        subvolume_label_flags = subvolume_label_slice_values > min_value
+        
+        for i in range(slice_size*num_slices):
+            if subvolume_label_flags[i]:
+                subvolume_slice_labels[i].add(label_index)
     
-    min_value = 0
-    for i in range(num_slices):
-        for (label_index, label) in enumerate(labels):
-            label_img = images.load_image(label_fullfnames[label][i]).reshape([-1])
-            min_value = min(min_value, np.min(label_img))
-    
-    overlap_matrices = list()
-    for i in range(num_slices):
-        overlap_matrix = {label: {label: 0 for label in labels} for label in labels}
-        slice_labels = np.empty(slice_shape+(len(labels),), np.bool)
-        for (label_index, label) in enumerate(labels):
-            label_img = images.load_image(label_fullfnames[label][i])
-            slice_labels[:, :, label_index] = label_img > min_value
-        for (label_index1, label1) in enumerate(labels):
-            num_overlaps = np.sum(slice_labels[slice_labels[:, :, label_index1]], axis=0).tolist()
-            for (label_index2, label2) in enumerate(labels):
-                overlap_matrix[label1][label2] = num_overlaps[label_index2]
-        overlap_matrices.append(overlap_matrix)
+    overlap_matrices = [
+        {label: {label: 0 for label in labels} for label in labels}
+        for _ in range(num_slices)
+        ]
+    for i in range(num_slices*slice_size):
+        num_labels = len(subvolume_slice_labels[i])
+        slice_index = i//slice_size
+        if num_labels > 1:
+            for label1_index in subvolume_slice_labels[i]:
+                label1 = labels[label1_index]
+                for label2_index in subvolume_slice_labels[i] - { label1_index }:
+                    label2 = labels[label2_index]
+                    overlap_matrices[slice_index][label1][label2] += 1
+        elif num_labels == 1:
+            label_index = next(iter(subvolume_slice_labels[i]))
+            label = labels[label_index]
+            overlap_matrices[slice_index][label][label] += 1
     return overlap_matrices
-
-
-#########################################
-def load_volume_dir(volume_dir):
-    '''
-    Load and validate volume meta data.
-
-    Validation consists of checking
-    * that the slice images are all greyscale and
-    * that the slice images are all of the same shape.
-
-    :param str volume_dir: The path to the volume directory.
-    :return: A volume data object.
-    :rtype: VolumeData
-    '''
-    if not files.fexists(volume_dir):
-        raise ValueError('Volume directory does not exist.')
-
-    volume_fullfnames = []
-    with os.scandir(volume_dir) as it:
-        for entry in it:
-            if entry.name.startswith('.'):
-                continue
-            if not images.check_image_ext(entry.name, images.IMAGE_EXTS_IN):
-                continue
-            if entry.is_file():
-                volume_fullfnames.append(os.path.join(volume_dir, entry.name))
-    if not volume_fullfnames:
-        raise ValueError('Volume directory does not have any images.')
-    volume_fullfnames.sort()
-
-    slice_shape = None
-    for fullfname in volume_fullfnames:
-        with PIL.Image.open(fullfname) as f:
-            shape = (f.height, f.width)
-            if f.mode[0] not in 'LI':
-                raise ValueError('Found volume slice that is not a greyscale image ' \
-                    '({}).'.format(fullfname))
-        if slice_shape is not None:
-            if shape != slice_shape:
-                raise ValueError('Found differently shaped volume slices ' \
-                    '({} and {}).'.format(
-                        volume_fullfnames[0], fullfname
-                        ))
-        else:
-            slice_shape = shape
-
-    return VolumeData(volume_fullfnames, slice_shape)
 
 
 #########################################
@@ -387,57 +466,3 @@ def get_volume_slice_indexes_in_subvolume(volume_hashes, subvolume_hashes):
             ).tolist()
         indexes.append(volume_index)
     return indexes
-
-
-#########################################
-def load_label_dir(label_dir):
-    '''
-    Load and validate label meta data of a single label directory.
-
-    Validation consists of checking
-    * that the slice images are all greyscale and
-    * that all of slice images are of the same shape.
-
-    :param str label_dir: The path to the label directory.
-    :return: A label data object.
-    :rtype: LabelData
-    '''
-    if not files.fexists(label_dir):
-        raise ValueError('Label directory does not exist.')
-    
-    label_name = os.path.split(label_dir)[1]
-    if label_name == '':  #If directory ends with a '/' then label name will be an empty string.
-        label_name = os.path.split(label_dir[:-1])[1]
-
-    label_fullfnames = []
-    with os.scandir(label_dir) as it:
-        for entry in it:
-            if entry.name.startswith('.'):
-                continue
-            if not images.check_image_ext(entry.name, images.IMAGE_EXTS_IN):
-                continue
-            if entry.is_file():
-                label_fullfnames.append(os.path.join(label_dir, entry.name))
-    if not label_fullfnames:
-        raise ValueError('Label directory does not have any images.')
-    label_fullfnames.sort()
-
-    slice_shape = None
-    for fullfname in label_fullfnames:
-        with PIL.Image.open(fullfname) as f:
-            shape = (f.height, f.width)
-            if f.mode[0] not in 'LI':
-                raise ValueError('Found label slice that is not a greyscale image ' \
-                    '({}).'.format(
-                        fullfname
-                        ))
-        if slice_shape is not None:
-            if shape != slice_shape:
-                raise ValueError('Found differently shaped label slices ' \
-                    '({} and {}).'.format(
-                        label_fullfnames[0], fullfname
-                        ))
-        else:
-            slice_shape = shape
-
-    return LabelData(label_fullfnames, slice_shape, label_name)
