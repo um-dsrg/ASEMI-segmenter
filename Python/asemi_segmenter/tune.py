@@ -86,31 +86,6 @@ def _loading_data(
         config_data['training_set']['samples_to_skip_per_label'] = 0
     if 'samples_to_skip_per_label' not in config_data['evaluation_set']:
         config_data['evaluation_set']['samples_to_skip_per_label'] = 0
-    
-    listener.log_output('> Search results')
-    if search_results_fullfname is not None:
-        listener.log_output('>> {}'.format(search_results_fullfname))
-        validations.check_filename(search_results_fullfname, '.txt', False)
-    evaluation = evaluations.IntersectionOverUnionEvaluation(len(labels))
-    tuning_results_file = results.TuningResultsFile(search_results_fullfname, evaluation)
-    
-    listener.log_output('> Best result')
-    if best_result_fullfname is not None:
-        listener.log_output('>> {}'.format(best_result_fullfname))
-        validations.check_filename(best_result_fullfname, '.json', False)
-    
-    listener.log_output('> Checkpoint')
-    if checkpoint_fullfname is not None:
-        listener.log_output('>> {}'.format(checkpoint_fullfname))
-        validations.check_filename(checkpoint_fullfname, '.json', False)
-    checkpoint = checkpoints.CheckpointManager(
-        checkpoint_namespace,
-        checkpoint_fullfname,
-        reset_checkpoint=reset_checkpoint,
-        initial_content=checkpoint_init
-        )
-
-    listener.log_output('> Initialising')
     sampler_factory = samplers.SamplerFactory(seed=0)
     for variable_name in config_data['variables']:
         if config_data['variables'][variable_name]['type'] == 'integer':
@@ -137,6 +112,32 @@ def _loading_data(
             },
         sampler_factory=sampler_factory
         )
+    listener.log_output('>> Search space size: {}'.format(sampler_factory.get_sample_space_size()))
+    
+    listener.log_output('> Search results')
+    if search_results_fullfname is not None:
+        listener.log_output('>> {}'.format(search_results_fullfname))
+        validations.check_filename(search_results_fullfname, '.txt', False)
+    evaluation = evaluations.IntersectionOverUnionEvaluation(len(labels))
+    tuning_results_file = results.TuningResultsFile(search_results_fullfname, evaluation)
+    
+    listener.log_output('> Best result')
+    if best_result_fullfname is not None:
+        listener.log_output('>> {}'.format(best_result_fullfname))
+        validations.check_filename(best_result_fullfname, '.json', False)
+    
+    listener.log_output('> Checkpoint')
+    if checkpoint_fullfname is not None:
+        listener.log_output('>> {}'.format(checkpoint_fullfname))
+        validations.check_filename(checkpoint_fullfname, '.json', False)
+    checkpoint = checkpoints.CheckpointManager(
+        checkpoint_namespace,
+        checkpoint_fullfname,
+        reset_checkpoint=reset_checkpoint,
+        initial_content=checkpoint_init
+        )
+
+    listener.log_output('> Initialising')
     hash_function.init(slice_shape, seed=0)
     training_set = datasets.DataSet(None)
     

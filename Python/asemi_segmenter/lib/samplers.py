@@ -121,6 +121,19 @@ class SamplerFactory(object):
         return self.named_samplers[name]
     
     #########################################
+    def get_sample_space_size(self):
+        '''
+        Get the number of different values possible with all the samplers combined.
+        
+        :return: The number of different values.
+        :rtype: int
+        '''
+        size = 1
+        for sampler in self.samplers:
+            size *= sampler.get_sample_space_size()
+        return size
+        
+    #########################################
     def resample_all(self):
         '''
         Resample all generated samplers.
@@ -142,6 +155,16 @@ class Sampler(object):
         self.seed = seed
         self.initialised = False
         self.value = None
+    
+    #########################################
+    def get_sample_space_size(self):
+        '''
+        Get the number of different values possible.
+        
+        :return: The number of different values.
+        :rtype: int
+        '''
+        raise NotImplementedError()
     
     #########################################
     def resample(self):
@@ -179,6 +202,16 @@ class ConstantSampler(Sampler):
         super().__init__(seed)
         
         self.value = value
+    
+    #########################################
+    def get_sample_space_size(self):
+        '''
+        Get the number of different values possible.
+        
+        :return: The number of different values.
+        :rtype: int
+        '''
+        return 1
     
     #########################################
     def resample(self):
@@ -228,8 +261,21 @@ class IntegerSampler(Sampler):
         self.rng = random.Random(seed)
         self.method = {
             'uniform': lambda:self.rng.randint(self.min, self.max),
-            'log2':    lambda:2**self.rng.randint(math.log2(self.min), math.log2(self.max))
+            'log2':    lambda:2**self.rng.randint(int(math.log2(self.min)), int(math.log2(self.max)))
             }[distribution]
+    
+    #########################################
+    def get_sample_space_size(self):
+        '''
+        Get the number of different values possible.
+        
+        :return: The number of different values.
+        :rtype: int
+        '''
+        return {
+            'uniform': (lambda:self.max - self.min + 1),
+            'log2':    (lambda:int(math.log2(self.max) - math.log2(self.min) + 1))
+            }[self.distribution]()
     
     #########################################
     def resample(self):
@@ -288,9 +334,44 @@ class FloatSampler(Sampler):
         self.distribution = distribution
         self.rng = random.Random(seed)
         self.method = {
-            'uniform': lambda:round(self.rng.uniform(self.min, self.max), self.decimal_places),
-            'log10':   lambda:round(10**self.rng.uniform(math.log10(self.min), math.log10(self.max)), self.decimal_places)
+            'uniform': (lambda:round(self.rng.uniform(self.min, self.max), self.decimal_places)),
+            'log10':   (lambda:round(10**self.rng.uniform(math.log10(self.min), math.log10(self.max)), self.decimal_places))
             }[distribution]
+    
+    #########################################
+    def get_sample_space_size(self):
+        '''
+        Get the number of different values possible.
+        
+        :return: The number of different values.
+        :rtype: int
+        '''
+        # The 3 decimal place numbers between 1.0 and 2.0 is:
+        # 1.0, 1.001, 1.002, ..., 1.998, 1.999
+        # The length of this list is (amount of whole numbers)*(10**dp)
+        #  = max(2 - 1, 1)*(10**3) = 1000
+        # This is the trivial case when both fractional numbers are 0.
+        #
+        # The 3 decimal place numbers between 0.01 and 0.1 is:
+        # 0.010, 0.011, 0.012, ..., 0.098, 0.099
+        # The length of this list is found as follows:
+        # Convert each limit's fractional part to an integer with the right number of dp
+        #  0.01 -> 01 -> 010 -> 10
+        #  0.1  -> 1  -> 100 -> 100
+        # Then: (amount of whole numbers)*(amount of fractional numbers)
+        #  = max(0 - 0, 1)*(100 - 10) = 90
+        
+        def get_fractional_part(num):
+            '''Get the part of the number after the decimal point as a string.'''
+            return str(float(num)).split('.')[1]
+        
+        min_str_frac = get_fractional_part(self.min)
+        min_str_frac += '0'*(self.decimal_places - len(min_str_frac))
+        
+        max_str_frac = get_fractional_part(self.max)
+        max_str_frac += '0'*(self.decimal_places - len(max_str_frac))
+        
+        return max(int(self.max) - int(self.min), 1)*(int(max_str_frac) - int(min_str_frac))
     
     #########################################
     def resample(self):
