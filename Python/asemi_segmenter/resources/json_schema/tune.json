@@ -39,6 +39,10 @@
                     "type": "number",
                     "exclusiveMinimum": 0.0
                 },
+                "decimal_places": {
+                    "type": "integer",
+                    "minimum": 1
+                },
                 "distribution": {
                     "type": "string",
                     "enum": ["uniform", "log10"]
