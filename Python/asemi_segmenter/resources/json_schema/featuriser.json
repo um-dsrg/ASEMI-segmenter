@@ -2,7 +2,7 @@
     "$schema": "http://json-schema.org/draft-07/schema#",
     "$id": "featuriser.json",
     "definitions": {
-        
+
         "voxel": {
             "type": "object",
             "properties": {
@@ -16,7 +16,7 @@
             "required": ["type", "params"],
             "additionalProperties": false
         },
-        
+
         "histogram": {
             "type": "object",
             "properties": {
@@ -116,6 +116,9 @@
                                     "additionalProperties": false
                                 }
                             ]
+                        },
+                        "use_gpu": {
+                            "type": "boolean"
                         }
                     },
                     "required": ["radius", "scale", "num_bins"],
@@ -125,7 +128,7 @@
             "required": ["type", "params"],
             "additionalProperties": false
         },
-        
+
         "lbp": {
             "type": "object",
             "properties": {
@@ -211,7 +214,7 @@
             "required": ["type", "params"],
             "additionalProperties": false
         },
-        
+
         "composite": {
             "type": "object",
             "properties": {
@@ -238,9 +241,9 @@
             "required": ["type", "params"],
             "additionalProperties": false
         }
-        
+
     },
-    
+
     "oneOf": [
         { "$ref": "#/definitions/voxel" },
         { "$ref": "#/definitions/histogram" },
