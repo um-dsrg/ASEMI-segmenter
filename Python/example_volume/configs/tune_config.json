@@ -86,6 +86,7 @@
         "samples_to_skip_per_label": 0
     },
     "tuning": {
-        "num_iterations": 20
+        "num_global_iterations": 20,
+        "num_local_iterations": 20
     }
 }

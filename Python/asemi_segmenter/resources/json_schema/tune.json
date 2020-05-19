@@ -39,6 +39,10 @@
                     "type": "number",
                     "exclusiveMinimum": 0.0
                 },
+                "decimal_places": {
+                    "type": "integer",
+                    "minimum": 1
+                },
                 "distribution": {
                     "type": "string",
                     "enum": ["uniform", "log10"]
@@ -72,11 +76,17 @@
         "tuning": {
             "type": "object",
             "properties": {
-                "num_iterations": {
+                "num_global_iterations": {
+                    "type": "integer",
+                    "minimum": 1
+                },
+                "num_local_iterations": {
                     "type": "integer",
                     "minimum": 1
                 }
-            }
+            },
+            "required": ["num_global_iterations", "num_local_iterations"],
+            "additionalProperties": false
         }
     },
     "required": ["variables", "featuriser", "classifier", "training_set", "tuning"],

@@ -86,31 +86,6 @@ def _loading_data(
         config_data['training_set']['samples_to_skip_per_label'] = 0
     if 'samples_to_skip_per_label' not in config_data['evaluation_set']:
         config_data['evaluation_set']['samples_to_skip_per_label'] = 0
-    
-    listener.log_output('> Search results')
-    if search_results_fullfname is not None:
-        listener.log_output('>> {}'.format(search_results_fullfname))
-        validations.check_filename(search_results_fullfname, '.txt', False)
-    evaluation = evaluations.IntersectionOverUnionEvaluation(len(labels))
-    tuning_results_file = results.TuningResultsFile(search_results_fullfname, evaluation)
-    
-    listener.log_output('> Best result')
-    if best_result_fullfname is not None:
-        listener.log_output('>> {}'.format(best_result_fullfname))
-        validations.check_filename(best_result_fullfname, '.json', False)
-    
-    listener.log_output('> Checkpoint')
-    if checkpoint_fullfname is not None:
-        listener.log_output('>> {}'.format(checkpoint_fullfname))
-        validations.check_filename(checkpoint_fullfname, '.json', False)
-    checkpoint = checkpoints.CheckpointManager(
-        checkpoint_namespace,
-        checkpoint_fullfname,
-        reset_checkpoint=reset_checkpoint,
-        initial_content=checkpoint_init
-        )
-
-    listener.log_output('> Initialising')
     sampler_factory = samplers.SamplerFactory(seed=0)
     for variable_name in config_data['variables']:
         if config_data['variables'][variable_name]['type'] == 'integer':
@@ -137,6 +112,32 @@ def _loading_data(
             },
         sampler_factory=sampler_factory
         )
+    listener.log_output('>> Search space size: {}'.format(sampler_factory.get_sample_space_size()))
+    
+    listener.log_output('> Search results')
+    if search_results_fullfname is not None:
+        listener.log_output('>> {}'.format(search_results_fullfname))
+        validations.check_filename(search_results_fullfname, '.txt', False)
+    evaluation = evaluations.IntersectionOverUnionEvaluation(len(labels))
+    tuning_results_file = results.TuningResultsFile(search_results_fullfname, evaluation)
+    
+    listener.log_output('> Best result')
+    if best_result_fullfname is not None:
+        listener.log_output('>> {}'.format(best_result_fullfname))
+        validations.check_filename(best_result_fullfname, '.json', False)
+    
+    listener.log_output('> Checkpoint')
+    if checkpoint_fullfname is not None:
+        listener.log_output('>> {}'.format(checkpoint_fullfname))
+        validations.check_filename(checkpoint_fullfname, '.json', False)
+    checkpoint = checkpoints.CheckpointManager(
+        checkpoint_namespace,
+        checkpoint_fullfname,
+        reset_checkpoint=reset_checkpoint,
+        initial_content=checkpoint_init
+        )
+
+    listener.log_output('> Initialising')
     hash_function.init(slice_shape, seed=0)
     training_set = datasets.DataSet(None)
     
@@ -260,22 +261,24 @@ def _tuning(
     
     tuning_results_file.load()
     
-    with checkpoint.apply('tune') as skip:
+    listener.log_output('> Running global search')
+    with checkpoint.apply('global_tune') as skip:
         if skip is not None:
             raise skip
-        start = checkpoint.get_next_to_process('tune_prog')
-        listener.current_progress_start(start, config_data['tuning']['num_iterations'])
-        for iteration in range(1, config_data['tuning']['num_iterations'] + 1):
+        start = checkpoint.get_next_to_process('global_tune_prog')
+        listener.current_progress_start(start, config_data['tuning']['num_global_iterations'])
+        for iteration in range(1, config_data['tuning']['num_global_iterations'] + 1):
             evaluation.reset()
             while True:
-                segmenter.regenerate()
+                segmenter.sampler_factory.resample_all()
+                segmenter.refresh_params()
                 params = segmenter.get_params()
                 if params not in parameters_visited:
                     parameters_visited.add(params)
                     break
             if iteration - 1 < start:
                 continue
-            with checkpoint.apply('tune_prog'):
+            with checkpoint.apply('global_tune_prog'):
                 with times.Timer() as sub_timer:
                     best_block_shape = arrayprocs.get_optimal_block_size(
                         slice_shape,
@@ -373,6 +376,124 @@ def _tuning(
                     )
             listener.current_progress_update(iteration)
         listener.current_progress_end()
+    
+    listener.log_output('> Running local search')
+    with checkpoint.apply('local_tune') as skip:
+        if skip is not None:
+            raise skip
+        start = checkpoint.get_next_to_process('local_tune_prog')
+        listener.current_progress_start(start, config_data['tuning']['num_local_iterations'])
+        for iteration in range(1, config_data['tuning']['num_local_iterations'] + 1):
+            evaluation.reset()
+            while True:
+                segmenter.set_sampler_values(tuning_results_file.best_config)
+                segmenter.sampler_factory.resample_random_one()
+                segmenter.refresh_params()
+                params = segmenter.get_params()
+                if params not in parameters_visited:
+                    parameters_visited.add(params)
+                    break
+            if iteration - 1 < start:
+                continue
+            with checkpoint.apply('local_tune_prog'):
+                with times.Timer() as sub_timer:
+                    best_block_shape = arrayprocs.get_optimal_block_size(
+                        slice_shape,
+                        full_volume.get_dtype(),
+                        segmenter.featuriser.get_context_needed(),
+                        max_processes,
+                        max_batch_memory,
+                        implicit_depth=True
+                        )
+                    
+                    if train_sample_size_per_label != -1:
+                        training_set.create(
+                            len(train_voxel_indexes),
+                            segmenter.featuriser.get_feature_size()
+                            )
+                        for (label_index, label_position) in enumerate(train_label_positions):
+                            training_set.get_labels_array()[label_position] = label_index
+                        segmenter.featuriser.featurise_voxels(
+                            full_volume.get_scale_arrays(segmenter.featuriser.get_scales_needed()),
+                            train_voxel_indexes,
+                            output=training_set.get_features_array(),
+                            n_jobs=max_processes
+                            )
+                    else:
+                        training_set.create(
+                            slice_size*len(volume_slice_indexes_in_train_subvolume),
+                            segmenter.featuriser.get_feature_size()
+                            )
+                        training_set.get_labels_array()[:] = train_subvolume_slice_labels
+                        for (i, volume_slice_index) in enumerate(volume_slice_indexes_in_train_subvolume):
+                            segmenter.featuriser.featurise_slice(
+                                full_volume.get_scale_arrays(segmenter.featuriser.get_scales_needed()),
+                                slice_index=volume_slice_index,
+                                block_rows=best_block_shape[0],
+                                block_cols=best_block_shape[1],
+                                output=training_set.get_features_array(),
+                                output_start_row_index=i*slice_size,
+                                n_jobs=max_processes
+                                )
+                        training_set = training_set.without_control_labels()
+                    
+                    def memory_scope(result):
+                        segmenter.train(training_set, max_processes)
+                        
+                        iou_lists = [[] for _ in range(len(segmenter.classifier.labels))]
+                        if eval_sample_size_per_label != -1:
+                            eval_set = datasets.DataSet(None)
+                            eval_set.create(
+                                len(eval_voxel_indexes),
+                                segmenter.featuriser.get_feature_size()
+                                )
+                            for (label_index, label_position) in enumerate(eval_label_positions):
+                                eval_set.get_labels_array()[label_position] = label_index
+                            
+                            with times.Timer() as featuriser_timer:
+                                segmenter.featuriser.featurise_voxels(
+                                    full_volume.get_scale_arrays(segmenter.featuriser.get_scales_needed()),
+                                    eval_voxel_indexes,
+                                    output=eval_set.get_features_array(),
+                                    n_jobs=max_processes
+                                    )
+                            
+                            with times.Timer() as classifier_timer:
+                                prediction = segmenter.segment_to_label_indexes(eval_set.get_features_array(), max_processes)
+                        
+                            evaluation.evaluate(prediction, eval_set.get_labels_array())
+                        else:
+                            for (i, volume_slice_index) in enumerate(volume_slice_indexes_in_eval_subvolume):
+                                with times.Timer() as featuriser_timer:
+                                    slice_features = segmenter.featuriser.featurise_slice(
+                                        full_volume.get_scale_arrays(segmenter.featuriser.get_scales_needed()),
+                                        slice_index=volume_slice_index,
+                                        block_rows=best_block_shape[0],
+                                        block_cols=best_block_shape[1],
+                                        n_jobs=max_processes
+                                        )
+                                
+                                with times.Timer() as classifier_timer:
+                                    prediction = segmenter.segment_to_label_indexes(slice_features, max_processes)
+                            
+                                evaluation.evaluate(prediction, eval_subvolume_slice_labels[i*slice_size:(i+1)*slice_size])
+                            
+                        result['featuriser_time'] = featuriser_timer.duration
+                        result['classifier_time'] = classifier_timer.duration
+                    result = dict()
+                    max_memory_mb = max(memory_profiler.memory_usage((memory_scope, (result,)), interval=0))
+                    
+                tuning_results_file.add(
+                    segmenter.get_config(),
+                    result['featuriser_time'],
+                    result['classifier_time'],
+                    sub_timer.duration,
+                    max_memory_mb,
+                    extra_col_values
+                    )
+            listener.current_progress_update(iteration)
+        listener.current_progress_end()
+        
     
     return ()
 
