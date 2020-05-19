@@ -69,11 +69,10 @@ class Segmenter(object):
         self.full_volume = full_volume
     
     #########################################
-    def regenerate(self):
+    def refresh_params(self):
         '''
-        Regenerate new parameters for featuriser and classifier.
+        Refresh parameters of featuriser and classifier from samplers.
         '''
-        self.sampler_factory.resample_all()
         self.featuriser.refresh_parameters()
         self.classifier.refresh_parameters()
         
@@ -85,6 +84,16 @@ class Segmenter(object):
                     ', '.join(sorted(scales_needed - self.full_volume.get_scales()))
                     )
                 )
+    
+    #########################################
+    def set_sampler_values(self, config):
+        '''
+        Set the values of the samplers provided according to a config.
+        
+        :param dict config: The configuration dictionary for the training parameters.
+        '''
+        self.featuriser.set_sampler_values(config['featuriser'])
+        self.classifier.set_sampler_values(config['classifier'])
     
     #########################################
     def train(self, training_set, n_jobs=1):

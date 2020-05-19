@@ -193,6 +193,15 @@ class Featuriser(object):
         raise NotImplementedError()
     
     #########################################
+    def set_sampler_values(self, config):
+        '''
+        Set the values of the samplers provided according to a config.
+        
+        :param dict config: The configuration dictionary for the feature parameters.
+        '''
+        raise NotImplementedError()
+    
+    #########################################
     def get_feature_size(self):
         '''
         Get the number of elements in the feature vector.
@@ -417,6 +426,15 @@ class VoxelFeaturiser(Featuriser):
         pass
     
     #########################################
+    def set_sampler_values(self, config):
+        '''
+        Set the values of the samplers provided according to a config.
+        
+        :param dict config: The configuration dictionary for the feature parameters.
+        '''
+        pass
+    
+    #########################################
     def get_feature_size(self):
         '''
         Get the number of elements in the feature vector.
@@ -572,6 +590,17 @@ class HistogramFeaturiser(Featuriser):
         self.radius = self.radius_sampler.get_value()
         self.scale = self.scale_sampler.get_value()
         self.num_bins = self.num_bins_sampler.get_value()
+    
+    #########################################
+    def set_sampler_values(self, config):
+        '''
+        Set the values of the samplers provided according to a config.
+        
+        :param dict config: The configuration dictionary for the feature parameters.
+        '''
+        self.radius_sampler.set_value(config['params']['radius'])
+        self.scale_sampler.set_value(config['params']['scale'])
+        self.num_bins_sampler.set_value(config['params']['num_bins'])
     
     #########################################
     def get_feature_size(self):
@@ -771,7 +800,17 @@ class LocalBinaryPatternFeaturiser(Featuriser):
         '''
         self.radius = self.radius_sampler.get_value()
         self.scale = self.scale_sampler.get_value()
+    
+    #########################################
+    def set_sampler_values(self, config):
+        '''
+        Set the values of the samplers provided according to a config.
         
+        :param dict config: The configuration dictionary for the feature parameters.
+        '''
+        self.radius_sampler.set_value(config['params']['radius'])
+        self.scale_sampler.set_value(config['params']['scale'])
+    
     #########################################
     def get_feature_size(self):
         '''
@@ -958,6 +997,16 @@ class CompositeFeaturiser(Featuriser):
         '''
         for featuriser in self.featuriser_list:
             featuriser.refresh_parameters()
+    
+    #########################################
+    def set_sampler_values(self, config):
+        '''
+        Set the values of the samplers provided according to a config.
+        
+        :param dict config: The configuration dictionary for the feature parameters.
+        '''
+        for (featuriser, featuriser_config) in zip(self.featuriser_list, config['params']['featuriser_list']):
+            featuriser.set_sampler_values(featuriser_config)
     
     #########################################
     def get_feature_size(self):

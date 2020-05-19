@@ -391,6 +391,15 @@ class Classifier(object):
         raise NotImplementedError()
     
     #########################################
+    def set_sampler_values(self, config):
+        '''
+        Set the values of the samplers provided according to a config.
+        
+        :param dict config: The configuration dictionary for the classifier parameters.
+        '''
+        raise NotImplementedError()
+    
+    #########################################
     def get_config(self):
         '''
         Get the dictionary configuration of the classifier's parameters.
@@ -576,7 +585,17 @@ class LogisticRegressionClassifier(Classifier):
         self.max_iter = self.max_iter_sampler.get_value()
         
         self.sklearn_model = self.__MAKE_MODEL(self.c, self.max_iter)
+    
+    #########################################
+    def set_sampler_values(self, config):
+        '''
+        Set the values of the samplers provided according to a config.
         
+        :param dict config: The configuration dictionary for the classifier parameters.
+        '''
+        self.c_sampler.set_value(config['params']['C'])
+        self.max_iter_sampler.set_value(config['params']['max_iter'])
+    
     #########################################
     def get_config(self):
         '''
@@ -700,6 +719,17 @@ class NeuralNetworkClassifier(Classifier):
         self.sklearn_model = self.__MAKE_MODEL(self.hidden_layer_size, self.alpha, self.max_iter)
     
     #########################################
+    def set_sampler_values(self, config):
+        '''
+        Set the values of the samplers provided according to a config.
+        
+        :param dict config: The configuration dictionary for the classifier parameters.
+        '''
+        self.hidden_layer_size_sampler.set_value(config['params']['hidden_layer_size'])
+        self.alpha_sampler.set_value(config['params']['alpha'])
+        self.max_iter_sampler.set_value(config['params']['max_iter'])
+    
+    #########################################
     def get_config(self):
         '''
         Get the dictionary configuration of the classifier's parameters.
@@ -806,6 +836,16 @@ class DecisionTreeClassifier(Classifier):
         self.min_samples_leaf = self.min_samples_leaf_sampler.get_value()
         
         self.sklearn_model = self.__MAKE_MODEL(self.max_depth, self.min_samples_leaf)
+    
+    #########################################
+    def set_sampler_values(self, config):
+        '''
+        Set the values of the samplers provided according to a config.
+        
+        :param dict config: The configuration dictionary for the classifier parameters.
+        '''
+        self.max_depth_sampler.set_value(config['params']['max_depth'])
+        self.min_samples_leaf_sampler.set_value(config['params']['min_samples_leaf'])
     
     #########################################
     def get_config(self):
@@ -924,6 +964,17 @@ class RandomForestClassifier(Classifier):
         self.min_samples_leaf = self.min_samples_leaf_sampler.get_value()
         
         self.sklearn_model = self.__MAKE_MODEL(self.n_estimators, self.max_depth, self.min_samples_leaf)
+    
+    #########################################
+    def set_sampler_values(self, config):
+        '''
+        Set the values of the samplers provided according to a config.
+        
+        :param dict config: The configuration dictionary for the classifier parameters.
+        '''
+        self.n_estimators_sampler.set_value(config['params']['n_estimators'])
+        self.max_depth_sampler.set_value(config['params']['max_depth'])
+        self.min_samples_leaf_sampler.set_value(config['params']['min_samples_leaf'])
     
     #########################################
     def get_config(self):

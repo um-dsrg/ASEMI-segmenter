@@ -3,6 +3,7 @@
 import random
 import math
 
+
 #########################################
 class SamplerFactory(object):
     '''Factory for samplers to collectively resample.'''
@@ -134,6 +135,13 @@ class SamplerFactory(object):
         return size
         
     #########################################
+    def resample_random_one(self):
+        '''
+        Resample a randomly selected generated sampler.
+        '''
+        self.rand.choice(self.samplers).resample()
+    
+    #########################################
     def resample_all(self):
         '''
         Resample all generated samplers.
@@ -163,6 +171,15 @@ class Sampler(object):
         
         :return: The number of different values.
         :rtype: int
+        '''
+        raise NotImplementedError()
+    
+    #########################################
+    def set_value(self, value):
+        '''
+        Set current value.
+        
+        :param generic value: The new value.
         '''
         raise NotImplementedError()
     
@@ -214,6 +231,15 @@ class ConstantSampler(Sampler):
         return 1
     
     #########################################
+    def set_value(self, value):
+        '''
+        Set current value.
+        
+        :param generic value: The new value.
+        '''
+        pass
+    
+    #########################################
     def resample(self):
         '''
         Generate a new random value.
@@ -259,10 +285,6 @@ class IntegerSampler(Sampler):
         self.max = max
         self.distribution = distribution
         self.rng = random.Random(seed)
-        self.method = {
-            'uniform': lambda:self.rng.randint(self.min, self.max),
-            'log2':    lambda:2**self.rng.randint(int(math.log2(self.min)), int(math.log2(self.max)))
-            }[distribution]
     
     #########################################
     def get_sample_space_size(self):
@@ -278,11 +300,28 @@ class IntegerSampler(Sampler):
             }[self.distribution]()
     
     #########################################
+    def set_value(self, value):
+        '''
+        Set current value.
+        
+        :param generic value: The new value.
+        '''
+        if value < self.min or value > self.max:
+            raise ValueError('New value is not within given range.')
+        if self.distribution == 'log2':
+            if math.log2(value)%1 != 0:
+                raise ValueError('New value is not a power of 2.')
+        self.value = value
+    
+    #########################################
     def resample(self):
         '''
         Generate a new random value.
         '''
-        self.value = self.method()
+        self.set_value({
+            'uniform': (lambda:self.rng.randint(self.min, self.max)),
+            'log2':    (lambda:2**self.rng.randint(int(math.log2(self.min)), int(math.log2(self.max))))
+            }[self.distribution]())
         self.initialised = True
 
 
@@ -333,10 +372,6 @@ class FloatSampler(Sampler):
         self.decimal_places = decimal_places
         self.distribution = distribution
         self.rng = random.Random(seed)
-        self.method = {
-            'uniform': (lambda:round(self.rng.uniform(self.min, self.max), self.decimal_places)),
-            'log10':   (lambda:round(10**self.rng.uniform(math.log10(self.min), math.log10(self.max)), self.decimal_places))
-            }[distribution]
     
     #########################################
     def get_sample_space_size(self):
@@ -374,9 +409,23 @@ class FloatSampler(Sampler):
         return max(int(self.max) - int(self.min), 1)*(int(max_str_frac) - int(min_str_frac))
     
     #########################################
+    def set_value(self, value):
+        '''
+        Set current value.
+        
+        :param generic value: The new value.
+        '''
+        if value < self.min or value > self.max:
+            raise ValueError('New value is not within given range.')
+        self.value = value
+    
+    #########################################
     def resample(self):
         '''
         Generate a new random value.
         '''
-        self.value = self.method()
+        self.set_value({
+            'uniform': (lambda:round(self.rng.uniform(self.min, self.max), self.decimal_places)),
+            'log10':   (lambda:round(10**self.rng.uniform(math.log10(self.min), math.log10(self.max)), self.decimal_places))
+            }[self.distribution]())
         self.initialised = True

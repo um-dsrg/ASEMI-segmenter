@@ -20,7 +20,7 @@
 					"params": {
 						"orientation": "front",
 						"radius": 25,
-						"scale": 1
+						"scale": 0
 					}
 				},
 				{
@@ -28,7 +28,7 @@
 					"params": {
 						"orientation": "flat",
 						"radius": 25,
-						"scale": 1
+						"scale": 0
 					}
 				}
 			]
