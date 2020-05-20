@@ -6,6 +6,15 @@ import fast_histogram
 import sys
 from asemi_segmenter.lib import regions
 
+import pycuda
+try:
+    import pycuda.autoinit
+    import pycuda.driver as drv
+    import pycuda.compiler
+    gpu_available = True
+except pycuda._driver.RuntimeError:
+    gpu_available = False
+
 #########################################
 def histogram(array, num_bins, value_range):
     '''
@@ -196,12 +205,10 @@ def gpu_apply_histogram_to_all_neighbourhoods_in_slice_3d(array_3d, slice_index,
     :rtype: numpy.ndarray
     '''
     
-    raise NotImplementedError('GPU method not implemented yet.')
+    if not gpu_available:
+        raise ValueError('GPU is not available.')
     
-    # Not having a GPU results in errors if these are imported
-    import pycuda.autoinit
-    import pycuda.driver as drv
-    import pycuda.compiler.SourceModule
+    raise NotImplementedError('GPU method not implemented yet.')
     
     # CUDA code
     mod = pycuda.compiler.SourceModule("""
