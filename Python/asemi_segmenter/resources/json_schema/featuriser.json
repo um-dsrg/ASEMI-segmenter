@@ -116,9 +116,6 @@
                                     "additionalProperties": false
                                 }
                             ]
-                        },
-                        "use_gpu": {
-                            "type": "boolean"
                         }
                     },
                     "required": ["radius", "scale", "num_bins"],

@@ -107,6 +107,13 @@ if __name__ == '__main__':
             help='Maximum amount of GB to allow for processing the volume in batches (-1 to use maximum, default).'
         )
     parser.add_argument(
+            '--use_gpu',
+            required=False,
+            default='no',
+            choices=['yes', 'no'],
+            help='Whether to use the GPU for computing features (default is no).'
+        )
+    parser.add_argument(
             '--debug_mode',
             required=False,
             default='no',
@@ -147,6 +154,7 @@ if __name__ == '__main__':
                 if args.max_batch_memory > 0
                 else psutil.virtual_memory().available/(1024**3)
                 ),
+            use_gpu=args.use_gpu == 'yes',
             listener=listener,
             debug_mode=args.debug_mode == 'yes',
             extra_result_col_names=[],

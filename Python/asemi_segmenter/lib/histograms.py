@@ -4,9 +4,6 @@ import os
 import numpy as np
 import fast_histogram
 import sys
-import pycuda.autoinit
-import pycuda.driver as drv
-from pycuda.compiler import SourceModule
 from asemi_segmenter.lib import regions
 
 #########################################
@@ -180,11 +177,34 @@ def apply_histogram_to_all_neighbourhoods_in_slice_3d(array_3d, slice_index, rad
 #########################################
 def gpu_apply_histogram_to_all_neighbourhoods_in_slice_3d(array_3d, slice_index, radius, neighbouring_dims, min_range, max_range, num_bins, pad=0, row_slice=slice(None), col_slice=slice(None)):
     '''
-    GPU implementation of apply_histogram_to_all_neighbourhoods_in_slice_3d
+    GPU implementation of apply_histogram_to_all_neighbourhoods_in_slice_3d.
+    
+    See apply_histogram_to_all_neighbourhoods_in_slice_3d for more information.
+    
+    :param numpy.ndarray array_3d: The volume from which to extract the histograms.
+    :param int slice_index: The index of the slice to use within the volume.
+    :param int radius: The radius of the neighbourhood around each voxel.
+    :param set neighbouring_dims: The set of dimensions to apply the neighbourhoods on.
+    :param int min_range: The minimum range of the values to consider.
+    :param int max_range: The maximum range of the values to consider, not included.
+    :param int num_bins: The number of bins in the histograms.
+    :param int pad: The pad value for values outside the array.
+    :param slice row_slice: The range of rows in the slice to consider.
+    :param slice col_slice: The range of columns in the slice to consider.
+    :return: A 3D array where the first two dimensions are equal to the dimensions of the slice
+        and the last dimension is the number of bins.
+    :rtype: numpy.ndarray
     '''
-
+    
+    raise NotImplementedError('GPU method not implemented yet.')
+    
+    # Not having a GPU results in errors if these are imported
+    import pycuda.autoinit
+    import pycuda.driver as drv
+    import pycuda.compiler.SourceModule
+    
     # CUDA code
-    mod = SourceModule("""
+    mod = pycuda.compiler.SourceModule("""
     #define MAXBINLIMS_ 41
     int MAXBINLIMS = MAXBINLIMS_ ;
 
@@ -459,4 +479,4 @@ def gpu_apply_histogram_to_all_neighbourhoods_in_slice_3d(array_3d, slice_index,
     }
     """)
 
-    return result
+    return None

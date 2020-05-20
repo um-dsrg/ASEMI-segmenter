@@ -22,7 +22,7 @@ from asemi_segmenter.lib import volumes
 #########################################
 def _loading_data(
         segmenter, preproc_volume_fullfname, subvolume_dir, label_dirs, results_dir,
-        checkpoint_fullfname, checkpoint_namespace, reset_checkpoint, checkpoint_init, max_processes, max_batch_memory, listener
+        checkpoint_fullfname, checkpoint_namespace, reset_checkpoint, checkpoint_init, max_processes, max_batch_memory, use_gpu, listener
     ):
     '''Loading data stage.'''
     listener.log_output('> Volume')
@@ -42,7 +42,7 @@ def _loading_data(
         validations.check_filename(segmenter, '.pkl', True)
         with open(segmenter, 'rb') as f:
             pickled_data = pickle.load(f)
-        segmenter = segmenters.load_segmenter_from_pickle_data(pickled_data, full_volume)
+        segmenter = segmenters.load_segmenter_from_pickle_data(pickled_data, full_volume, use_gpu)
 
     listener.log_output('> Subvolume')
     listener.log_output('>> {}'.format(subvolume_dir))
@@ -286,7 +286,7 @@ def _evaluating(
 def main(
         segmenter, preproc_volume_fullfname, subvolume_dir, label_dirs, results_dir,
         checkpoint_fullfname, checkpoint_namespace, reset_checkpoint, checkpoint_init,
-        max_processes, max_batch_memory, listener=ProgressListener(), debug_mode=False
+        max_processes, max_batch_memory, use_gpu=False, listener=ProgressListener(), debug_mode=False
     ):
     '''
     Evaluate a trained segmenter on manually labelled slices.
@@ -314,6 +314,8 @@ def main(
         otherwise the checkpoint will be empty. To restart checkpoint set to empty dictionary.
     :param int max_processes: The maximum number of processes to use concurrently.
     :param float max_batch_memory: The maximum number of gigabytes to use between all processes.
+    :param bool use_gpu: Whether to use the GPU for computing features. Note that this
+        parameter does not do anything if the segmenter is provided directly.
     :param ProgressListener listener: The command's progress listener.
     :param bool debug_mode: Whether to show full error messages or just simple ones.
     '''
@@ -333,8 +335,8 @@ def main(
             with times.Timer() as timer:
                 (full_volume, slice_shape, slice_size, segmenter, subvolume_fullfnames, labels_data, hash_function, evaluation, evaluation_results_file, checkpoint) = _loading_data(
                     segmenter, preproc_volume_fullfname, subvolume_dir, label_dirs, results_dir,
-                    checkpoint_fullfname, checkpoint_namespace, reset_checkpoint, checkpoint_init, max_processes, max_batch_memory,
-                    listener
+                    checkpoint_fullfname, checkpoint_namespace, reset_checkpoint, checkpoint_init,
+                    max_processes, max_batch_memory, use_gpu, listener
                     )
             listener.log_output('Data loaded')
             listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))

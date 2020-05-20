@@ -20,7 +20,7 @@ from asemi_segmenter.lib import volumes
 def _loading_data(
         segmenter, preproc_volume_fullfname, config, results_dir,
         checkpoint_fullfname, checkpoint_namespace, reset_checkpoint,
-        checkpoint_init, max_processes, max_batch_memory, listener
+        checkpoint_init, max_processes, max_batch_memory, use_gpu, listener
     ):
     '''Loading data stage.'''
     listener.log_output('> Volume')
@@ -37,7 +37,7 @@ def _loading_data(
         validations.check_filename(segmenter, '.pkl', True)
         with open(segmenter, 'rb') as f:
             pickled_data = pickle.load(f)
-        segmenter = segmenters.load_segmenter_from_pickle_data(pickled_data, full_volume)
+        segmenter = segmenters.load_segmenter_from_pickle_data(pickled_data, full_volume, use_gpu)
 
     listener.log_output('> Config')
     if isinstance(config, str):
@@ -162,7 +162,7 @@ def _segmenting(
 def main(
         segmenter, preproc_volume_fullfname, config, results_dir,
         checkpoint_fullfname, checkpoint_namespace, reset_checkpoint, checkpoint_init,
-        max_processes, max_batch_memory, listener=ProgressListener(),
+        max_processes, max_batch_memory, use_gpu=False, listener=ProgressListener(),
         slice_indexes=None, debug_mode=False
     ):
     '''
@@ -191,6 +191,8 @@ def main(
         otherwise the checkpoint will be empty. To restart checkpoint set to empty dictionary.
     :param int max_processes: The maximum number of processes to use concurrently.
     :param float max_batch_memory: The maximum number of gigabytes to use between all processes.
+    :param bool use_gpu: Whether to use the GPU for computing features. Note that this
+        parameter does not do anything if the segmenter is provided directly.
     :param ProgressListener listener: The command's progress listener.
     :param list slice_indexes: The integer indexes (0-based) of slices in the volume to
         segment. If None then all slices are segmented.
@@ -213,7 +215,7 @@ def main(
                 (config_data, full_volume, slice_shape, segmenter, checkpoint) = _loading_data(
                     segmenter, preproc_volume_fullfname, config, results_dir,
                     checkpoint_fullfname, checkpoint_namespace, reset_checkpoint,
-                    checkpoint_init, max_processes, max_batch_memory,
+                    checkpoint_init, max_processes, max_batch_memory, use_gpu,
                     listener
                     )
             listener.log_output('Data loaded')

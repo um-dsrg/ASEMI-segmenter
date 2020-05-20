@@ -13,13 +13,14 @@ from asemi_segmenter.lib import samplers
 
 
 #########################################
-def load_featuriser_from_config(config, sampler_factory=None):
+def load_featuriser_from_config(config, sampler_factory=None, use_gpu=False):
     '''
     Load a featuriser from a configuration dictionary.
 
     :param dict config: Configuration of the featuriser.
     :param samplers.SamplerFactory sampler_factory: The factory to use to create samplers
         for the featuriser parameters. If None then only constant parameters can be used.
+    :param bool use_gpu: Whether to use the GPU for computing features.
     :return: A featuriser object.
     :rtype: Featuriser
     '''
@@ -50,7 +51,6 @@ def load_featuriser_from_config(config, sampler_factory=None):
             radius = None
             scale = None
             num_bins = None
-            use_gpu = False
 
             if sampler_factory is not None:
                 if isinstance(config['params']['radius'], dict):
@@ -114,11 +114,6 @@ def load_featuriser_from_config(config, sampler_factory=None):
                 if isinstance(config['params']['num_bins'], dict):
                     raise ValueError('num_bins must be a constant not a range.')
                 num_bins = config['params']['num_bins']
-
-            if 'use_gpu' in config['params']:
-                if isinstance(config['params']['use_gpu'], bool):
-                    raise ValueError('use_gpu must be a boolean.')
-                use_gpu = config['params']['use_gpu']
 
             return HistogramFeaturiser(radius, scale, num_bins, use_gpu)
 
@@ -655,7 +650,7 @@ class HistogramFeaturiser(Featuriser):
     '''
 
     #########################################
-    def __init__(self, radius, scale, num_bins, use_gpu):
+    def __init__(self, radius, scale, num_bins, use_gpu=False):
         '''
         Constructor.
 
@@ -665,13 +660,12 @@ class HistogramFeaturiser(Featuriser):
         :type scale: int or samplers.Sampler
         :param num_bins: num_bins is the number of bins in the histogram or a function that generates it.
         :type num_bins: int or samplers.Sampler
-        :param use_gpu: flag indicating the use of GPU implementation.
-        :type use_gpu: bool
+        :param bool use_gpu: Flag indicating the use of GPU implementation.
         '''
         self.radius = None
         self.scale = None
         self.num_bins = None
-        self.use_gpu = None
+        self.use_gpu = use_gpu
         self.radius_sampler = None
         self.scale_sampler = None
         self.num_bins_sampler = None
@@ -687,7 +681,6 @@ class HistogramFeaturiser(Featuriser):
             self.num_bins_sampler = num_bins
         else:
             self.num_bins = num_bins
-        self.use_gpu = use_gpu
 
     #########################################
     def refresh_parameters(self):
@@ -752,8 +745,7 @@ class HistogramFeaturiser(Featuriser):
             'params': {
                 'radius': self.radius,
                 'scale': self.scale,
-                'num_bins': self.num_bins,
-                'use_gpu': self.use_gpu
+                'num_bins': self.num_bins
                 }
             }
 
@@ -765,7 +757,7 @@ class HistogramFeaturiser(Featuriser):
         :return: The parameters.
         :rtype: tuple
         '''
-        return (self.radius, self.scale, self.num_bins, self.use_gpu)
+        return (self.radius, self.scale, self.num_bins)
 
     #########################################
     def featurise_voxels(self, data_scales, indexes, output=None, output_start_row_index=0, output_start_col_index=0, dataset_name=None, features_table=None):
@@ -839,11 +831,11 @@ class HistogramFeaturiser(Featuriser):
         '''
         (output_rows_needed, output_cols_needed, row_range, col_range, output) = self._prepare_featurise_slice(data_scales, row_range, col_range, output, output_start_row_index, output_start_col_index)
 
-        def processor(params, radius, scale, num_bins, full_input_ranges, output_start_row_index, output_start_col_index):
+        def processor(params, radius, scale, num_bins, full_input_ranges, output_start_row_index, output_start_col_index, use_gpu):
             '''Processor for process_array_in_blocks_single_slice.'''
             [ num_rows_out, num_cols_out ] = params[0]['contextless_shape']
 
-            if self.use_gpu:
+            if use_gpu:
                 hists = histograms.gpu_apply_histogram_to_all_neighbourhoods_in_slice_3d(
                     params[scale]['block'],
                     params[scale]['contextless_slices_wrt_block'][0],
@@ -885,7 +877,7 @@ class HistogramFeaturiser(Featuriser):
             in_ranges=[row_range, col_range],
             context_size=self.get_context_needed(),
             n_jobs=n_jobs,
-            extra_params=(self.radius, self.scale, self.num_bins, (row_range, col_range), output_start_row_index, output_start_col_index),
+            extra_params=(self.radius, self.scale, self.num_bins, (row_range, col_range), output_start_row_index, output_start_col_index, self.use_gpu),
             )
 
 

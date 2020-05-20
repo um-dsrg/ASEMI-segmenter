@@ -19,7 +19,7 @@ def _loading_data(
         preproc_volume_fullfname, subvolume_dir, label_dirs, config,
         result_segmenter_fullfname, trainingset_file_fullfname,
         checkpoint_fullfname, checkpoint_namespace, reset_checkpoint,
-        checkpoint_init, max_processes, max_batch_memory, listener
+        checkpoint_init, max_processes, max_batch_memory, use_gpu, listener
     ):
     '''Loading data stage.'''
     listener.log_output('> Volume')
@@ -56,7 +56,7 @@ def _loading_data(
             config_data = json.load(f)
     else:
         config_data = config
-    segmenter = segmenters.Segmenter(labels, full_volume, config_data)
+    segmenter = segmenters.Segmenter(labels, full_volume, config_data, use_gpu=use_gpu)
     if 'samples_to_skip_per_label' not in config_data['training_set']:
         config_data['training_set']['samples_to_skip_per_label'] = 0
 
@@ -253,7 +253,7 @@ def main(
         preproc_volume_fullfname, subvolume_dir, label_dirs, config,
         result_segmenter_fullfname, checkpoint_namespace, trainingset_file_fullfname,
         checkpoint_fullfname, reset_checkpoint, checkpoint_init,
-        max_processes, max_batch_memory, listener=ProgressListener(),
+        max_processes, max_batch_memory, use_gpu=False, listener=ProgressListener(),
         debug_mode=False
     ):
     '''
@@ -285,6 +285,7 @@ def main(
         otherwise the checkpoint will be empty. To restart checkpoint set to empty dictionary.
     :param int max_processes: The maximum number of processes to use concurrently.
     :param float max_batch_memory: The maximum number of gigabytes to use between all processes.
+    :param bool use_gpu: Whether to use the GPU for computing features.
     :param ProgressListener listener: The command's progress listener.
     :param bool debug_mode: Whether to show full error messages or just simple ones.
     :return: The segmenter object.
@@ -309,7 +310,7 @@ def main(
                     preproc_volume_fullfname, subvolume_dir, label_dirs, config,
                     result_segmenter_fullfname, trainingset_file_fullfname,
                     checkpoint_fullfname, checkpoint_namespace, reset_checkpoint,
-                    checkpoint_init, max_processes, max_batch_memory,
+                    checkpoint_init, max_processes, max_batch_memory, use_gpu,
                     listener
                     )
             listener.log_output('Data loaded')

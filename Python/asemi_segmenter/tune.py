@@ -24,7 +24,7 @@ def _loading_data(
         preproc_volume_fullfname, train_subvolume_dir, train_label_dirs,
         eval_subvolume_dir, eval_label_dirs, config, search_results_fullfname,
         best_result_fullfname, parameter_selection_timeout, features_table_fullfname, checkpoint_fullfname, checkpoint_namespace,
-        reset_checkpoint, checkpoint_init, max_processes, max_batch_memory, listener
+        reset_checkpoint, checkpoint_init, max_processes, max_batch_memory, use_gpu, listener
     ):
     '''Loading data stage.'''
     listener.log_output('> Volume')
@@ -111,7 +111,8 @@ def _loading_data(
             'classifier': config_data['classifier'],
             'training_set': config_data['training_set']
             },
-        sampler_factory=sampler_factory
+        sampler_factory=sampler_factory,
+        use_gpu=use_gpu
         )
     listener.log_output('>> Search space size: {}'.format(sampler_factory.get_sample_space_size()))
 
@@ -532,7 +533,7 @@ def main(
         eval_subvolume_dir, eval_label_dirs, config,
         search_results_fullfname, best_result_fullfname, parameter_selection_timeout,
         features_table_fullfname, checkpoint_fullfname, checkpoint_namespace, reset_checkpoint,
-        checkpoint_init, max_processes, max_batch_memory, listener=ProgressListener(),
+        checkpoint_init, max_processes, max_batch_memory, use_gpu=False, listener=ProgressListener(),
         debug_mode=False, extra_result_col_names=[], extra_result_col_values=[]
     ):
     '''
@@ -578,6 +579,7 @@ def main(
         otherwise the checkpoint will be empty. To restart checkpoint set to empty dictionary.
     :param int max_processes: The maximum number of processes to use concurrently.
     :param float max_batch_memory: The maximum number of gigabytes to use between all processes.
+    :param bool use_gpu: Whether to use the GPU for computing features.
     :param ProgressListener listener: The command's progress listener.
     :param bool debug_mode: Whether to show full error messages or just simple ones.
     :param list extra_result_col_names: Names of any extra columns to add to the result file.
@@ -604,7 +606,7 @@ def main(
                     eval_subvolume_dir, eval_label_dirs, config, search_results_fullfname,
                     best_result_fullfname, parameter_selection_timeout, features_table_fullfname,
                     checkpoint_fullfname, checkpoint_namespace, reset_checkpoint, checkpoint_init,
-                    max_processes, max_batch_memory, listener
+                    max_processes, max_batch_memory, use_gpu, listener
                     )
             listener.log_output('Input data')
             listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
