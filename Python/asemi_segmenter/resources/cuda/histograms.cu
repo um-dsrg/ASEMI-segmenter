@@ -192,18 +192,13 @@ __device__ void update_slice_with_zeros(
  * it but it was the fastest to code)
  *
  * So the update function is where the optimised things occur.
- * To optimise the reading between neighbooring voxels of the working group
- * formed by  the   WS_Y*WS_X   neighboring voxels of a slice
- * we read in a mutualised way   the (RADIUS_H+ WS_Y+ RADIUS_H)(RADIUS_H+
- * WS_X+ RADIUS_H )
+ * To optimise the reading between neighbouring voxels of the working group
+ * formed by the  WS_Y*WS_X  neighbouring voxels of a slice we read in
+ * parallel the (RADIUS_H + WS_Y + RADIUS_H)(RADIUS_H + WS_X + RADIUS_H)
  * interesting voxels of a mutualised slice.
- * Once such interesting area is loaded in the share memory all the threads
- * of the working group
- * can access the interesting voxels of the slice (iz-1 - RADIUS_H) for
- * removal when such slice is
- * loaded and will be able to access the interesting part of the slice
- * (iz-1 - RADIUS_H) fo addition
- * when such part is loaded for addition.
+ * Once such interesting area is loaded in shared memory, all the threads
+ * of the working group can access the interesting voxels of the slice
+ * (iz-1 - RADIUS_H) for subtraction or addition.
  *
  * We use for this the variable SLICE which is declared as
  * extern __shared__ float SLICE[] ;
@@ -217,24 +212,21 @@ __device__ void update_slice_with_zeros(
  *
  * #define myhisto(i)     SLICE[WW_Y*WW_X + (i)*blockDim.y*blockDim.x + tid ]
  *
- * This address the shared memory so that we dont interfere with the bottom
- * WW_Y*WW_X block
- * which id dedicated the the loaded interesting regions, and in a way such
- * that muhisto(i)
- * addresses a privatised vector which is privatised for each thread tid.
- * The basic idea is that thread tid_a has all his histogram on a different
- * memory-bank than
- * thread tid_b when tid_a is different from tid_b
+ * This address the shared memory so that we don't interfere with the bottom
+ * WW_Y*WW_X block which is dedicated to the loaded interesting regions, and
+ * in a way such that myhisto(i) addresses a privatised vector which is
+ * privatised for each thread tid.
+ * The basic idea is that thread tid_a has all its histogram on a different
+ * memory-bank than thread tid_b when tid_a is different from tid_b
  *
- * Concerning memory banks for SLICE acces, they are different when loading
- *   because i_in_tile is initialised to tid.
+ * Memory banks for SLICE access are different when loading because i_in_tile
+ * is initialised to tid.
  *
- * they are also different when accessing SLICE because
- * float v  = SLICE[     tix+sx +RADIUS_H + WW_X * (tiy+sy+RADIUS_H) ];
- *
+ * They are also different when accessing SLICE because
+ * float v = SLICE[ tix+sx +RADIUS_H + WW_X * (tiy+sy+RADIUS_H) ];
  * and tix varies over a range of width 16.
- * There could be a conflit when WW_X<16 or, if the hardware has warps of
- * 32 , when WW_X>16 but not a multiple of 16
+ * There could be a conflict when WW_X<16 or, if the hardware has warps of
+ * 32, when WW_X>16 but not a multiple of 16
  */
 __global__ void ISTOGRAMMA(
    // il volume target di dimensioni (slow to fast )  NZ,NY, NBINS, NX
