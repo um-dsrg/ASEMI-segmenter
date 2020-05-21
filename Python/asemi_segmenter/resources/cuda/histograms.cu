@@ -5,16 +5,14 @@ __device__ __constant__ float bins_limits[MAXBINLIMS];
 // ogni blocco legge un pezzo di slice nella memoria shared
 //
 // ogni thread tiene il suo histogramma nella memoria share
-// si usa la variabile SHARED
+// si usa la variabile SLICE
 
-extern __shared__ float SHARED[];
-
-#define SLICE SHARED
+extern __shared__ float SLICE[];
 
 //  WW_Y e WW_X sono le dimensioni del pezzo di slice che si legge.
 // Al di sopra si pone anche l'istogramma privatizzato ( i e' l'indice dell'istogramma, tid e' il numero della thread)
 
-#define myhisto(i)     SHARED[WW_Y*WW_X + (i)*blockDim.y*blockDim.x + tid ]
+#define myhisto(i)     SLICE[WW_Y*WW_X + (i)*blockDim.y*blockDim.x + tid ]
 
 // ========================================================================
 // update_slice : FUNZIONE AUSILIARIA CHIAMATA DAL KERNEL PRINCIPALE
@@ -213,11 +211,8 @@ __device__ void update_slice_with_zeros(   // FOR THE ZERO PADDING
  * (iz-1 - RADIUS_H) fo addition
  * when such part is loaded for addition.
  *
- * We use for this the variable SHARE which is declared as
- * extern __shared__ float SHARED[] ;
- *
- * And for clarity we define SLICE
- * #define SLICE SHARED
+ * We use for this the variable SLICE which is declared as
+ * extern __shared__ float SLICE[] ;
  *
  * which will be used to address the voxels of the loaded interesting
  * region.
@@ -226,7 +221,7 @@ __device__ void update_slice_with_zeros(   // FOR THE ZERO PADDING
  * Each thread keeps a vector of its histogram values
  * To do this we define
  *
- * #define myhisto(i)     SHARED[WW_Y*WW_X + (i)*blockDim.y*blockDim.x +
+ * #define myhisto(i)     SLICE[WW_Y*WW_X + (i)*blockDim.y*blockDim.x +
  * tid ]
  *
  * This address the shared memory so that we dont interfere with the bottom
