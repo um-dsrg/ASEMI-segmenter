@@ -3,6 +3,7 @@
 #
 # Copyright © 2020 Marc Tanti
 
+import argparse
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
@@ -89,11 +90,25 @@ def display_volume(in_array, relative_intensities=True, cross_section=None):
         fig.tight_layout()
         fig.show()
 
+
 #########################################
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--volume_fullfname', required=True,
+        help='Full file name (with path) of volume file segment.')
+    parser.add_argument('--scale', required=True, type=int,
+        help='The scale of the volume to view.')
+    args = parser.parse_args()
+    
+    print('Running...')
+    
+    full_volume = volumes.FullVolume(args.volume_fullfname)
+    full_volume.load()
+    in_array = full_volume.get_scale_array(args.scale)[:]
 
-full_volume = volumes.FullVolume(os.path.join('..', 'example_volume', 'output', 'preprocess', 'volume.hdf'))
-full_volume.load()
-in_array = full_volume.get_scale_array(1)[:]
+    display_volume(in_array, relative_intensities=True, cross_section='corner')
+    input('Press enter to exit.')
 
-display_volume(in_array, relative_intensities=True, cross_section='corner')
-input('Press enter to exit.')
+# main entry point
+if __name__ == '__main__':
+   main()

@@ -88,52 +88,54 @@ def worker(queue_in, queue_out, soft):
 ## main program
 
 def main():
-   # interpret user options
-   parser = argparse.ArgumentParser()
-   parser.add_argument("-i", "--input", nargs='+', required=True,
-      help="input folders with single-label image stacks")
-   parser.add_argument("-o", "--output", required=True,
-      help="output folder for multi-ROI image stack")
-   parser.add_argument("-s", "--soft", action="store_true", default=False,
-      help="input images contain probabilities, not binary masks")
-   parser.add_argument("-p", "--processes", type=int, default=1,
-      help="number of parallel processes")
-   args = parser.parse_args()
+    # interpret user options
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-i", "--input", nargs='+', required=True,
+        help="input folders with single-label image stacks")
+    parser.add_argument("-o", "--output", required=True,
+        help="output folder for multi-ROI image stack")
+    parser.add_argument("-s", "--soft", action="store_true", default=False,
+        help="input images contain probabilities, not binary masks")
+    parser.add_argument("-p", "--processes", type=int, default=1,
+        help="number of parallel processes")
+    args = parser.parse_args()
 
-   # get lists of files in each folder
-   filestack = [sorted(os.listdir(path)) for path in args.input]
-   N = len(filestack[0])
-   if not all(len(x)==N for x in filestack):
-      print("Warning: not all folders contain an equal number of files")
+    print('Running...')
 
-   # main timer
-   start = time.time()
+    # get lists of files in each folder
+    filestack = [sorted(os.listdir(path)) for path in args.input]
+    N = len(filestack[0])
+    if not all(len(x)==N for x in filestack):
+        print("Warning: not all folders contain an equal number of files")
 
-   # set up queues and spawn a pool of workers
-   queue_in = mp.Queue()
-   queue_out = mp.Queue()
-   for i in range(args.processes):
-      mp.Process(target=worker, args=(queue_in, queue_out, args.soft)).start()
+    # main timer
+    start = time.time()
 
-   # iterate through each slice
-   for i, images in enumerate(zip(*filestack)):
-      print("Scheduling %d of %d..." % (i+1, N))
-      paths = [os.path.join(a,b) for a,b in zip(args.input, images)]
-      queue_in.put((i, paths, os.path.join(args.output, "%05d.tiff" % i)))
+    # set up queues and spawn a pool of workers
+    queue_in = mp.Queue()
+    queue_out = mp.Queue()
+    for i in range(args.processes):
+        mp.Process(target=worker, args=(queue_in, queue_out, args.soft)).start()
 
-   # wait on completion
-   for i in range(N):
-      queue_out.get()
-      ETA = str(timedelta(seconds=(time.time()-start)*(N-i-1)/(i+1)))
-      print("Completed %d of %d, ETA %s" % (i+1, N, ETA))
+    # iterate through each slice
+    for (i, images) in enumerate(zip(*filestack)):
+        print("Scheduling %d of %d..." % (i+1, N))
+        paths = [os.path.join(a,b) for a,b in zip(args.input, images)]
+        queue_in.put((i, paths, os.path.join(args.output, "%05d.tiff" % i)))
 
-   # tell workers to stop
-   for i in range(args.processes):
-      queue_in.put(None)
+    # wait on completion
+    for i in range(N):
+        queue_out.get()
+        ETA = str(timedelta(seconds=(time.time()-start)*(N-i-1)/(i+1)))
+        print("Completed %d of %d, ETA %s" % (i+1, N, ETA))
 
-   # all done
-   print("Time taken: %s" % str(timedelta(seconds=time.time()-start)))
-   return
+    # tell workers to stop
+    for i in range(args.processes):
+        queue_in.put(None)
+
+    # all done
+    print("Time taken: %s" % str(timedelta(seconds=time.time()-start)))
+    return
 
 # main entry point
 if __name__ == '__main__':

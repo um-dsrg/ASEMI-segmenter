@@ -4,6 +4,8 @@
 # Copyright © 2020 Marc Tanti
 
 import os
+import argparse
+import json
 import numpy as np
 import memory_profiler
 from asemi_segmenter.lib import times
@@ -58,51 +60,38 @@ def extract_features(preproc_volume_fullfname, featuriser_config, volume_slice_i
 
 
 #########################################
-featuriser_config = {
-		"type": "composite",
-		"params": {
-			"featuriser_list": [
-				{
-					"type": "voxel",
-					"params": {}
-				},
-				{
-					"type": "histogram",
-					"params": {
-						"radius": 19,
-						"scale": 4,
-						"num_bins": 32
-					}
-				},
-				{
-					"type": "lbp",
-					"params": {
-						"orientation": "front",
-						"radius": 25,
-						"scale": 4
-					}
-				},
-				{
-					"type": "lbp",
-					"params": {
-						"orientation": "flat",
-						"radius": 25,
-						"scale": 4
-					}
-				}
-			]
-		}
-}
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--volume_fullfname', required=True,
+        help='Full file name (with path) of volume file featurise.')
+    parser.add_argument('--feature_config_fullfname', required=True,
+        help='JSON file containing the featuriser configuration.')
+    parser.add_argument('--volume_slice_index', required=True, type=int,
+        help='The slice index to featurise in the volume.')
+    parser.add_argument('--save_as', required=False, default=None,
+        help='Full file name (with path) of file to contain the features '
+            '(can be .txt, .npy, or left out to not save anything).')
+    parser.add_argument('--max_processes', required=True, type=int,
+        help='The maximum number of processes to use.')
+    parser.add_argument('--max_batch_memory', required=True, type=float,
+        help='The maximum amount of memory in GB to use.')
+    args = parser.parse_args()
 
-print('Running...')
+    with open(args.feature_config_fullfname, 'r', encoding='utf-8') as f:
+        featuriser_config = json.load(f)
 
-extract_features(
-    os.path.join('..', 'example_volume', 'output', 'preprocess', 'volume.hdf'),
-    featuriser_config,
-    volume_slice_index=0,
-    save_as='feature_extractor.txt', #Can be a full file name to a text file (.txt) or to a numpy file (.npy) or None
-    max_processes=2,
-    max_batch_memory=0.1
-    )
+    print('Running...')
 
-print('Ready.')
+    extract_features(
+        args.volume_fullfname,
+        featuriser_config,
+        volume_slice_index=args.volume_slice_index,
+        save_as=args.save_as,
+        max_processes=2,
+        max_batch_memory=0.1
+        )
+
+
+# main entry point
+if __name__ == '__main__':
+   main()

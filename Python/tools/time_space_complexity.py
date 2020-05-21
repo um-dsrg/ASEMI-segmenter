@@ -3,10 +3,12 @@
 #
 # Copyright © 2020 Marc Tanti
 
+import argparse
 import numpy as np
 import memory_profiler
 import tempfile
 import shutil
+import json
 import os
 import sys
 from asemi_segmenter.lib import regions
@@ -68,7 +70,9 @@ def measure(side_length, num_training_slices, num_labels, num_runs, train_config
                 config=preprocess_config,
                 result_data_fullfname=os.path.join(temp_dir, 'full_volume.hdf'),
                 checkpoint_fullfname=None,
-                restart_checkpoint=False,
+                checkpoint_namespace='',
+                reset_checkpoint=False,
+                checkpoint_init=None,
                 max_processes=max_processes,
                 max_batch_memory=max_batch_memory,
                 listener=Listener()
@@ -92,7 +96,9 @@ def measure(side_length, num_training_slices, num_labels, num_runs, train_config
                             result_segmenter_fullfname=os.path.join(temp_dir, 'segmenter.pkl'),
                             trainingset_file_fullfname=None,
                             checkpoint_fullfname=None,
-                            restart_checkpoint=False,
+                            checkpoint_namespace='',
+                            reset_checkpoint=False,
+                            checkpoint_init=None,
                             max_processes=max_processes,
                             max_batch_memory=max_batch_memory,
                             listener=Listener()
@@ -111,10 +117,17 @@ def measure(side_length, num_training_slices, num_labels, num_runs, train_config
                         dict(
                             segmenter=os.path.join(temp_dir, 'segmenter.pkl'),
                             preproc_volume_fullfname=os.path.join(temp_dir, 'full_volume.hdf'),
-                            config={'soft_segmentation': 'no'},
+                            config={
+                                    "soft_segmentation": False,
+                                    "as_masks": True,
+                                    "image_extension": "tiff",
+                                    "bits": 8
+                                },
                             results_dir=os.path.join(temp_dir, 'segmentation'),
                             checkpoint_fullfname=None,
-                            restart_checkpoint=False,
+                            checkpoint_namespace='',
+                            reset_checkpoint=False,
+                            checkpoint_init=None,
                             max_processes=max_processes,
                             max_batch_memory=max_batch_memory,
                             listener=Listener()
@@ -129,61 +142,47 @@ def measure(side_length, num_training_slices, num_labels, num_runs, train_config
         print()
 
 
-num_training_slices = 10
-num_labels = 5
-num_runs = 3
-train_config = {
-    'featuriser': {
-        'type': 'composite',
-        'params': {
-            'featuriser_list': [
-                {
-                    'type': 'voxel',
-                    'params': {}
-                    },
-                {
-                    'type': 'histogram',
-                    'params': {
-                        'radius': 1,
-                        'scale': 0,
-                        'num_bins': 32
-                        }
-                    },
-                {
-                    'type': 'histogram',
-                    'params': {
-                        'radius': 20,
-                        'scale': 0,
-                        'num_bins': 32
-                        }
-                        }
-                ]
-            }
-        },
-    'classifier': {
-            'type': 'random_forest',
-            'params': {
-                'n_estimators': 32,
-                'max_depth': 10,
-                'min_samples_leaf': 1
-                }
-        },
-    'training_set': {
-        'sample_size_per_label': -1
-        }
-    }
+#########################################
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--train_config_fullfname', required=True,
+        help='Full file name (with path) of the train config file.')
+    parser.add_argument('--results_fullfname', required=True,
+        help='Full file name (with path) of the results text file.')
+    parser.add_argument('--max_processes', nargs='+', required=True, type=int,
+        help='The different maximum number of processes to use.')
+    parser.add_argument('--max_batch_memory', nargs='+', required=True, type=float,
+        help='The different maximum amount of memory in GB to use.')
+    parser.add_argument('--side_length', nargs='+', required=True, type=int,
+        help='The different lengths of the cube volumes to process.')
+    parser.add_argument('--num_training_slices', required=True, type=int,
+        help='The number of training slices to take from the volume.')
+    parser.add_argument('--num_labels', required=True, type=int,
+        help='The number of different labels to put in the training slices.')
+    parser.add_argument('--num_runs', required=True, type=int,
+        help='The number of times to run each measurement.')
+    args = parser.parse_args()
+    
+    print('Running...')
+    print()
 
-with open('time_space_complexity.txt', 'w', encoding='utf-8') as f:
-    print('max_batch_memory', 'max_processes', 'side_length', 'slice_area', 'cube_volume', 'run', 'train_time', 'train_memory', 'segment_time', 'segment_memory', sep='\t', file=f)
+    with open(args.train_config_fullfname, 'r', encoding='utf-8') as f:
+        train_config = json.load(f)
 
-for max_batch_memory in [ 0.1, 0.5, 1.0 ]:
-    for max_processes in [ 1, 2, 4 ]:
-        for side_length in [ 10, 20, 30, 40, 50, 60, 70, 80, 90, 100 ]:
-            print('max_batch_memory', max_batch_memory, '-', 'max_processes', max_processes, '-', 'side_length', side_length)
-            def listener(run, train_time, train_memory, segment_time, segment_memory):
-                with open('time_space_complexity.txt', 'a', encoding='utf-8') as f:
-                    print(max_batch_memory, max_processes, side_length, side_length**2, side_length**3, run, train_time, train_memory, segment_time, segment_memory, sep='\t', file=f)
+    with open(args.results_fullfname, 'w', encoding='utf-8') as f:
+        print('max_batch_memory', 'max_processes', 'side_length', 'slice_area', 'cube_volume', 'run', 'train_time', 'train_memory', 'segment_time', 'segment_memory', sep='\t', file=f)
 
-            measure(side_length, num_training_slices, num_labels, num_runs, train_config, max_processes, max_batch_memory, listener)
+    for max_batch_memory in args.max_batch_memory:
+        for max_processes in args.max_processes:
+            for side_length in args.side_length:
+                print('max_batch_memory', max_batch_memory, '-', 'max_processes', max_processes, '-', 'side_length', side_length)
+                def listener(run, train_time, train_memory, segment_time, segment_memory):
+                    with open(args.results_fullfname, 'a', encoding='utf-8') as f:
+                        print(max_batch_memory, max_processes, side_length, side_length**2, side_length**3, run, train_time, train_memory, segment_time, segment_memory, sep='\t', file=f)
 
-print('Ready.')
+                measure(side_length, args.num_training_slices, args.num_labels, args.num_runs, train_config, max_processes, max_batch_memory, listener)
+
+
+# main entry point
+if __name__ == '__main__':
+   main()
