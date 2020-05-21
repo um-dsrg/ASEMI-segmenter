@@ -191,7 +191,7 @@ def gpu_apply_histogram_to_all_neighbourhoods_in_slice_3d(array_3d, slice_index,
 
     See apply_histogram_to_all_neighbourhoods_in_slice_3d for more information.
 
-    :param numpy.ndarray array_3d: The volume from which to extract the histograms.
+    :param numpy.ndarray array_3d: The volume from which to extract the histograms, expected to be of type uint16.
     :param int slice_index: The index of the slice to use within the volume.
     :param int radius: The radius of the neighbourhood around each voxel.
     :param set neighbouring_dims: The set of dimensions to apply the neighbourhoods on.
