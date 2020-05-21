@@ -48,8 +48,6 @@ __device__ void update_slice(
                               int islice   ,
 
                               // // definizione istogramma
-                              // float bottom ,
-                              // float step   ,
                               int NBINS   ,
 
                               // dimensioni cuda block
@@ -126,8 +124,6 @@ __device__ void update_slice_with_zeros(   // FOR THE ZERO PADDING
                               int islice   , // not used for padding
 
                               // // definizione istogramma
-                              // float bottom ,
-                              // float step   ,
                               int NBINS   ,
 
                               // dimensioni cuda block
@@ -174,16 +170,94 @@ __device__ void update_slice_with_zeros(   // FOR THE ZERO PADDING
     __syncthreads();      // la slice e' stata utilizzata. Dopo questo semaforo la si potra cambiare con la prossima.
 }
 
-//  =======================================
-// ISTOGRAMMA: Kernel principale
+/*  =======================================
+ * ISTOGRAMMA: Kernel principale
+ *
+ * Istogramma is launched with a 2D grid of 2D blocks.
+ * The dimensions of each block are (from slow (Y) to fast (X) )  WS_Y, WS_X
+ * A block, then, works on a tile of a 2D slice, and, inside the kernel,
+ * there is a loop on the Z dimension,  named iz inside ISTOGRAMMA.
+ *
+ * Always inside ISTOGRAMMA, the block and grid coordinates are translated
+ * to iy,ix
+ * which are the planar coordinates of a voxel. The z coordinate is
+ * represented by
+ * the loop variable iz.
+ *
+ * Now, imagine that for a given voxel iz,iy,ix you know the voxel
+ * histogram.
+ * Then the variable iz increase by one.
+ *
+ * How do we obtain the histogram for voxel (iz,iy,ix) when we know already
+ * the histogram for voxel (iz-1,iy,ix)?
+ * We remove the contribution from slice  iz-1 - RADIUS_H
+ * the we add the contribution from slice iz + RADIUS_H
+ *
+ * This is done by calling
+ * update_slice( -1, .......,  iz-1 - RADIUS_H, .....)   for removal
+ * update_slice( +1, .......,  iz   + RADIUS_H, .....)   for addition
+ *
+ * (Post NOTE : now with zero padding I have duplicated to
+ * update_slice_with_zeros
+ *   to be used for non existing slices. There is probably one more
+ * efficient way to do
+ * it but it was the fastest to code)
+ *
+ * So the update function is where the optimised things occur.
+ * To optimise the reading between neighbooring voxels of the working group
+ * formed by  the   WS_Y*WS_X   neighboring voxels of a slice
+ * we read in a mutualised way   the (RADIUS_H+ WS_Y+ RADIUS_H)(RADIUS_H+
+ * WS_X+ RADIUS_H )
+ * interesting voxels of a mutualised slice.
+ * Once such interesting area is loaded in the share memory all the threads
+ * of the working group
+ * can access the interesting voxels of the slice (iz-1 - RADIUS_H) for
+ * removal when such slice is
+ * loaded and will be able to access the interesting part of the slice
+ * (iz-1 - RADIUS_H) fo addition
+ * when such part is loaded for addition.
+ *
+ * We use for this the variable SHARE which is declared as
+ * extern __shared__ float SHARED[] ;
+ *
+ * And for clarity we define SLICE
+ * #define SLICE SHARED
+ *
+ * which will be used to address the voxels of the loaded interesting
+ * region.
+ * But it is not over.
+ * We need also to store the vector of histogram values.
+ * Each thread keeps a vector of its histogram values
+ * To do this we define
+ *
+ * #define myhisto(i)     SHARED[WW_Y*WW_X + (i)*blockDim.y*blockDim.x +
+ * tid ]
+ *
+ * This address the shared memory so that we dont interfere with the bottom
+ * WW_Y*WW_X block
+ * which id dedicated the the loaded interesting regions, and in a way such
+ * that muhisto(i)
+ * addresses a privatised vector which is privatised for each thread tid.
+ * The basic idea is that thread tid_a has all his histogram on a different
+ * memory-bank than
+ * thread tid_b when tid_a is different from tid_b
+ *
+ * Concerning memory banks for SLICE acces, they are different when loading
+ *   because i_in_tile is initialised to tid.
+ *
+ * they are also different when accessing SLICE because
+ * float v  = SLICE[     tix+sx +RADIUS_H + WW_X * (tiy+sy+RADIUS_H) ];
+ *
+ * and tix varies over a range of width 16.
+ * There could be a conflit when WW_X<16 or, if the hardware has warps of
+ * 32 , when WW_X>16 but not a multiple of 16
+ */
 __global__ void ISTOGRAMMA(
                              // il volume target di dimensioni (slow to fast )  NZ,NY, NBINS, NX
                              float *d_volume_histo,
 
                              // // definizione istogramma
                              int NBINS,
-                             // float bottom,
-                             // float step,
 
                              // volume input di dimensioni (slow to fast)  NZ, NY, NX
                              float * d_volume_in,
@@ -223,18 +297,18 @@ __global__ void ISTOGRAMMA(
     for(int islice = 0; islice< RADIUS_H ; islice++) {
         if(islice<NZ) {
             update_slice_with_zeros( -1, tid, tiy, tix,  WW_Y, WW_X,  RADIUS_H , block_cy, block_cx , 0,  NBINS, blockDim.y , blockDim.x , d_volume_in, NY, NX ) ;
-            update_slice( +1, tid, tiy, tix,  WW_Y, WW_X,  RADIUS_H , block_cy, block_cx , islice, /* bottom, step,*/ NBINS, blockDim.y , blockDim.x , d_volume_in, NY, NX ) ;
+            update_slice( +1, tid, tiy, tix,  WW_Y, WW_X,  RADIUS_H , block_cy, block_cx , islice, NBINS, blockDim.y , blockDim.x , d_volume_in, NY, NX ) ;
         }
     }
     // logo
     for(int iz = 0; iz<NZ; iz++) {
         if(iz-1-RADIUS_H >=0 ) {
-            update_slice( -1, tid, tiy, tix,WW_Y, WW_X,  RADIUS_H , block_cy, block_cx , iz-1 - RADIUS_H ,/* bottom, step,*/ NBINS, blockDim.y , blockDim.x  , d_volume_in, NY, NX  ) ;
+            update_slice( -1, tid, tiy, tix,WW_Y, WW_X,  RADIUS_H , block_cy, block_cx , iz-1 - RADIUS_H ,NBINS, blockDim.y , blockDim.x  , d_volume_in, NY, NX  ) ;
         } else {
             update_slice_with_zeros( -1, tid, tiy, tix,  WW_Y, WW_X,  RADIUS_H , block_cy, block_cx , 0,  NBINS, blockDim.y , blockDim.x , d_volume_in, NY, NX ) ;
         }
         if(iz+RADIUS_H <NZ ) {
-            update_slice( +1, tid, tiy, tix, WW_Y, WW_X,  RADIUS_H , block_cy, block_cx , iz + RADIUS_H ,  /*bottom, step,*/ NBINS, blockDim.y , blockDim.x   , d_volume_in, NY, NX ) ;
+            update_slice( +1, tid, tiy, tix, WW_Y, WW_X,  RADIUS_H , block_cy, block_cx , iz + RADIUS_H ,  NBINS, blockDim.y , blockDim.x   , d_volume_in, NY, NX ) ;
         }else {
             update_slice_with_zeros( +1, tid, tiy, tix,  WW_Y, WW_X,  RADIUS_H , block_cy, block_cx , 0,  NBINS, blockDim.y , blockDim.x , d_volume_in, NY, NX ) ;
         }
@@ -244,29 +318,4 @@ __global__ void ISTOGRAMMA(
                 d_volume_histo[ ibin + NBINS*( ix + (long int) NX*( iy + NY*iz ) ) ] = myhisto(ibin);  // scrittura NON cohalesced
         }
     }
-}
-
-#define TILE_DIM 16
-#define TILE_HEIGHT 4
-__global__ void myTranspose(float *odata, const float *idata, int NZ, int NY , int  NX) {
-    __shared__ float tile[TILE_DIM * TILE_DIM];
-
-    int CX = blockIdx.x * TILE_DIM     ;
-    int CY = blockIdx.y * TILE_DIM  ;
-    int CZ = blockIdx.z * TILE_HEIGHT  ;
-
-    int x =    + threadIdx.x;
-    int y =    + threadIdx.y;
-    int z = CZ + threadIdx.z;
-
-    if( CY+y<NY && CX+x<NX  && z<NZ    ) {
-        tile[( TILE_DIM*(z-CZ)  +  y)*TILE_DIM + x ] = idata[((long int)( z*NY + (long int) CY+y))*NX + CX+x];
-    }
-
-    __syncthreads();
-
-    if( CX+y<NX && CY+x<NY && z<NZ  ) {
-        odata[  ((long int)( z*NX + (long int) CX+y))*NY + CY+x    ] = tile[( TILE_DIM*(z-CZ)  + x)*TILE_DIM + y];
-    }
-    __syncthreads();
 }
