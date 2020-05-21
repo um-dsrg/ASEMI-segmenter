@@ -12,6 +12,7 @@ setuptools.setup(
                 'asemi_segmenter',
                 'asemi_segmenter.lib',
                 'asemi_segmenter.resources',
+                'asemi_segmenter.resources.cuda',
                 'asemi_segmenter.resources.json_schema'
             ],
         package_data={
@@ -19,6 +20,7 @@ setuptools.setup(
                     'version.txt',
                     'resources/json_schema/*.json',
                     'resources/colours/*.json',
+                    'resources/cuda/*.cu',
                     ]
             },
         install_requires=requirements
