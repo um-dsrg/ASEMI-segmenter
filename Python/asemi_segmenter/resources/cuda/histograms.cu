@@ -33,10 +33,9 @@ __device__ void update_slice(
       const int global_z,
       // number of bins in histogram
       const int NBINS,
-      // input volume
+      // input volume and size
       const float *d_volume_in,
-      // size of slice in volume (defines pitch in x/y dimensions)
-      const int NY, const int NX)
+      const int NZ, const int NY, const int NX)
    {
    // parallel read of section of slice into shared memory
    for (int i_in_tile = tid;
@@ -48,64 +47,14 @@ __device__ void update_slice(
       const int global_y = block_cy + (i_in_tile / WW_X) - RADIUS_H;
       // read value at x,y from global memory if exists, zero otherwise
       float val = 0;
-      if( global_x >= 0 && global_x < NX && global_y >= 0 && global_y < NY )
+      if( global_x >= 0 && global_x < NX &&
+          global_y >= 0 && global_y < NY &&
+          global_z >= 0 && global_z < NZ )
          val = d_volume_in[global_x + NX * (global_y + NY * global_z)];
       // convert value to corresponding histogram bin index
       float res = -1;
       for(int i = 0; i < NBINS + 1; i++)
          if(val >= bins_limits[i])
-            res = i;
-      // store in shared memory
-      SLICE[i_in_tile] = res;
-      }
-   // make sure all slice section is read
-   __syncthreads();
-   // each thread computes histogram for neighbourhood of its coordinate
-   for (int sx = -RADIUS_H; sx <= RADIUS_H; sx++)
-      for (int sy = -RADIUS_H; sy <= RADIUS_H; sy++)
-         {
-         // get neighbouring pixel value (bin index, really)
-         const float v = SLICE[threadIdx.x + sx + RADIUS_H + WW_X * (threadIdx.y + sy + RADIUS_H)];
-         // add to histogram if within limits
-         if (v >= 0 && v < NBINS)
-            myhisto((int) v) += iadd;
-         }
-   // make sure all slice section is processed
-   __syncthreads();
-   }
-
-// FOR THE ZERO PADDING
-__device__ void update_slice_with_zeros(
-      // iadd = +1/-1 to add/subtract
-      const int iadd,
-      // thread index in CUDA block ( tid >= 0 && tid < blockDim.y * blockDim.x )
-      const int tid,
-      // size of the section of slice read in this block
-      const int WW_Y, const int WW_X,
-      // neighbourhood radius around voxel for computing histogram
-      const int RADIUS_H,
-      // x,y coordinates of thread's voxel in global volume
-      const int block_cy, const int block_cx,
-      // z coordinate of thread's voxel in global volume
-      const int islice,
-      // number of bins in histogram
-      const int NBINS,
-      // input volume
-      const float *d_volume_in,
-      // size of slice in volume (defines pitch in x/y dimensions)
-      const int NY, const int NX)
-   {
-   // phantom parallel read of section of slice into shared memory
-   for (int i_in_tile = tid;
-         i_in_tile < WW_Y * WW_X;
-         i_in_tile += blockDim.y * blockDim.x)
-      {
-      // value is hard-coded to zero
-      float val = 0;
-      // convert value to corresponding histogram bin index
-      float res = -1;
-      for (int i = 0; i < NBINS + 1; i++)
-         if (val >= bins_limits[i])
             res = i;
       // store in shared memory
       SLICE[i_in_tile] = res;
@@ -147,10 +96,6 @@ __device__ void update_slice_with_zeros(
  * This is done by calling
  * update_slice( -1, .......,  iz-1 - RADIUS_H, .....)   for removal
  * update_slice( +1, .......,  iz   + RADIUS_H, .....)   for addition
- *
- * (Post NOTE : now with zero padding I have duplicated to
- * update_slice_with_zeros to be used for non existing slices. There is
- * probably a more efficient way to do it but it was the fastest to code)
  *
  * So the update function is where the optimised things occur.
  * To optimise the reading between neighbouring voxels of the working group
@@ -217,20 +162,20 @@ __global__ void ISTOGRAMMA(
 
    // prologo
    for (int islice = 0; islice < 2 * RADIUS_H + 1; islice++)
-      update_slice_with_zeros(+1, tid, WW_Y, WW_X, RADIUS_H,
+      update_slice(+1, tid, WW_Y, WW_X, RADIUS_H,
             block_cy, block_cx, 0,
-            NBINS, d_volume_in, NY, NX);
+            NBINS, d_volume_in, NZ, NY, NX);
 
    for (int islice = 0; islice < RADIUS_H; islice++)
       {
       if (islice < NZ)
          {
-         update_slice_with_zeros(-1, tid, WW_Y, WW_X, RADIUS_H,
+         update_slice(-1, tid, WW_Y, WW_X, RADIUS_H,
                block_cy, block_cx, 0,
-               NBINS, d_volume_in, NY, NX);
+               NBINS, d_volume_in, NZ, NY, NX);
          update_slice(+1, tid, WW_Y, WW_X, RADIUS_H,
                block_cy, block_cx, islice,
-               NBINS, d_volume_in, NY, NX);
+               NBINS, d_volume_in, NZ, NY, NX);
          }
       }
    // logo
@@ -239,19 +184,19 @@ __global__ void ISTOGRAMMA(
       if (iz - 1 - RADIUS_H >= 0)
          update_slice(-1, tid, WW_Y, WW_X, RADIUS_H,
                block_cy, block_cx, iz - 1 - RADIUS_H,
-               NBINS, d_volume_in, NY, NX);
+               NBINS, d_volume_in, NZ, NY, NX);
       else
-         update_slice_with_zeros(-1, tid, WW_Y, WW_X, RADIUS_H,
+         update_slice(-1, tid, WW_Y, WW_X, RADIUS_H,
                block_cy, block_cx, 0,
-               NBINS, d_volume_in, NY, NX);
+               NBINS, d_volume_in, NZ, NY, NX);
       if (iz + RADIUS_H < NZ)
          update_slice(+1, tid, WW_Y, WW_X, RADIUS_H,
                block_cy, block_cx, iz + RADIUS_H,
-               NBINS, d_volume_in, NY, NX);
+               NBINS, d_volume_in, NZ, NY, NX);
       else
-         update_slice_with_zeros(+1, tid, WW_Y, WW_X, RADIUS_H,
+         update_slice(+1, tid, WW_Y, WW_X, RADIUS_H,
                block_cy, block_cx, 0,
-               NBINS, d_volume_in, NY, NX);
+               NBINS, d_volume_in, NZ, NY, NX);
       // copy histogram from shared memory to global memory (non-coalesced)
       for (int ibin = 0; ibin < NBINS; ibin++)
          {
