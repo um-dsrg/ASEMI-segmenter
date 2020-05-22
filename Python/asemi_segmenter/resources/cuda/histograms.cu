@@ -217,40 +217,41 @@ __global__ void ISTOGRAMMA(
 
    // prologo
    for (int islice = 0; islice < 2 * RADIUS_H + 1; islice++)
-      update_slice_with_zeros(+1, tid, WW_Y, WW_X, RADIUS_H, block_cy,
-            block_cx, 0, NBINS, d_volume_in, NY, NX);
+      update_slice_with_zeros(+1, tid, WW_Y, WW_X, RADIUS_H,
+            block_cy, block_cx, 0,
+            NBINS, d_volume_in, NY, NX);
 
    for (int islice = 0; islice < RADIUS_H; islice++)
       {
       if (islice < NZ)
          {
          update_slice_with_zeros(-1, tid, WW_Y, WW_X, RADIUS_H,
-               block_cy, block_cx, 0, NBINS,
-               d_volume_in, NY, NX);
-         update_slice(+1, tid, WW_Y, WW_X, RADIUS_H, block_cy,
-               block_cx, islice, NBINS, d_volume_in, NY,
-               NX);
+               block_cy, block_cx, 0,
+               NBINS, d_volume_in, NY, NX);
+         update_slice(+1, tid, WW_Y, WW_X, RADIUS_H,
+               block_cy, block_cx, islice,
+               NBINS, d_volume_in, NY, NX);
          }
       }
    // logo
    for (int iz = 0; iz < NZ; iz++)
       {
       if (iz - 1 - RADIUS_H >= 0)
-         update_slice(-1, tid, WW_Y, WW_X, RADIUS_H, block_cy,
-               block_cx, iz - 1 - RADIUS_H, NBINS,
-               d_volume_in, NY, NX);
+         update_slice(-1, tid, WW_Y, WW_X, RADIUS_H,
+               block_cy, block_cx, iz - 1 - RADIUS_H,
+               NBINS, d_volume_in, NY, NX);
       else
          update_slice_with_zeros(-1, tid, WW_Y, WW_X, RADIUS_H,
-               block_cy, block_cx, 0, NBINS,
-               d_volume_in, NY, NX);
+               block_cy, block_cx, 0,
+               NBINS, d_volume_in, NY, NX);
       if (iz + RADIUS_H < NZ)
-         update_slice(+1, tid, WW_Y, WW_X, RADIUS_H, block_cy,
-               block_cx, iz + RADIUS_H, NBINS,
-               d_volume_in, NY, NX);
+         update_slice(+1, tid, WW_Y, WW_X, RADIUS_H,
+               block_cy, block_cx, iz + RADIUS_H,
+               NBINS, d_volume_in, NY, NX);
       else
          update_slice_with_zeros(+1, tid, WW_Y, WW_X, RADIUS_H,
-               block_cy, block_cx, 0, NBINS,
-               d_volume_in, NY, NX);
+               block_cy, block_cx, 0,
+               NBINS, d_volume_in, NY, NX);
       // copy histogram from shared memory to global memory (non-coalesced)
       for (int ibin = 0; ibin < NBINS; ibin++)
          {
