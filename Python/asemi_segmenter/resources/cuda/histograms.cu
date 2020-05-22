@@ -135,11 +135,11 @@ __device__ void update_slice(
  * 32, when WW_X>16 but not a multiple of 16
  */
 __global__ void ISTOGRAMMA(
-      // il volume target di dimensioni (slow to fast )  NZ, NY, NX, NBINS
+      // histogram output matrix
       float *d_volume_histo,
-      // definizione istogramma
+      // number of bins in histogram
       const int NBINS,
-      // volume input di dimensioni (slow to fast)  NZ, NY, NX
+      // input volume and size
       const float *d_volume_in,
       const int NX, const int NY, const int NZ,
       // il raggio della zone di interesse intorno al voxel
