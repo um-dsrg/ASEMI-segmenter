@@ -30,7 +30,7 @@ __device__ void update_slice(
       // x,y coordinates of thread's voxel in global volume
       const int block_cy, const int block_cx,
       // z coordinate of thread's voxel in global volume
-      const int islice,
+      const int global_z,
       // number of bins in histogram
       const int NBINS,
       // input volume
@@ -49,7 +49,7 @@ __device__ void update_slice(
       // read value at x,y from global memory if exists, zero otherwise
       float val = 0;
       if( global_x >= 0 && global_x < NX && global_y >= 0 && global_y < NY )
-         val = d_volume_in[global_x + NX * (global_y + NY * islice)];
+         val = d_volume_in[global_x + NX * (global_y + NY * global_z)];
       // convert value to corresponding histogram bin index
       float res = -1;
       for(int i = 0; i < NBINS + 1; i++)
