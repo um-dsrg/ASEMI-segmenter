@@ -213,12 +213,12 @@ __global__ void ISTOGRAMMA(
       // il volume target di dimensioni (slow to fast )  NZ,NY, NBINS, NX
       float *d_volume_histo,
       // // definizione istogramma
-      int NBINS,
+      const int NBINS,
       // volume input di dimensioni (slow to fast)  NZ, NY, NX
-      float *d_volume_in,
-      int NX, int NY, int NZ,
+      const float *d_volume_in,
+      const int NX, const int NY, const int NZ,
       // il raggio della zone di interesse intorno al voxel
-      int RADIUS_H)
+      const int RADIUS_H)
    {
    const int WW_Y = RADIUS_H + blockDim.y + RADIUS_H;
    const int WW_X = RADIUS_H + blockDim.x + RADIUS_H;
@@ -229,11 +229,11 @@ __global__ void ISTOGRAMMA(
    const int bidx = blockIdx.x;
    const int bidy = blockIdx.y;
 
-   int block_cx = bidx * blockDim.x;
-   int block_cy = bidy * blockDim.y;
+   const int block_cx = bidx * blockDim.x;
+   const int block_cy = bidy * blockDim.y;
 
-   int ix = block_cx + tix;
-   int iy = block_cy + tiy;
+   const int ix = block_cx + tix;
+   const int iy = block_cy + tiy;
 
    const int tid = tiy * blockDim.x + tix;
 
