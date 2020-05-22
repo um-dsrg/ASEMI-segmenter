@@ -20,29 +20,29 @@ extern __shared__ float SLICE[];
 
 __device__ void update_slice(
 // iadd=1 --> aggiungi    iadd=-1 --> togli
-      int iadd,
+      const int iadd,
       // il numero del thread all'interno del cuda block (  tid>=0  && tid< blockDimY*blockDimX   )
-      int tid,
+      const int tid,
       // posizione thread all interno del blocco
-      int tiy, int tix,
+      const int tiy, const int tix,
       // le dimensioni del pezzo di slice che si legge
       //   WW_Y =   RADIUS_H+blockDimY+RADIUS_H ;
       //   WW_X =   RADIUS_H+blockDimX+RADIUS_H ;
-      int WW_Y, int WW_X,
+      const int WW_Y, const int WW_X,
       // il raggio della zone di interesse intorno al voxel
-      int RADIUS_H,
+      const int RADIUS_H,
       //  Le coordinate y,x del block's corner nel volume globale
-      int block_cy, int block_cx,
+      const int block_cy, const int block_cx,
       // la coordinata z della slice nel volume globale
-      int islice,
-      // // definizione istogramma
-      int NBINS,
+      const int islice,
+      // definizione istogramma
+      const int NBINS,
       // dimensioni cuda block
-      int blockDimY, int blockDimX,
+      const int blockDimY, const int blockDimX,
       // input data
-      float *d_volume_in,
+      const float *d_volume_in,
       // dimensioni slice
-      int NY, int NX)
+      const int NY, const int NX)
    {
    int i_in_tile = tid;
    while(i_in_tile < WW_Y * WW_X)
@@ -70,7 +70,7 @@ __device__ void update_slice(
       {
       for (int sy = -RADIUS_H; sy <= RADIUS_H; sy++)
          {
-         float v = SLICE[tix + sx + RADIUS_H + WW_X * (tiy + sy + RADIUS_H)];
+         const float v = SLICE[tix + sx + RADIUS_H + WW_X * (tiy + sy + RADIUS_H)];
 
          if (v >= 0 && v < NBINS)
             myhisto((int) v) += iadd;
@@ -83,29 +83,29 @@ __device__ void update_slice(
 // FOR THE ZERO PADDING
 __device__ void update_slice_with_zeros(
 // iadd=1 --> aggiungi    iadd=-1 --> togli
-      int iadd,
+      const int iadd,
       // il numero del thread all'interno del cuda block (  tid>=0  && tid< blockDimY*blockDimX   )
-      int tid,
+      const int tid,
       // posizione thread all interno del blocco
-      int tiy, int tix,
+      const int tiy, const int tix,
       // le dimensioni del pezzo di slice che si legge
       //   WW_Y =   RADIUS_H+blockDimY+RADIUS_H ;
       //   WW_X =   RADIUS_H+blockDimX+RADIUS_H ;
-      int WW_Y, int WW_X,
+      const int WW_Y, const int WW_X,
       // il raggio della zone di interesse intorno al voxel
-      int RADIUS_H,
+      const int RADIUS_H,
       //  Le coordinate y,x del block's corner nel volume globale
-      int block_cy, int block_cx,
+      const int block_cy, const int block_cx, // NOT USED for padding
       // la coordinata z della slice nel volume globale
-      int islice,    // not used for padding
-      // // definizione istogramma
-      int NBINS,
+      const int islice, // NOT USED for padding
+      // definizione istogramma
+      const int NBINS,
       // dimensioni cuda block
-      int blockDimY, int blockDimX,
+      const int blockDimY, const int blockDimX,
       // input data
-      float *d_volume_in,
+      const float *d_volume_in,
       // dimensioni slice
-      int NY, int NX)
+      const int NY, const int NX)
    {
    int i_in_tile = tid;
    while (i_in_tile < WW_Y * WW_X)
@@ -129,7 +129,7 @@ __device__ void update_slice_with_zeros(
       {
       for (int sy = -RADIUS_H; sy <= RADIUS_H; sy++)
          {
-         float v = SLICE[tix + sx + RADIUS_H + WW_X * (tiy + sy + RADIUS_H)];
+         const float v = SLICE[tix + sx + RADIUS_H + WW_X * (tiy + sy + RADIUS_H)];
 
          if (v >= 0 && v < NBINS)
             myhisto((int) v) += iadd;
