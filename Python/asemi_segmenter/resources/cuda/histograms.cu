@@ -61,7 +61,7 @@ __device__ void update_slice(
             res = i;
 
       SLICE[i_in_tile] = res;
-      i_in_tile += blockDimY *blockDimX;
+      i_in_tile += blockDimY * blockDimX;
       }
 
    __syncthreads();    // la slice e' caricata completamente
@@ -145,20 +145,15 @@ __device__ void update_slice_with_zeros(
  * Istogramma is launched with a 2D grid of 2D blocks.
  * The dimensions of each block are (from slow (Y) to fast (X) )  WS_Y, WS_X
  * A block, then, works on a tile of a 2D slice, and, inside the kernel,
- * there is a loop on the Z dimension,  named iz inside ISTOGRAMMA.
+ * there is a loop on the Z dimension, named iz.
  *
- * Always inside ISTOGRAMMA, the block and grid coordinates are translated
- * to iy,ix
- * which are the planar coordinates of a voxel. The z coordinate is
- * represented by
- * the loop variable iz.
+ * The block and grid coordinates are translated to (iy,ix) which are the
+ * planar coordinates of a voxel. The z coordinate is represented by the loop
+ * variable iz.
  *
- * Now, imagine that for a given voxel iz,iy,ix you know the voxel
- * histogram.
- * Then the variable iz increase by one.
- *
- * How do we obtain the histogram for voxel (iz,iy,ix) when we know already
- * the histogram for voxel (iz-1,iy,ix)?
+ * Now, imagine that for a given voxel at (iz,iy,ix) you know the histogram.
+ * Then the variable iz increase by one. How do we obtain the histogram for
+ * voxel at (iz,iy,ix) when we know already the histogram at (iz-1,iy,ix)?
  * We remove the contribution from slice  iz-1 - RADIUS_H
  * the we add the contribution from slice iz + RADIUS_H
  *
@@ -167,10 +162,8 @@ __device__ void update_slice_with_zeros(
  * update_slice( +1, .......,  iz   + RADIUS_H, .....)   for addition
  *
  * (Post NOTE : now with zero padding I have duplicated to
- * update_slice_with_zeros
- *   to be used for non existing slices. There is probably one more
- * efficient way to do
- * it but it was the fastest to code)
+ * update_slice_with_zeros to be used for non existing slices. There is
+ * probably a more efficient way to do it but it was the fastest to code)
  *
  * So the update function is where the optimised things occur.
  * To optimise the reading between neighbouring voxels of the working group
@@ -210,9 +203,9 @@ __device__ void update_slice_with_zeros(
  * 32, when WW_X>16 but not a multiple of 16
  */
 __global__ void ISTOGRAMMA(
-      // il volume target di dimensioni (slow to fast )  NZ,NY, NBINS, NX
+      // il volume target di dimensioni (slow to fast )  NZ, NY, NX, NBINS
       float *d_volume_histo,
-      // // definizione istogramma
+      // definizione istogramma
       const int NBINS,
       // volume input di dimensioni (slow to fast)  NZ, NY, NX
       const float *d_volume_in,
@@ -277,11 +270,12 @@ __global__ void ISTOGRAMMA(
          update_slice_with_zeros(+1, tid, tiy, tix, WW_Y, WW_X, RADIUS_H,
                block_cy, block_cx, 0, NBINS, blockDim.y, blockDim.x,
                d_volume_in, NY, NX);
+      // copy histogram from shared memory to global memory (non-coalesced)
       for (int ibin = 0; ibin < NBINS; ibin++)
          {
          if (ix < NX && iy < NY)
-            d_volume_histo[ibin + NBINS * (ix + (long int) NX * (iy + NY * iz))] =
-                  myhisto(ibin);  // non-coalesced writing
+            d_volume_histo[ibin + NBINS * (ix + NX * (iy + NY * iz))] =
+                  myhisto(ibin);
          }
       }
    }
