@@ -21,13 +21,9 @@ extern __shared__ float SLICE[];
 __device__ void update_slice(
       // iadd=1 --> aggiungi    iadd=-1 --> togli
       const int iadd,
-      // il numero del thread all'interno del cuda block (  tid>=0  && tid< blockDimY*blockDimX   )
+      // il numero del thread all'interno del cuda block (  tid>=0  && tid< blockDim.y*blockDim.x   )
       const int tid,
-      // posizione thread all interno del blocco
-      const int tiy, const int tix,
       // le dimensioni del pezzo di slice che si legge
-      //   WW_Y =   RADIUS_H+blockDimY+RADIUS_H ;
-      //   WW_X =   RADIUS_H+blockDimX+RADIUS_H ;
       const int WW_Y, const int WW_X,
       // il raggio della zone di interesse intorno al voxel
       const int RADIUS_H,
@@ -37,8 +33,6 @@ __device__ void update_slice(
       const int islice,
       // definizione istogramma
       const int NBINS,
-      // dimensioni cuda block
-      const int blockDimY, const int blockDimX,
       // input data
       const float *d_volume_in,
       // dimensioni slice
@@ -60,7 +54,7 @@ __device__ void update_slice(
             res = i;
 
       SLICE[i_in_tile] = res;
-      i_in_tile += blockDimY * blockDimX;
+      i_in_tile += blockDim.y * blockDim.x;
       }
 
    __syncthreads();    // la slice e' caricata completamente
@@ -69,7 +63,7 @@ __device__ void update_slice(
       {
       for (int sy = -RADIUS_H; sy <= RADIUS_H; sy++)
          {
-         const float v = SLICE[tix + sx + RADIUS_H + WW_X * (tiy + sy + RADIUS_H)];
+         const float v = SLICE[threadIdx.x + sx + RADIUS_H + WW_X * (threadIdx.y + sy + RADIUS_H)];
 
          if (v >= 0 && v < NBINS)
             myhisto((int) v) += iadd;
@@ -83,13 +77,9 @@ __device__ void update_slice(
 __device__ void update_slice_with_zeros(
       // iadd=1 --> aggiungi    iadd=-1 --> togli
       const int iadd,
-      // il numero del thread all'interno del cuda block (  tid>=0  && tid< blockDimY*blockDimX   )
+      // il numero del thread all'interno del cuda block (  tid>=0  && tid< blockDim.y*blockDim.x   )
       const int tid,
-      // posizione thread all interno del blocco
-      const int tiy, const int tix,
       // le dimensioni del pezzo di slice che si legge
-      //   WW_Y =   RADIUS_H+blockDimY+RADIUS_H ;
-      //   WW_X =   RADIUS_H+blockDimX+RADIUS_H ;
       const int WW_Y, const int WW_X,
       // il raggio della zone di interesse intorno al voxel
       const int RADIUS_H,
@@ -99,8 +89,6 @@ __device__ void update_slice_with_zeros(
       const int islice, // NOT USED for padding
       // definizione istogramma
       const int NBINS,
-      // dimensioni cuda block
-      const int blockDimY, const int blockDimX,
       // input data
       const float *d_volume_in,
       // dimensioni slice
@@ -119,7 +107,7 @@ __device__ void update_slice_with_zeros(
          }
 
       SLICE[i_in_tile] = res;
-      i_in_tile += blockDimY * blockDimX;
+      i_in_tile += blockDim.y * blockDim.x;
       }
 
    __syncthreads();    // la slice e' caricata completamente
@@ -128,7 +116,7 @@ __device__ void update_slice_with_zeros(
       {
       for (int sy = -RADIUS_H; sy <= RADIUS_H; sy++)
          {
-         const float v = SLICE[tix + sx + RADIUS_H + WW_X * (tiy + sy + RADIUS_H)];
+         const float v = SLICE[threadIdx.x + sx + RADIUS_H + WW_X * (threadIdx.y + sy + RADIUS_H)];
 
          if (v >= 0 && v < NBINS)
             myhisto((int) v) += iadd;
@@ -196,8 +184,8 @@ __device__ void update_slice_with_zeros(
  * is initialised to tid.
  *
  * They are also different when accessing SLICE because
- * float v = SLICE[ tix+sx +RADIUS_H + WW_X * (tiy+sy+RADIUS_H) ];
- * and tix varies over a range of width 16.
+ * float v = SLICE[ threadIdx.x+sx +RADIUS_H + WW_X * (threadIdx.y+sy+RADIUS_H) ];
+ * and threadIdx.x varies over a range of width 16.
  * There could be a conflict when WW_X<16 or, if the hardware has warps of
  * 32, when WW_X>16 but not a multiple of 16
  */
@@ -215,19 +203,13 @@ __global__ void ISTOGRAMMA(
    const int WW_Y = RADIUS_H + blockDim.y + RADIUS_H;
    const int WW_X = RADIUS_H + blockDim.x + RADIUS_H;
 
-   const int tix = threadIdx.x;
-   const int tiy = threadIdx.y;
+   const int block_cx = blockIdx.x * blockDim.x;
+   const int block_cy = blockIdx.y * blockDim.y;
 
-   const int bidx = blockIdx.x;
-   const int bidy = blockIdx.y;
+   const int ix = block_cx + threadIdx.x;
+   const int iy = block_cy + threadIdx.y;
 
-   const int block_cx = bidx * blockDim.x;
-   const int block_cy = bidy * blockDim.y;
-
-   const int ix = block_cx + tix;
-   const int iy = block_cy + tiy;
-
-   const int tid = tiy * blockDim.x + tix;
+   const int tid = threadIdx.y * blockDim.x + threadIdx.x;
 
    // every thread clears its histogram in shared memory
    for (int i = 0; i < NBINS; i++)
@@ -235,18 +217,18 @@ __global__ void ISTOGRAMMA(
 
    // prologo
    for (int islice = 0; islice < 2 * RADIUS_H + 1; islice++)
-      update_slice_with_zeros(+1, tid, tiy, tix, WW_Y, WW_X, RADIUS_H, block_cy,
-            block_cx, 0, NBINS, blockDim.y, blockDim.x, d_volume_in, NY, NX);
+      update_slice_with_zeros(+1, tid, WW_Y, WW_X, RADIUS_H, block_cy,
+            block_cx, 0, NBINS, d_volume_in, NY, NX);
 
    for (int islice = 0; islice < RADIUS_H; islice++)
       {
       if (islice < NZ)
          {
-         update_slice_with_zeros(-1, tid, tiy, tix, WW_Y, WW_X, RADIUS_H,
-               block_cy, block_cx, 0, NBINS, blockDim.y, blockDim.x,
+         update_slice_with_zeros(-1, tid, WW_Y, WW_X, RADIUS_H,
+               block_cy, block_cx, 0, NBINS,
                d_volume_in, NY, NX);
-         update_slice(+1, tid, tiy, tix, WW_Y, WW_X, RADIUS_H, block_cy,
-               block_cx, islice, NBINS, blockDim.y, blockDim.x, d_volume_in, NY,
+         update_slice(+1, tid, WW_Y, WW_X, RADIUS_H, block_cy,
+               block_cx, islice, NBINS, d_volume_in, NY,
                NX);
          }
       }
@@ -254,20 +236,20 @@ __global__ void ISTOGRAMMA(
    for (int iz = 0; iz < NZ; iz++)
       {
       if (iz - 1 - RADIUS_H >= 0)
-         update_slice(-1, tid, tiy, tix, WW_Y, WW_X, RADIUS_H, block_cy,
-               block_cx, iz - 1 - RADIUS_H, NBINS, blockDim.y, blockDim.x,
+         update_slice(-1, tid, WW_Y, WW_X, RADIUS_H, block_cy,
+               block_cx, iz - 1 - RADIUS_H, NBINS,
                d_volume_in, NY, NX);
       else
-         update_slice_with_zeros(-1, tid, tiy, tix, WW_Y, WW_X, RADIUS_H,
-               block_cy, block_cx, 0, NBINS, blockDim.y, blockDim.x,
+         update_slice_with_zeros(-1, tid, WW_Y, WW_X, RADIUS_H,
+               block_cy, block_cx, 0, NBINS,
                d_volume_in, NY, NX);
       if (iz + RADIUS_H < NZ)
-         update_slice(+1, tid, tiy, tix, WW_Y, WW_X, RADIUS_H, block_cy,
-               block_cx, iz + RADIUS_H, NBINS, blockDim.y, blockDim.x,
+         update_slice(+1, tid, WW_Y, WW_X, RADIUS_H, block_cy,
+               block_cx, iz + RADIUS_H, NBINS,
                d_volume_in, NY, NX);
       else
-         update_slice_with_zeros(+1, tid, tiy, tix, WW_Y, WW_X, RADIUS_H,
-               block_cy, block_cx, 0, NBINS, blockDim.y, blockDim.x,
+         update_slice_with_zeros(+1, tid, WW_Y, WW_X, RADIUS_H,
+               block_cy, block_cx, 0, NBINS,
                d_volume_in, NY, NX);
       // copy histogram from shared memory to global memory (non-coalesced)
       for (int ibin = 0; ibin < NBINS; ibin++)
