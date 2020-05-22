@@ -35,7 +35,7 @@ __device__ void update_slice(
       const int NBINS,
       // input volume and size
       const float *d_volume_in,
-      const int NZ, const int NY, const int NX)
+      const int NX, const int NY, const int NZ)
    {
    // parallel read of section of slice into shared memory
    for (int i_in_tile = tid;
@@ -142,66 +142,63 @@ __global__ void ISTOGRAMMA(
       // input volume and size
       const float *d_volume_in,
       const int NX, const int NY, const int NZ,
+      // range of slices to consider in each dimension (half-open)
+      const int x_start, const int x_stop,
+      const int y_start, const int y_stop,
+      const int z_start, const int z_stop,
       // il raggio della zone di interesse intorno al voxel
       const int RADIUS_H)
    {
+   // size of the section of slice read in this block
    const int WW_Y = RADIUS_H + blockDim.y + RADIUS_H;
    const int WW_X = RADIUS_H + blockDim.x + RADIUS_H;
-
-   const int block_cx = blockIdx.x * blockDim.x;
-   const int block_cy = blockIdx.y * blockDim.y;
-
-   const int ix = block_cx + threadIdx.x;
-   const int iy = block_cy + threadIdx.y;
-
+   // x,y coordinates of block's corner in global volume
+   const int block_cx = x_start + blockIdx.x * blockDim.x;
+   const int block_cy = y_start + blockIdx.y * blockDim.y;
+   // thread index in CUDA block ( tid >= 0 && tid < blockDim.y * blockDim.x )
    const int tid = threadIdx.y * blockDim.x + threadIdx.x;
+   // size of the histogram output matrix
+   const int HZ = z_stop - z_start;
+   const int HY = y_stop - y_start;
+   const int HX = x_stop - x_start;
+   // x,y coordinates of thread's voxel in histogram output matrix
+   const int ix = block_cx + threadIdx.x - x_start;
+   const int iy = block_cy + threadIdx.y - y_start;
+   // z coordinate of thread's voxel in histogram output matrix (loop variable)
+   int iz = 0;
 
    // every thread clears its histogram in shared memory
    for (int i = 0; i < NBINS; i++)
       myhisto(i)= 0;
 
-   // prologo
-   for (int islice = 0; islice < 2 * RADIUS_H + 1; islice++)
+   // computation of first slice
+   for (int z_offset = -RADIUS_H; z_offset <= RADIUS_H; z_offset++)
+      {
       update_slice(+1, tid, WW_Y, WW_X, RADIUS_H,
-            block_cy, block_cx, 0,
-            NBINS, d_volume_in, NZ, NY, NX);
-
-   for (int islice = 0; islice < RADIUS_H; islice++)
-      {
-      if (islice < NZ)
-         {
-         update_slice(-1, tid, WW_Y, WW_X, RADIUS_H,
-               block_cy, block_cx, 0,
-               NBINS, d_volume_in, NZ, NY, NX);
-         update_slice(+1, tid, WW_Y, WW_X, RADIUS_H,
-               block_cy, block_cx, islice,
-               NBINS, d_volume_in, NZ, NY, NX);
-         }
+            block_cy, block_cx, z_start + iz + z_offset,
+            NBINS, d_volume_in, NX, NY, NZ);
       }
-   // logo
-   for (int iz = 0; iz < NZ; iz++)
+   // copy histogram from shared memory to global memory (non-coalesced)
+   for (int ibin = 0; ibin < NBINS; ibin++)
       {
-      if (iz - 1 - RADIUS_H >= 0)
-         update_slice(-1, tid, WW_Y, WW_X, RADIUS_H,
-               block_cy, block_cx, iz - 1 - RADIUS_H,
-               NBINS, d_volume_in, NZ, NY, NX);
-      else
-         update_slice(-1, tid, WW_Y, WW_X, RADIUS_H,
-               block_cy, block_cx, 0,
-               NBINS, d_volume_in, NZ, NY, NX);
-      if (iz + RADIUS_H < NZ)
-         update_slice(+1, tid, WW_Y, WW_X, RADIUS_H,
-               block_cy, block_cx, iz + RADIUS_H,
-               NBINS, d_volume_in, NZ, NY, NX);
-      else
-         update_slice(+1, tid, WW_Y, WW_X, RADIUS_H,
-               block_cy, block_cx, 0,
-               NBINS, d_volume_in, NZ, NY, NX);
+      if (ix < HX && iy < HY)
+         d_volume_histo[ibin + NBINS * (ix + HX * (iy + HY * iz))] =
+               myhisto(ibin);
+      }
+   // computation of following slices
+   for (iz++; iz < HZ; iz++)
+      {
+      update_slice(-1, tid, WW_Y, WW_X, RADIUS_H,
+            block_cy, block_cx, z_start + iz - 1 - RADIUS_H,
+            NBINS, d_volume_in, NX, NY, NZ);
+      update_slice(+1, tid, WW_Y, WW_X, RADIUS_H,
+            block_cy, block_cx, z_start + iz + RADIUS_H,
+            NBINS, d_volume_in, NX, NY, NZ);
       // copy histogram from shared memory to global memory (non-coalesced)
       for (int ibin = 0; ibin < NBINS; ibin++)
          {
          if (ix < NX && iy < NY)
-            d_volume_histo[ibin + NBINS * (ix + NX * (iy + NY * iz))] =
+            d_volume_histo[ibin + NBINS * (ix + HX * (iy + HY * iz))] =
                   myhisto(ibin);
          }
       }
