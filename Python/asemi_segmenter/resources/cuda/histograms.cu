@@ -47,9 +47,8 @@ __device__ void update_slice(
    int i_in_tile = tid;
    while (i_in_tile < WW_Y * WW_X)
       {
-
-      int global_x = block_cx + (i_in_tile % WW_X) - RADIUS_H;
-      int global_y = block_cy + (i_in_tile / WW_X) - RADIUS_H;
+      const int global_x = block_cx + (i_in_tile % WW_X) - RADIUS_H;
+      const int global_y = block_cy + (i_in_tile / WW_X) - RADIUS_H;
 
       float res = -1;
       float val = 0; // padding to zero
