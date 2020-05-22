@@ -256,13 +256,12 @@ def gpu_apply_histogram_to_all_neighbourhoods_in_slice_3d(array_3d, slice_index,
 
     # kernel call
     ISTOGRAMMA = mod.get_function("ISTOGRAMMA")
-    raise NotImplementedError('GPU method not implemented yet.')
     ISTOGRAMMA( drv.Out(result),
                 np.int32(num_bins),
                 drv.In(array_3d.astype(np.float32)),
                 np.int32(NX), np.int32(NY), np.int32(NZ),
-                np.int32(col_slice[0]), np.int32(col_slice[1]),
-                np.int32(row_slice[0]), np.int32(row_slice[1]),
+                np.int32(col_slice.start), np.int32(col_slice.stop),
+                np.int32(row_slice.start), np.int32(row_slice.stop),
                 np.int32(slice_index), np.int32(slice_index + 1),
                 np.int32(radius),
 
