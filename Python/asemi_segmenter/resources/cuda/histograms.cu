@@ -19,7 +19,7 @@ extern __shared__ float SLICE[];
 //
 
 __device__ void update_slice(
-// iadd=1 --> aggiungi    iadd=-1 --> togli
+      // iadd=1 --> aggiungi    iadd=-1 --> togli
       const int iadd,
       // il numero del thread all'interno del cuda block (  tid>=0  && tid< blockDimY*blockDimX   )
       const int tid,
@@ -45,7 +45,7 @@ __device__ void update_slice(
       const int NY, const int NX)
    {
    int i_in_tile = tid;
-   while(i_in_tile < WW_Y * WW_X)
+   while (i_in_tile < WW_Y * WW_X)
       {
 
       int global_x = block_cx + (i_in_tile % WW_X) - RADIUS_H;
@@ -82,7 +82,7 @@ __device__ void update_slice(
 
 // FOR THE ZERO PADDING
 __device__ void update_slice_with_zeros(
-// iadd=1 --> aggiungi    iadd=-1 --> togli
+      // iadd=1 --> aggiungi    iadd=-1 --> togli
       const int iadd,
       // il numero del thread all'interno del cuda block (  tid>=0  && tid< blockDimY*blockDimX   )
       const int tid,
@@ -210,7 +210,7 @@ __device__ void update_slice_with_zeros(
  * 32, when WW_X>16 but not a multiple of 16
  */
 __global__ void ISTOGRAMMA(
-// il volume target di dimensioni (slow to fast )  NZ,NY, NBINS, NX
+      // il volume target di dimensioni (slow to fast )  NZ,NY, NBINS, NX
       float *d_volume_histo,
       // // definizione istogramma
       int NBINS,
