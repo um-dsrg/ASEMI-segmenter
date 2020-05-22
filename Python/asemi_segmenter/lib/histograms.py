@@ -4,6 +4,7 @@ import os
 import numpy as np
 import fast_histogram
 import sys
+import math
 import pkg_resources
 from asemi_segmenter.lib import regions
 
@@ -212,6 +213,61 @@ def gpu_apply_histogram_to_all_neighbourhoods_in_slice_3d(array_3d, slice_index,
     # CUDA code
     mod = pycuda.compiler.SourceModule(pkg_resources.resource_string('asemi_segmenter.resources.cuda', 'histograms.cu').decode())
 
-    raise NotImplementedError('GPU method not implemented yet.')
+    ## Example parameters
+    # array_3d.shape = (23, 172, 202)
+    # slice_index = 11
+    # radius = 11
+    # neighbouring_dims = {0, 1, 2}
+    # min_range, max_range, num_bins = 0, 65536, 32
+    # pad = 0
+    # row_slice =  slice(11, 161, None)
+    # col_slice = slice(11, 191, None)
+    ## Output
+    # result.shape = (150, 180, 32)
 
-    return None
+    ## Index ordering convention
+    # outer to inner: slice, row, col = z, y, x
+
+    # output histogram
+    rows = row_slice.stop - row_slice.start
+    cols = col_slice.stop - col_slice.start
+    result = np.zeros((rows, cols, num_bins), dtype=np.float32)
+
+    # histogram bins
+    mylimits = np.linspace(min_range, max_range, num_bins, endpoint=False, dtype=np.float32)
+    bins_limits, size = mod.get_global("bins_limits")
+    assert( size >= mylimits.size*4 )
+    drv.memcpy_htod(bins_limits, mylimits)
+
+    # input volume
+    # assert array_3d.dtype == np.uint16
+    NZ, NY, NX = array_3d.shape
+
+    # GPU block size (working sizes)
+    WS_Y = 8
+    WS_X = 16
+    # kernel parameters
+    blocksize = (WS_X, WS_Y, 1)
+    gridsize = ( int(math.ceil( float(cols) / float(WS_X) )),
+                 int(math.ceil( float(rows) / float(WS_Y) )),
+                 1 )
+    sharedsize = 4 * (radius + WS_X + radius) * (radius + WS_Y + radius) + \
+                 WS_Y * WS_X * num_bins * 4
+
+    # kernel call
+    ISTOGRAMMA = mod.get_function("ISTOGRAMMA")
+    raise NotImplementedError('GPU method not implemented yet.')
+    ISTOGRAMMA( drv.Out(result),
+                np.int32(num_bins),
+                drv.In(array_3d.astype(np.float32)),
+                np.int32(NX), np.int32(NY), np.int32(NZ),
+                np.int32(col_slice[0]), np.int32(col_slice[1]),
+                np.int32(row_slice[0]), np.int32(row_slice[1]),
+                np.int32(slice_index), np.int32(slice_index + 1),
+                np.int32(radius),
+
+                block=blocksize,
+                grid=gridsize,
+                shared=sharedsize )
+
+    return result
