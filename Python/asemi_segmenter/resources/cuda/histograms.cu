@@ -19,58 +19,59 @@ extern __shared__ float SLICE[];
 //
 
 __device__ void update_slice(
-      // iadd=1 --> aggiungi    iadd=-1 --> togli
+      // iadd = +1/-1 to add/subtract
       const int iadd,
-      // il numero del thread all'interno del cuda block (  tid>=0  && tid< blockDim.y*blockDim.x   )
+      // thread index in CUDA block ( tid >= 0 && tid < blockDim.y * blockDim.x )
       const int tid,
-      // le dimensioni del pezzo di slice che si legge
+      // size of the section of slice read in this block
       const int WW_Y, const int WW_X,
-      // il raggio della zone di interesse intorno al voxel
+      // neighbourhood radius around voxel for computing histogram
       const int RADIUS_H,
-      //  Le coordinate y,x del block's corner nel volume globale
+      // x,y coordinates of thread's voxel in global volume
       const int block_cy, const int block_cx,
-      // la coordinata z della slice nel volume globale
+      // z coordinate of thread's voxel in global volume
       const int islice,
-      // definizione istogramma
+      // number of bins in histogram
       const int NBINS,
-      // input data
+      // input volume
       const float *d_volume_in,
-      // dimensioni slice
+      // size of slice in volume (defines pitch in x/y dimensions)
       const int NY, const int NX)
    {
-   int i_in_tile = tid;
-   while (i_in_tile < WW_Y * WW_X)
+   // parallel read of section of slice into shared memory
+   for (int i_in_tile = tid;
+         i_in_tile < WW_Y * WW_X;
+         i_in_tile += blockDim.y * blockDim.x)
       {
+      // determine x,y coordinates for this thread
       const int global_x = block_cx + (i_in_tile % WW_X) - RADIUS_H;
       const int global_y = block_cy + (i_in_tile / WW_X) - RADIUS_H;
-
-      float res = -1;
-      float val = 0; // padding to zero
-
+      // read value at x,y from global memory if exists, zero otherwise
+      float val = 0;
       if( global_x >= 0 && global_x < NX && global_y >= 0 && global_y < NY )
          val = d_volume_in[global_x + NX * (global_y + NY * islice)];
+      // convert value to corresponding histogram bin index
+      float res = -1;
       for(int i = 0; i < NBINS + 1; i++)
          if(val >= bins_limits[i])
             res = i;
-
+      // store in shared memory
       SLICE[i_in_tile] = res;
-      i_in_tile += blockDim.y * blockDim.x;
       }
-
-   __syncthreads();    // la slice e' caricata completamente
-
+   // make sure all slice section is read
+   __syncthreads();
+   // each thread computes histogram for neighbourhood of its coordinate
    for (int sx = -RADIUS_H; sx <= RADIUS_H; sx++)
-      {
       for (int sy = -RADIUS_H; sy <= RADIUS_H; sy++)
          {
+         // get neighbouring pixel value (bin index, really)
          const float v = SLICE[threadIdx.x + sx + RADIUS_H + WW_X * (threadIdx.y + sy + RADIUS_H)];
-
+         // add to histogram if within limits
          if (v >= 0 && v < NBINS)
             myhisto((int) v) += iadd;
          }
-      }
-
-   __syncthreads(); // la slice e' stata utilizzata. Dopo questo semaforo la si potra cambiare con la prossima.
+   // make sure all slice section is processed
+   __syncthreads();
    }
 
 // FOR THE ZERO PADDING
