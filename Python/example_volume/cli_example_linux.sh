@@ -36,8 +36,9 @@
     --config_fullfname "configs/tune_config.json" \
     --search_results_fullfname "output/tune/results.txt" \
     --best_result_fullfname "output/tune/result.json" \
+    --features_table_fullfname "output/tune/features.hdf" \
     --max_processes 4 \
-    --max_batch_memory 1.0
+    --max_batch_memory 1.0 \
 
 ../bin/train.py \
     --preproc_volume_fullfname "output/preprocess/volume.hdf" \

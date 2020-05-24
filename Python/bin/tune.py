@@ -63,6 +63,11 @@ if __name__ == '__main__':
             help='Full path to result JSON file containing the best configuration found by this process (*.json).'
         )
     parser.add_argument(
+            '--features_table_fullfname',
+            required=False,
+            help='Full path to HDF file to store precomputed features to speed up this process (*.hdf). Used on both training and evaluation sets but only if they are sampled (sample_size_per_label is not -1).'
+        )
+    parser.add_argument(
             '--checkpoint_fullfname',
             required=False,
             default=None,
@@ -124,6 +129,7 @@ if __name__ == '__main__':
             config=args.config_fullfname,
             search_results_fullfname=args.search_results_fullfname,
             best_result_fullfname=args.best_result_fullfname,
+            features_table_fullfname=args.features_table_fullfname,
             checkpoint_fullfname=args.checkpoint_fullfname,
             checkpoint_namespace='tune',
             reset_checkpoint=args.reset_checkpoint == 'yes',
