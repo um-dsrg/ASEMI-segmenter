@@ -352,59 +352,46 @@ def _tuning(
                                     )
                             training_set = training_set.without_control_labels()
 
-                        def memory_scope(result):
-                            segmenter.train(training_set, max_processes)
+                        segmenter.train(training_set, max_processes)
 
-                            iou_lists = [[] for _ in range(len(segmenter.classifier.labels))]
-                            if eval_sample_size_per_label != -1:
-                                eval_set = datasets.DataSet(None)
-                                eval_set.create(
-                                    len(eval_voxel_indexes),
-                                    segmenter.featuriser.get_feature_size()
+                        iou_lists = [[] for _ in range(len(segmenter.classifier.labels))]
+                        if eval_sample_size_per_label != -1:
+                            eval_set = datasets.DataSet(None)
+                            eval_set.create(
+                                len(eval_voxel_indexes),
+                                segmenter.featuriser.get_feature_size()
+                                )
+                            for (label_index, label_position) in enumerate(eval_label_positions):
+                                eval_set.get_labels_array()[label_position] = label_index
+
+                            segmenter.featuriser.featurise_voxels(
+                                full_volume.get_scale_arrays(segmenter.featuriser.get_scales_needed()),
+                                eval_voxel_indexes,
+                                output=eval_set.get_features_array(),
+                                dataset_name='evaluation_set',
+                                features_table=features_table
+                                )
+
+                            prediction = segmenter.segment_to_label_indexes(eval_set.get_features_array(), max_processes)
+
+                            evaluation.evaluate(prediction, eval_set.get_labels_array())
+                        else:
+                            for (i, volume_slice_index) in enumerate(volume_slice_indexes_in_eval_subvolume):
+                                slice_features = segmenter.featuriser.featurise_slice(
+                                    full_volume.get_scale_arrays(segmenter.featuriser.get_scales_needed()),
+                                    slice_index=volume_slice_index,
+                                    block_rows=best_block_shape[0],
+                                    block_cols=best_block_shape[1],
+                                    n_jobs=max_processes
                                     )
-                                for (label_index, label_position) in enumerate(eval_label_positions):
-                                    eval_set.get_labels_array()[label_position] = label_index
 
-                                with times.Timer() as featuriser_timer:
-                                    segmenter.featuriser.featurise_voxels(
-                                        full_volume.get_scale_arrays(segmenter.featuriser.get_scales_needed()),
-                                        eval_voxel_indexes,
-                                        output=eval_set.get_features_array(),
-                                        dataset_name='evaluation_set',
-                                        features_table=features_table
-                                        )
+                                prediction = segmenter.segment_to_label_indexes(slice_features, max_processes)
 
-                                with times.Timer() as classifier_timer:
-                                    prediction = segmenter.segment_to_label_indexes(eval_set.get_features_array(), max_processes)
-
-                                evaluation.evaluate(prediction, eval_set.get_labels_array())
-                            else:
-                                for (i, volume_slice_index) in enumerate(volume_slice_indexes_in_eval_subvolume):
-                                    with times.Timer() as featuriser_timer:
-                                        slice_features = segmenter.featuriser.featurise_slice(
-                                            full_volume.get_scale_arrays(segmenter.featuriser.get_scales_needed()),
-                                            slice_index=volume_slice_index,
-                                            block_rows=best_block_shape[0],
-                                            block_cols=best_block_shape[1],
-                                            n_jobs=max_processes
-                                            )
-
-                                    with times.Timer() as classifier_timer:
-                                        prediction = segmenter.segment_to_label_indexes(slice_features, max_processes)
-
-                                    evaluation.evaluate(prediction, eval_subvolume_slice_labels[i*slice_size:(i+1)*slice_size])
-
-                            result['featuriser_time'] = featuriser_timer.duration
-                            result['classifier_time'] = classifier_timer.duration
-                        result = dict()
-                        max_memory_mb = max(memory_profiler.memory_usage((memory_scope, (result,)), interval=0))
+                                evaluation.evaluate(prediction, eval_subvolume_slice_labels[i*slice_size:(i+1)*slice_size])
 
                     tuning_results_file.add(
                         segmenter.get_config(),
-                        result['featuriser_time'],
-                        result['classifier_time'],
                         sub_timer.duration,
-                        max_memory_mb,
                         extra_col_values
                         )
                 listener.current_progress_update(iteration)
@@ -478,59 +465,46 @@ def _tuning(
                                     )
                             training_set = training_set.without_control_labels()
 
-                        def memory_scope(result):
-                            segmenter.train(training_set, max_processes)
+                        segmenter.train(training_set, max_processes)
 
-                            iou_lists = [[] for _ in range(len(segmenter.classifier.labels))]
-                            if eval_sample_size_per_label != -1:
-                                eval_set = datasets.DataSet(None)
-                                eval_set.create(
-                                    len(eval_voxel_indexes),
-                                    segmenter.featuriser.get_feature_size()
+                        iou_lists = [[] for _ in range(len(segmenter.classifier.labels))]
+                        if eval_sample_size_per_label != -1:
+                            eval_set = datasets.DataSet(None)
+                            eval_set.create(
+                                len(eval_voxel_indexes),
+                                segmenter.featuriser.get_feature_size()
+                                )
+                            for (label_index, label_position) in enumerate(eval_label_positions):
+                                eval_set.get_labels_array()[label_position] = label_index
+
+                            segmenter.featuriser.featurise_voxels(
+                                full_volume.get_scale_arrays(segmenter.featuriser.get_scales_needed()),
+                                eval_voxel_indexes,
+                                output=eval_set.get_features_array(),
+                                dataset_name='evaluation_set',
+                                features_table=features_table
+                                )
+
+                            prediction = segmenter.segment_to_label_indexes(eval_set.get_features_array(), max_processes)
+
+                            evaluation.evaluate(prediction, eval_set.get_labels_array())
+                        else:
+                            for (i, volume_slice_index) in enumerate(volume_slice_indexes_in_eval_subvolume):
+                                slice_features = segmenter.featuriser.featurise_slice(
+                                    full_volume.get_scale_arrays(segmenter.featuriser.get_scales_needed()),
+                                    slice_index=volume_slice_index,
+                                    block_rows=best_block_shape[0],
+                                    block_cols=best_block_shape[1],
+                                    n_jobs=max_processes
                                     )
-                                for (label_index, label_position) in enumerate(eval_label_positions):
-                                    eval_set.get_labels_array()[label_position] = label_index
 
-                                with times.Timer() as featuriser_timer:
-                                    segmenter.featuriser.featurise_voxels(
-                                        full_volume.get_scale_arrays(segmenter.featuriser.get_scales_needed()),
-                                        eval_voxel_indexes,
-                                        output=eval_set.get_features_array(),
-                                        dataset_name='evaluation_set',
-                                        features_table=features_table
-                                        )
+                                prediction = segmenter.segment_to_label_indexes(slice_features, max_processes)
 
-                                with times.Timer() as classifier_timer:
-                                    prediction = segmenter.segment_to_label_indexes(eval_set.get_features_array(), max_processes)
-
-                                evaluation.evaluate(prediction, eval_set.get_labels_array())
-                            else:
-                                for (i, volume_slice_index) in enumerate(volume_slice_indexes_in_eval_subvolume):
-                                    with times.Timer() as featuriser_timer:
-                                        slice_features = segmenter.featuriser.featurise_slice(
-                                            full_volume.get_scale_arrays(segmenter.featuriser.get_scales_needed()),
-                                            slice_index=volume_slice_index,
-                                            block_rows=best_block_shape[0],
-                                            block_cols=best_block_shape[1],
-                                            n_jobs=max_processes
-                                            )
-
-                                    with times.Timer() as classifier_timer:
-                                        prediction = segmenter.segment_to_label_indexes(slice_features, max_processes)
-
-                                    evaluation.evaluate(prediction, eval_subvolume_slice_labels[i*slice_size:(i+1)*slice_size])
-
-                            result['featuriser_time'] = featuriser_timer.duration
-                            result['classifier_time'] = classifier_timer.duration
-                        result = dict()
-                        max_memory_mb = max(memory_profiler.memory_usage((memory_scope, (result,)), interval=0))
+                                evaluation.evaluate(prediction, eval_subvolume_slice_labels[i*slice_size:(i+1)*slice_size])
 
                     tuning_results_file.add(
                         segmenter.get_config(),
-                        result['featuriser_time'],
-                        result['classifier_time'],
                         sub_timer.duration,
-                        max_memory_mb,
                         extra_col_values
                         )
                 listener.current_progress_update(iteration)

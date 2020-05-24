@@ -32,7 +32,7 @@ def _loading_data(
     hash_function = hashfunctions.load_hashfunction_from_config(preprocess_config['hash_function'])
     slice_shape = full_volume.get_shape()[1:]
     slice_size = slice_shape[0]*slice_shape[1]
-    
+
     listener.log_output('> Subvolume')
     listener.log_output('>> {}'.format(subvolume_dir))
     subvolume_data = volumes.load_volume_dir(subvolume_dir)
@@ -64,7 +64,7 @@ def _loading_data(
     if result_segmenter_fullfname is not None:
         listener.log_output('>> {}'.format(result_segmenter_fullfname))
         validations.check_filename(result_segmenter_fullfname, '.pkl', False)
-    
+
     listener.log_output('> Training set')
     if trainingset_file_fullfname is not None:
         listener.log_output('>> {}'.format(trainingset_file_fullfname))
@@ -81,15 +81,15 @@ def _loading_data(
         reset_checkpoint=reset_checkpoint,
         initial_content=checkpoint_init
         )
-        
+
     listener.log_output('> Initialising')
     hash_function.init(slice_shape, seed=0)
-    
+
     listener.log_output('> Other parameters:')
     listener.log_output('>> reset_checkpoint: {}'.format(reset_checkpoint))
     listener.log_output('>> max_processes: {}'.format(max_processes))
     listener.log_output('>> max_batch_memory: {}GB'.format(max_batch_memory))
-    
+
     return (full_volume, subvolume_fullfnames, labels_data, slice_shape, slice_size, segmenter, training_set, hash_function, checkpoint)
 
 
@@ -127,7 +127,7 @@ def _constructing_labels_dataset(
     ):
     '''Constructing labels dataset stage.'''
     subvolume_slice_labels = volumes.load_labels(labels_data)
-    
+
     return (subvolume_slice_labels,)
 
 
@@ -148,7 +148,7 @@ def _constructing_trainingset(
             segmenter.train_config['training_set']['samples_to_skip_per_label'],
             seed=0
             )
-    
+
     listener.log_output('> Train label sizes:')
     if sample_size_per_label != -1:
         for (label, label_slice) in zip(segmenter.classifier.labels, label_positions):
@@ -156,7 +156,7 @@ def _constructing_trainingset(
     else:
         for (label_index, label) in enumerate(segmenter.classifier.labels):
             listener.log_output('>> {}: {}'.format(label, np.sum(subvolume_slice_labels == label_index)))
-    
+
     listener.log_output('> Creating empty training set')
     if sample_size_per_label != -1:
         training_set.create(
@@ -169,7 +169,7 @@ def _constructing_trainingset(
             segmenter.featuriser.get_feature_size()
             )
     training_set.load()
-    
+
     listener.log_output('> Constructing labels')
     if sample_size_per_label != -1:
         for (label_index, label_position) in enumerate(label_positions):
@@ -186,8 +186,7 @@ def _constructing_trainingset(
         segmenter.featuriser.featurise_voxels(
             full_volume.get_scale_arrays(segmenter.featuriser.get_scales_needed()),
             voxel_indexes,
-            output=training_set.get_features_array(),
-            n_jobs=max_processes
+            output=training_set.get_features_array()
             )
     else:
         best_block_shape = arrayprocs.get_optimal_block_size(
@@ -219,7 +218,7 @@ def _constructing_trainingset(
                         )
                 listener.current_progress_update(i+1)
             listener.current_progress_end()
-            
+
     return ()
 
 
@@ -232,7 +231,7 @@ def _training_segmenter(
     if sample_size_per_label == -1:
         training_set = training_set.without_control_labels()
     segmenter.train(training_set, max_processes)
-    
+
     return ()
 
 
@@ -245,7 +244,7 @@ def _saving_segmenter(
         segmenter.save(result_segmenter_fullfname)
     else:
         listener.log_output('Segmenter not to be saved')
-    
+
     return ()
 
 
@@ -338,7 +337,7 @@ def main(
             listener.log_output('Labels dataset constructed')
             listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
             listener.log_output('')
-            
+
             ###################
 
             listener.overall_progress_update(4, 'Constructing training set')

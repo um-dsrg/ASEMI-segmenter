@@ -39,7 +39,7 @@
     --parameter_selection_timeout 2 \
     --features_table_fullfname "output/tune/features.hdf" \
     --max_processes 4 \
-    --max_batch_memory 1.0 \
+    --max_batch_memory 1.0
 
 ../bin/train.py \
     --preproc_volume_fullfname "output/preprocess/volume.hdf" \

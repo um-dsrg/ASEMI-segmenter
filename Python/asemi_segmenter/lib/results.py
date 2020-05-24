@@ -11,9 +11,9 @@ from asemi_segmenter.lib import evaluations
 def save_confusion_matrix(fullfname, confusion_matrix, labels):
     '''
     Save a confusion matrix to a text file.
-    
+
     Confusion matrix comes from evaluations.get_confusion_matrix.
-    
+
     :param str fullfname: The full file name (with path) to the text file.
     :param numpy.ndarray confusion_matrix: The confusion matrix numpy array.
     :param list labels: List of string labels corresponding to the rows/columns of the matrix.
@@ -44,26 +44,26 @@ def save_confusion_matrix(fullfname, confusion_matrix, labels):
 class ConfusionMapSaver(object):
     '''
     Confusion map saving helper.
-    
+
     Confusion map comes from evaluations.get_confusion_map.
     '''
-    
+
     #########################################
     def __init__(self, label_names, skip_colours=0):
         '''
         Constructor.
-        
+
         :param list label_names: The names of labels in order of their indexes.
         :param int skip_colours: The number of colours in the sequence to skip.
         '''
         self.label_names = label_names
         self.palette = colours.LabelPalette(label_names, skip_colours)
-    
+
     #########################################
     def save(self, fullfname, confusion_map):
         '''
         Save a confusion map.
-        
+
         :param str fullfname: The full file name (with path) of the image file.
         :param numpy.ndarray confusion_map: The numpy array containing the confusion map.
         '''
@@ -86,7 +86,7 @@ class EvaluationResultsFile(object):
         '''
         self.results_fullfname = results_fullfname
         self.evaluation = evaluation
-        
+
         self.num_rows = 0
         self.total_featuriser_duration = 0
         self.total_classifier_duration = 0
@@ -112,12 +112,12 @@ class EvaluationResultsFile(object):
                 'total duration (s)',
                 sep='\t', file=f
                 )
-    
+
     #########################################
     def load(self, all_predicted_labels, all_true_labels):
         '''
         Load the intermediate results for computing the global scores.
-        
+
         :param list all_predicted_labels: List of numpy array predicted labels
             for every evaluated slice.
         :param list all_true_labels: List of numpy array true labels
@@ -128,14 +128,14 @@ class EvaluationResultsFile(object):
                 fields = line.split('\t')
                 if int(fields[0]) == -1:
                     continue
-                
+
                 self.num_rows += 1
                 self.total_featuriser_duration += float(fields[-3])
                 self.total_classifier_duration += float(fields[-2])
                 self.total_total_duration += float(fields[-1])
-        
+
                 self.evaluation.evaluate(all_predicted_labels[i], all_true_labels[i])
-    
+
     #########################################
     def add(self, subvolume_slice_num, volume_slice_num, predicted_labels, true_labels, featuriser_duration, classifier_duration, total_duration):
         '''
@@ -155,7 +155,7 @@ class EvaluationResultsFile(object):
         self.total_featuriser_duration += featuriser_duration
         self.total_classifier_duration += classifier_duration
         self.total_total_duration += total_duration
-        
+
         (label_scores, single_score) = self.evaluation.evaluate(predicted_labels, true_labels)
         with open(self.results_fullfname, 'a', encoding='utf-8') as f:
             print(
@@ -188,7 +188,7 @@ class EvaluationResultsFile(object):
                 '{:.1f}'.format(total_duration),
                 sep='\t', file=f
                 )
-    
+
     #########################################
     def conclude(self):
         '''
@@ -260,10 +260,7 @@ class TuningResultsFile(object):
                 'min {}'.format(self.evaluation.name),
                 'stddev {}'.format(self.evaluation.name),
                 *['{} {}'.format(label, self.evaluation.name) for label in labels],
-                'featuriser duration (s)',
-                'classifier duration (s)',
                 'total duration (s)',
-                'max memory (MB)',
                 *extra_col_names,
                 sep='\t', file=f
                 )
@@ -283,25 +280,21 @@ class TuningResultsFile(object):
                     best_jsonconfig = json_config
         if best_jsonconfig is not None:
             self.best_config = json.loads(best_jsonconfig)
-    
+
     #########################################
-    def add(self, config, featuriser_duration, classifier_duration, total_duration, max_memory_mb, extra_col_values=[]):
+    def add(self, config, total_duration, extra_col_values=[]):
         '''
         Add a new result to the file.
 
         :param dict config: The configuation dictionary used to produce these results.
-        :param float featuriser_duration: The duration of the featurisation process.
-        :param float classifier_duration: The duration of the classification process.
         :param float total_duration: The total duration to compute the row.
-        :param float max_memory_mb: The maximum number of megabytes of memory used
-            during featurisation and classification.
         :param list extra_col_values: A list of extra columns to add.
         '''
         (label_scores, global_score) = self.evaluation.get_global_results()
         if global_score > self.best_globalscore:
             self.best_globalscore = global_score
             self.best_config = config
-        
+
         with open(self.results_fullfname, 'a', encoding='utf-8') as f:
             print(
                 json.dumps(config),
@@ -327,10 +320,7 @@ class TuningResultsFile(object):
                         )
                     for result in label_scores
                     ],
-                '{:.1f}'.format(featuriser_duration),
-                '{:.1f}'.format(classifier_duration),
                 '{:.1f}'.format(total_duration),
-                '{:.3f}'.format(max_memory_mb),
                 *extra_col_values,
                 sep='\t', file=f
                 )
