@@ -36,6 +36,8 @@
     --config_fullfname "configs/tune_config.json" \
     --search_results_fullfname "output/tune/results.txt" \
     --best_result_fullfname "output/tune/result.json" \
+    --parameter_selection_timeout 2 \
+    --features_table_fullfname "output/tune/features.hdf" \
     --max_processes 4 \
     --max_batch_memory 1.0
 
