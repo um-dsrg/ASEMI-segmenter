@@ -1,7 +1,7 @@
 '''Preprocess command.'''
 
 import json
-from asemi_segmenter import listener
+from asemi_segmenter import listeners
 from asemi_segmenter.lib import arrayprocs
 from asemi_segmenter.lib import checkpoints
 from asemi_segmenter.lib import downscales
@@ -188,7 +188,7 @@ def main(
         checkpoint_init=dict(),
         max_processes=-1,
         max_batch_memory=1,
-        listener=listener.ProgressListener(),
+        listener=listeners.ProgressListener(),
         debug_mode=False
     ):
     '''

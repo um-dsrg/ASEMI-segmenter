@@ -8,9 +8,9 @@
 import argparse
 import os
 import socket
-import _interfaces
 import asemi_segmenter
 from asemi_segmenter import analyse_data
+from asemi_segmenter import listeners
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
@@ -65,7 +65,7 @@ if __name__ == '__main__':
     args = None
     args = parser.parse_args()
     if args is not None:
-        listener = _interfaces.CliProgressListener(args.log_file_fullfname)
+        listener = listeners.CliProgressListener(args.log_file_fullfname)
         listener.log_output('='*100)
         listener.log_output('version: {}'.format(asemi_segmenter.__version__))
         listener.log_output('hostname: {}'.format(socket.gethostname()))

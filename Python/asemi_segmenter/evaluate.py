@@ -3,7 +3,7 @@
 import pickle
 import os
 import numpy as np
-from asemi_segmenter import listener
+from asemi_segmenter import listeners
 from asemi_segmenter.lib import arrayprocs
 from asemi_segmenter.lib import checkpoints
 from asemi_segmenter.lib import evaluations
@@ -296,7 +296,7 @@ def main(
         max_processes=-1,
         max_batch_memory=1,
         use_gpu=False,
-        listener=listener.ProgressListener(),
+        listener=listeners.ProgressListener(),
         debug_mode=False
     ):
     '''

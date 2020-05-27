@@ -3,7 +3,7 @@
 import os
 import json
 import numpy as np
-from asemi_segmenter import listener
+from asemi_segmenter import listeners
 from asemi_segmenter.lib import datasets
 from asemi_segmenter.lib import images
 from asemi_segmenter.lib import times
@@ -155,7 +155,7 @@ def main(
         config,
         results_dir,
         highlight_radius=1,
-        listener=listener.ProgressListener(),
+        listener=listeners.ProgressListener(),
         debug_mode=False
     ):
     '''
