@@ -3,7 +3,7 @@
 import pickle
 import os
 import numpy as np
-from asemi_segmenter.listener import ProgressListener
+from asemi_segmenter import listener
 from asemi_segmenter.lib import arrayprocs
 from asemi_segmenter.lib import checkpoints
 from asemi_segmenter.lib import evaluations
@@ -48,7 +48,7 @@ def _loading_data(
     listener.log_output('>> {}'.format(subvolume_dir))
     subvolume_data = volumes.load_volume_dir(subvolume_dir)
     subvolume_fullfnames = subvolume_data.fullfnames
-    
+
     listener.log_output('> Labels')
     labels_data = []
     for label_dir in label_dirs:
@@ -60,7 +60,7 @@ def _loading_data(
     if evaluation_labels != segmenter.classifier.labels:
         raise ValueError('Labels in evaluation directory do not match labels in segmenter')
     validations.validate_annotation_data(full_volume, subvolume_data, labels_data)
-    
+
     listener.log_output('> Result')
     listener.log_output('>> {}'.format(results_dir))
     validations.check_directory(results_dir)
@@ -77,18 +77,18 @@ def _loading_data(
         reset_checkpoint=reset_checkpoint,
         initial_content=checkpoint_init
         )
-    
+
     listener.log_output('> Initialising')
     hash_function.init(slice_shape, seed=0)
-    
+
     listener.log_output('> Other parameters:')
     listener.log_output('>> reset_checkpoint: {}'.format(reset_checkpoint))
     listener.log_output('>> max_processes: {}'.format(max_processes))
     listener.log_output('>> max_batch_memory: {}GB'.format(max_batch_memory))
-    
+
     return (full_volume, slice_shape, slice_size, segmenter, subvolume_fullfnames, labels_data, hash_function, evaluation, evaluation_results_file, checkpoint)
-    
-    
+
+
 #########################################
 def _hashing_subvolume_slices(
         full_volume, subvolume_fullfnames, hash_function, listener
@@ -122,7 +122,7 @@ def _constructing_labels_dataset(
     ):
     '''Constructing labels dataset stage.'''
     subvolume_slice_labels = volumes.load_labels(labels_data)
-    
+
     return (subvolume_slice_labels,)
 
 
@@ -136,14 +136,14 @@ def _evaluating(
         listener.log_output('>> Subvolume slice #{} (volume slice #{})'.format(i + 1, volume_slice_index + 1))
         for (label_index, label) in enumerate(segmenter.classifier.labels):
             listener.log_output('>>> {}: {}'.format(label, np.sum(subvolume_slice_labels[i*slice_size:(i+1)*slice_size] == label_index)))
-    
+
     listener.log_output('> Evaluating')
     with checkpoint.apply('create_results_file') as skip:
         if skip is not None:
             listener.log_output('>> Continuing use of checkpointed results file')
             raise skip
         evaluation_results_file.create(segmenter.classifier.labels)
-    
+
     best_block_shape = arrayprocs.get_optimal_block_size(
         slice_shape,
         full_volume.get_dtype(),
@@ -152,7 +152,7 @@ def _evaluating(
         max_batch_memory,
         implicit_depth=True
         )
-    
+
     labels_palette = colours.LabelPalette(['unlabelled'] + segmenter.classifier.labels)
     images.save_image(
         os.path.join(results_dir, 'legend.tiff'),
@@ -161,9 +161,9 @@ def _evaluating(
         compress=True
         )
     confusion_map_saver = results.ConfusionMapSaver(segmenter.classifier.labels, skip_colours=1)
-    
+
     start = checkpoint.get_next_to_process('evaluation_prog')
-    
+
     all_predicted_labels = list()
     all_true_labels = list()
     for i in range(start):
@@ -181,7 +181,7 @@ def _evaluating(
     evaluation_results_file.load(all_predicted_labels, all_true_labels)
     del all_predicted_labels
     del all_true_labels
-    
+
     listener.current_progress_start(start, len(subvolume_fullfnames))
     for (i, volume_slice_index) in enumerate(volume_slice_indexes_in_subvolume):
         if i < start:
@@ -199,14 +199,14 @@ def _evaluating(
 
                 with times.Timer() as sub_timer_classifier:
                     prediction = segmenter.segment_to_label_indexes(slice_features, max_processes)
-                
+
                 slice_labels = subvolume_slice_labels[i*slice_size:(i+1)*slice_size]
-                
+
                 files.mkdir(os.path.join(results_dir, 'slice_{}'.format(i + 1)))
-                
+
                 reshaped_prediction = prediction.reshape(slice_shape)
                 reshaped_slice_labels = slice_labels.reshape(slice_shape)
-                
+
                 for scale in segmenter.featuriser.get_scales_needed():
                     images.save_image(
                         os.path.join(results_dir, 'slice_{}'.format(i + 1), 'input_slice_scale_{}.tiff'.format(scale)),
@@ -216,7 +216,7 @@ def _evaluating(
                             ],
                         compress=True
                         )
-                
+
                 images.save_image(
                     os.path.join(results_dir, 'slice_{}'.format(i + 1), 'true_labels.tiff'),
                     labels_palette.label_indexes_to_colours(
@@ -229,7 +229,7 @@ def _evaluating(
                     num_bits=8,
                     compress=True
                     )
-                
+
                 images.save_image(
                     os.path.join(results_dir, 'slice_{}'.format(i + 1), 'predicted_labels.tiff'),
                     labels_palette.label_indexes_to_colours(
@@ -238,7 +238,7 @@ def _evaluating(
                     num_bits=8,
                     compress=True
                     )
-                
+
                 confusion_matrix = evaluations.get_confusion_matrix(
                     reshaped_prediction,
                     reshaped_slice_labels,
@@ -249,7 +249,7 @@ def _evaluating(
                     confusion_matrix,
                     segmenter.classifier.labels
                     )
-                
+
                 for (label_index, label) in enumerate(segmenter.classifier.labels):
                     confusion_map = evaluations.get_confusion_map(
                         reshaped_prediction,
@@ -260,7 +260,7 @@ def _evaluating(
                         os.path.join(results_dir, 'slice_{}'.format(i + 1), 'confusion_map_{}.tiff'.format(label)),
                         confusion_map
                         )
-                
+
             evaluation_results_file.add(
                 i + 1,
                 volume_slice_index + 1,
@@ -273,20 +273,31 @@ def _evaluating(
 
         listener.current_progress_update(i+1)
     listener.current_progress_end()
-    
+
     with checkpoint.apply('conclude') as skip:
         if skip is not None:
             raise skip
         evaluation_results_file.conclude()
-    
+
     return ()
 
 
 #########################################
 def main(
-        segmenter, preproc_volume_fullfname, subvolume_dir, label_dirs, results_dir,
-        checkpoint_fullfname, checkpoint_namespace, reset_checkpoint, checkpoint_init,
-        max_processes, max_batch_memory, use_gpu=False, listener=ProgressListener(), debug_mode=False
+        segmenter,
+        preproc_volume_fullfname,
+        subvolume_dir,
+        label_dirs,
+        results_dir,
+        checkpoint_fullfname=None,
+        checkpoint_namespace='evaluate',
+        reset_checkpoint=False,
+        checkpoint_init=dict(),
+        max_processes=-1,
+        max_batch_memory=1,
+        use_gpu=False,
+        listener=listener.ProgressListener(),
+        debug_mode=False
     ):
     '''
     Evaluate a trained segmenter on manually labelled slices.

@@ -3,7 +3,7 @@
 import json
 import memory_profiler
 import numpy as np
-from asemi_segmenter.listener import ProgressListener
+from asemi_segmenter import listener
 from asemi_segmenter.lib import arrayprocs
 from asemi_segmenter.lib import checkpoints
 from asemi_segmenter.lib import evaluations
@@ -529,12 +529,27 @@ def _saving_best_config(best_result_fullfname, tuning_results_file, listener):
 
 #########################################
 def main(
-        preproc_volume_fullfname, train_subvolume_dir, train_label_dirs,
-        eval_subvolume_dir, eval_label_dirs, config,
-        search_results_fullfname, best_result_fullfname, parameter_selection_timeout,
-        features_table_fullfname, checkpoint_fullfname, checkpoint_namespace, reset_checkpoint,
-        checkpoint_init, max_processes, max_batch_memory, use_gpu=False, listener=ProgressListener(),
-        debug_mode=False, extra_result_col_names=[], extra_result_col_values=[]
+        preproc_volume_fullfname,
+        train_subvolume_dir,
+        train_label_dirs,
+        eval_subvolume_dir,
+        eval_label_dirs,
+        config,
+        search_results_fullfname,
+        best_result_fullfname=None,
+        parameter_selection_timeout=1,
+        features_table_fullfname=None,
+        extra_result_col_names=[],
+        extra_result_col_values=[],
+        checkpoint_fullfname=None,
+        checkpoint_namespace='tune',
+        reset_checkpoint=False,
+        checkpoint_init=dict(),
+        max_processes=-1,
+        max_batch_memory=1,
+        use_gpu=False,
+        listener=listener.ProgressListener(),
+        debug_mode=False
     ):
     '''
     Find the best parameters for a segmenter based on manually labelled slices.
@@ -568,6 +583,8 @@ def main(
     :param str features_table_fullfname: Full file name (with path) to the HDF file that will
         contain precomputed features to speed up the search. If None then no file will be saved.
         Used on both training and evaluation sets but only if they are sampled (sample_size_per_label is not -1).
+    :param list extra_result_col_names: Names of any extra columns to add to the result file.
+    :param list extra_result_col_values: Values (fixed) of any extra columns to add to the result file.
     :param str checkpoint_fullfname: Full file name (with path) to checkpoint pickle.
         If None then no checkpointing is used.
     :param str checkpoint_namespace: Namespace for the checkpoint file.
@@ -582,8 +599,6 @@ def main(
     :param bool use_gpu: Whether to use the GPU for computing features.
     :param ProgressListener listener: The command's progress listener.
     :param bool debug_mode: Whether to show full error messages or just simple ones.
-    :param list extra_result_col_names: Names of any extra columns to add to the result file.
-    :param list extra_result_col_values: Values (fixed) of any extra columns to add to the result file.
     :return: The config data of the best segmenter found.
     :rtype: dict
     '''

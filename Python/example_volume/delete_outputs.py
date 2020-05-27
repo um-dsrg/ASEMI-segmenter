@@ -1,22 +1,18 @@
 import sys
 import os
 import shutil
-
-if len(sys.args) == 1 or sys.args[1] != 'keep_checkpoint':
-    keep_checkpoint = False
-else:
-    keep_checkpoint = True
+from asemi_segmenter.lib import files
 
 print('Deleting...')
-if not keep_checkpoint:
-    os.remove('output/checkpoint.json')
-os.remove('output/log.txt')
+print(' output/checkpoint.json')
+files.delete('output/checkpoint.json')
+print(' output/log.txt')
+files.delete('output/log.txt')
 for dir in os.listdir('output'):
-    for fname in os.listdir('output/{}'.format(dir)):
-        if fname != '.gitignore':
-            path = 'output/{}/{}'.format(dir, fname)
-            if os.path.isdir(path):
-                shutil.rmtree(path)
-            else:
-                os.remove(path)
+    dir = 'output/{}'.format(dir)
+    if os.path.isdir(dir):
+        print('', dir)
+        for fname in os.listdir(dir):
+            if fname != '.gitignore':
+                files.delete('{}/{}'.format(dir, fname))
 print('Ready.')

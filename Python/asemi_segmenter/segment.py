@@ -5,7 +5,7 @@ import os
 import json
 import pickle
 import numpy as np
-from asemi_segmenter.listener import ProgressListener
+from asemi_segmenter import listener
 from asemi_segmenter.lib import arrayprocs
 from asemi_segmenter.lib import checkpoints
 from asemi_segmenter.lib import files
@@ -67,15 +67,15 @@ def _loading_data(
         )
 
     listener.log_output('> Initialising')
-    
+
     listener.log_output('> Other parameters:')
     listener.log_output('>> reset_checkpoint: {}'.format(reset_checkpoint))
     listener.log_output('>> max_processes: {}'.format(max_processes))
     listener.log_output('>> max_batch_memory: {}GB'.format(max_batch_memory))
-    
+
     return (config_data, full_volume, slice_shape, segmenter, checkpoint)
-    
-    
+
+
 #########################################
 def _segmenting(
         config_data, full_volume, slice_shape, segmenter, results_dir, slice_indexes, max_processes, max_batch_memory, checkpoint, listener
@@ -88,7 +88,7 @@ def _segmenting(
         num_slices = slice_indexes.stop - slice_indexes.start
     else:
         num_slices = len(slice_indexes)
-    
+
     if config_data['as_masks']:
         for label in segmenter.classifier.labels:
             files.mkdir(os.path.join(results_dir, label))
@@ -118,7 +118,7 @@ def _segmenting(
         if not config_data['as_masks']:
             output = output + 1
         output = output.reshape(slice_shape)
-        
+
         images.save_image(
             os.path.join(
                 results_dir if label is None else os.path.join(results_dir, label),
@@ -154,16 +154,26 @@ def _segmenting(
                 save_slice(volume_slice_index, segmenter.segment_to_label_indexes(slice_features, max_processes))
         listener.current_progress_update(i+1)
     listener.current_progress_end()
-        
+
     return ()
 
 
 #########################################
 def main(
-        segmenter, preproc_volume_fullfname, config, results_dir,
-        checkpoint_fullfname, checkpoint_namespace, reset_checkpoint, checkpoint_init,
-        max_processes, max_batch_memory, use_gpu=False, listener=ProgressListener(),
-        slice_indexes=None, debug_mode=False
+        segmenter,
+        preproc_volume_fullfname,
+        config,
+        results_dir,
+        slice_indexes=None,
+        checkpoint_fullfname=None,
+        checkpoint_namespace='segment',
+        reset_checkpoint=False,
+        checkpoint_init=dict(),
+        max_processes=-1,
+        max_batch_memory=1,
+        use_gpu=False,
+        listener=listener.ProgressListener(),
+        debug_mode=False
     ):
     '''
     Segment a preprocessed volume using a trained segmenter.
@@ -176,10 +186,11 @@ def main(
         json file containing the configuration or a dictionary specifying the configuration
         directly). See user guide for description of the segment configuration.
     :type config: str or dict
-    :param results_dir: The path to the directory in which to store the segmented slices. Segmented
+    :param str results_dir: The path to the directory in which to store the segmented slices. Segmented
         slices consist of a directory for each label, each containing images that act as masks for
         whether a particular pixel belongs to said label or not.
-    :type results_dir: str
+    :param list slice_indexes: The integer indexes (0-based) of slices in the volume to
+        segment. If None then all slices are segmented.
     :param str checkpoint_fullfname: Full file name (with path) to checkpoint pickle.
         If None then no checkpointing is used.
     :param str checkpoint_namespace: Namespace for the checkpoint file.
@@ -194,8 +205,6 @@ def main(
     :param bool use_gpu: Whether to use the GPU for computing features. Note that this
         parameter does not do anything if the segmenter is provided directly.
     :param ProgressListener listener: The command's progress listener.
-    :param list slice_indexes: The integer indexes (0-based) of slices in the volume to
-        segment. If None then all slices are segmented.
     :param bool debug_mode: Whether to show full error messages or just simple ones.
     '''
     full_volume = None

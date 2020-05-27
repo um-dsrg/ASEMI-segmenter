@@ -3,7 +3,7 @@
 import os
 import json
 import numpy as np
-from asemi_segmenter.listener import ProgressListener
+from asemi_segmenter import listener
 from asemi_segmenter.lib import datasets
 from asemi_segmenter.lib import images
 from asemi_segmenter.lib import times
@@ -22,7 +22,7 @@ def _loading_data(
     listener.log_output('>> {}'.format(subvolume_dir))
     subvolume_data = volumes.load_volume_dir(subvolume_dir)
     subvolume_fullfnames = subvolume_data.fullfnames
-    
+
     listener.log_output('> Labels')
     labels_data = []
     for label_dir in label_dirs:
@@ -32,7 +32,7 @@ def _loading_data(
         listener.log_output('>>> {}'.format(label_data.name))
     labels = sorted(label_data.name for label_data in labels_data)
     validations.validate_annotation_data(None, subvolume_data, labels_data)
-    
+
     listener.log_output('> Config')
     if isinstance(config, str):
         listener.log_output('>> {}'.format(config))
@@ -44,21 +44,21 @@ def _loading_data(
     validations.validate_json_with_schema_file(config_data, 'dataset.json')
     if 'samples_to_skip_per_label' not in config_data['dataset']:
         config_data['dataset']['samples_to_skip_per_label'] = 0
-    
+
     listener.log_output('> Highlight radius')
     listener.log_output('>> {}'.format(highlight_radius))
     if highlight_radius < 1:
         raise ValueError('Highlight radius must be positive.')
-    
+
     listener.log_output('> Result')
     listener.log_output('>> {}'.format(results_dir))
     validations.check_directory(results_dir)
-    
+
     listener.log_output('> Initialising')
-    
+
     listener.log_output('> Other parameters:')
     listener.log_output('>> -')
-    
+
     return (subvolume_fullfnames, labels_data, config_data)
 
 
@@ -72,14 +72,14 @@ def _analysing(
     labels = sorted(label_data.name for label_data in labels_data)
     slice_shape = labels_data[0].shape
     slice_size = np.prod(labels_data[0].shape).tolist()
-    
+
     overlap_matrices = volumes.get_label_overlap(labels_data)
     for (i, overlap_matrix) in enumerate(overlap_matrices):
         with open(os.path.join(results_dir, 'overlap_slice_{}.txt'.format(i + 1)), 'w', encoding='utf-8') as f:
             print('', *labels, sep='\t', file=f)
             for label1 in labels:
                 print(label1, *[overlap_matrix[label1][label2] for label2 in labels], sep='\t', file=f)
-    
+
     label_palette = colours.LabelPalette(['unlabelled'] + labels)
     images.save_image(
         os.path.join(results_dir, 'legend.tiff'),
@@ -105,10 +105,10 @@ def _analysing(
             num_bits=8,
             compress=True
             )
-    
+
     if sample_size_per_label != -1:
         subvolume_slice_labels = volumes.load_labels(labels_data)
-        
+
         (voxel_indexes, label_positions) = datasets.sample_voxels(
             subvolume_slice_labels,
             sample_size_per_label,
@@ -118,9 +118,9 @@ def _analysing(
             config_data['dataset']['samples_to_skip_per_label'],
             seed=0
             )
-        
+
         label_palette = colours.LabelPalette(labels, skip_colours=1)
-        
+
         sample_labels = np.empty((len(voxel_indexes),), np.uint8)
         for (label_index, pos) in enumerate(label_positions):
             sample_labels[pos] = label_index
@@ -128,30 +128,35 @@ def _analysing(
         slice_voxel_samples = [list() for _ in subvolume_fullfnames]
         for ((slc, row, col), colour) in zip(voxel_indexes, subvolume_slice_colours):
             slice_voxel_samples[slc].append((row, col, colour))
-        
+
         for (i, (fname, samples)) in enumerate(zip(subvolume_fullfnames, slice_voxel_samples)):
             im = images.load_image(fname, num_bits=8)
             im = im.reshape(im.shape+(1,))
             im = im.repeat(3, axis=2)
-            
+
             r = highlight_radius
             for (row, col, colour) in samples:
                 im[row-r:row+r+1, col-r:col+r+1, :] = colour
-            
+
             images.save_image(
                 os.path.join(results_dir, 'samples_slice_{}.tiff'.format(i + 1)),
                 im,
                 num_bits=8,
                 compress=True
                 )
-    
+
     return ()
 
 
 #########################################
 def main(
-        subvolume_dir, label_dirs, config, highlight_radius, results_dir,
-        listener=ProgressListener(), debug_mode=False
+        subvolume_dir,
+        label_dirs,
+        config,
+        results_dir,
+        highlight_radius=1,
+        listener=listener.ProgressListener(),
+        debug_mode=False
     ):
     '''
     Analyse a data set (training set or evaluation set).
@@ -166,8 +171,8 @@ def main(
         json file containing the configuration or a dictionary specifying the configuration
         directly). See user guide for description of the analyse_data configuration.
     :type config: str or dict
-    :param int highlight_radius: The radius of squares that mark the sampled voxels.
     :param str results_dir: The path to the directory in which to store the output files.
+    :param int highlight_radius: The radius of squares that mark the sampled voxels.
     :param ProgressListener listener: The command's progress listener.
     :param bool debug_mode: Whether to show full error messages or just simple ones.
     '''

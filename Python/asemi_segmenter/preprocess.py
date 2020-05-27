@@ -1,7 +1,7 @@
 '''Preprocess command.'''
 
 import json
-from asemi_segmenter.listener import ProgressListener
+from asemi_segmenter import listener
 from asemi_segmenter.lib import arrayprocs
 from asemi_segmenter.lib import checkpoints
 from asemi_segmenter.lib import downscales
@@ -36,7 +36,7 @@ def _loading_data(
     validations.validate_json_with_schema_file(config_data, 'preprocess.json')
     downsample_filter = downscales.load_downsamplekernel_from_config(config_data['downsample_filter'])
     hash_function = hashfunctions.load_hashfunction_from_config(config_data['hash_function'])
-    
+
     listener.log_output('> Result')
     listener.log_output('>> {}'.format(result_data_fullfname))
     validations.check_filename(result_data_fullfname, '.hdf', False)
@@ -55,12 +55,12 @@ def _loading_data(
 
     listener.log_output('> Initialising')
     hash_function.init(slice_shape, seed=0)
-    
+
     listener.log_output('> Other parameters:')
     listener.log_output('>> reset_checkpoint: {}'.format(reset_checkpoint))
     listener.log_output('>> max_processes: {}'.format(max_processes))
     listener.log_output('>> max_batch_memory: {}GB'.format(max_batch_memory))
-    
+
     return (config_data, full_volume, volume_fullfnames, slice_shape, downsample_filter, hash_function, checkpoint)
 
 
@@ -76,7 +76,7 @@ def _creating_empty_data_file(
         volume_shape = (len(volume_fullfnames), *slice_shape)
         full_volume.create(config_data, volume_shape)
     full_volume.load()
-    
+
     return ()
 
 
@@ -111,7 +111,7 @@ def _dumping_slices_into_data_file(
                 listener.current_progress_update(num_ready)
                 ))
         listener.current_progress_end()
-    
+
     return ()
 
 
@@ -153,7 +153,7 @@ def _downscaling_volume(
                     listener.current_progress_update(num_ready)
                 )
             listener.current_progress_end()
-    
+
     return ()
 
 
@@ -173,15 +173,22 @@ def _hashing_volume_slices(
                 hash_function.apply(img_data)
             listener.current_progress_update(volume_slice_index+1)
         listener.current_progress_end()
-    
+
     return ()
 
 
 #########################################
 def main(
-        volume_dir, config, result_data_fullfname,
-        checkpoint_fullfname, checkpoint_namespace, reset_checkpoint, checkpoint_init,
-        max_processes, max_batch_memory, listener=ProgressListener(),
+        volume_dir,
+        config,
+        result_data_fullfname,
+        checkpoint_fullfname=None,
+        checkpoint_namespace='preprocess',
+        reset_checkpoint=False,
+        checkpoint_init=dict(),
+        max_processes=-1,
+        max_batch_memory=1,
+        listener=listener.ProgressListener(),
         debug_mode=False
     ):
     '''

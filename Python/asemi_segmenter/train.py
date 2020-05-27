@@ -2,7 +2,7 @@
 
 import json
 import numpy as np
-from asemi_segmenter.listener import ProgressListener
+from asemi_segmenter import listener
 from asemi_segmenter.lib import arrayprocs
 from asemi_segmenter.lib import checkpoints
 from asemi_segmenter.lib import hashfunctions
@@ -250,10 +250,20 @@ def _saving_segmenter(
 
 #########################################
 def main(
-        preproc_volume_fullfname, subvolume_dir, label_dirs, config,
-        result_segmenter_fullfname, checkpoint_namespace, trainingset_file_fullfname,
-        checkpoint_fullfname, reset_checkpoint, checkpoint_init,
-        max_processes, max_batch_memory, use_gpu=False, listener=ProgressListener(),
+        preproc_volume_fullfname,
+        subvolume_dir,
+        label_dirs,
+        config,
+        result_segmenter_fullfname=None,
+        trainingset_file_fullfname=None,
+        checkpoint_fullfname=None,
+        checkpoint_namespace='train',
+        reset_checkpoint=False,
+        checkpoint_init=dict(),
+        max_processes=-1,
+        max_batch_memory=1,
+        use_gpu=False,
+        listener=listener.ProgressListener(),
         debug_mode=False
     ):
     '''
@@ -271,9 +281,7 @@ def main(
         json file containing the configuration or a dictionary specifying the configuration
         directly). See user guide for description of the train configuration.
     :type config: str or dict
-    :param result_segmenter_fullfname: Full file name (with path) to pickle file to create. If None
-        then it will not be saved.
-    :type result_segmenter_fullfname: str or None
+    :param str result_segmenter_fullfname: Full file name (with path) to pickle file to create. If None then it will not be saved.
     :param str checkpoint_fullfname: Full file name (with path) to checkpoint pickle.
         If None then no checkpointing is used.
     :param str checkpoint_namespace: Namespace for the checkpoint file.
