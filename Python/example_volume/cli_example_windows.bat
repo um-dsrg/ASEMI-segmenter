@@ -6,6 +6,8 @@ python ..\bin\preprocess.py ^
     --volume_dir "volume" ^
     --config_fullfname "configs\preprocess_config.json" ^
     --result_data_fullfname "output\preprocess\volume.hdf" ^
+    --checkpoint_fullfname "output\checkpoint.json" ^
+    --log_file_fullfname "output\log.txt" ^
     --max_processes 4 ^
     --max_batch_memory 1.0
 
@@ -35,6 +37,8 @@ python ..\bin\tune.py ^
     --search_results_fullfname "output\tune\results.txt" ^
     --best_result_fullfname "output\tune\result.json" ^
     --features_table_fullfname "output\tune\features.hdf" ^
+    --checkpoint_fullfname "output\checkpoint.json" ^
+    --log_file_fullfname "output\log.txt" ^
     --max_processes 4 ^
     --max_batch_memory 1.0
 
@@ -48,6 +52,8 @@ python ..\bin\train.py ^
     --config_fullfname "configs\train_config.json" ^
     --result_segmenter_fullfname "output\train\segmenter.pkl" ^
     --trainingset_file_fullfname "output\train\trainingset.hdf" ^
+    --checkpoint_fullfname "output\checkpoint.json" ^
+    --log_file_fullfname "output\log.txt" ^
     --max_processes 4 ^
     --max_batch_memory 1.0
 
@@ -60,6 +66,8 @@ python ..\bin\evaluate.py ^
         "testing_set\labels\tissues" ^
         "testing_set\labels\bones" ^
     --results_dir "output\evaluate" ^
+    --checkpoint_fullfname "output\checkpoint.json" ^
+    --log_file_fullfname "output\log.txt" ^
     --max_processes 4 ^
     --max_batch_memory 1.0
 
@@ -68,5 +76,7 @@ python ..\bin\segment.py ^
     --preproc_volume_fullfname "output\preprocess\volume.hdf" ^
     --config_fullfname "configs\segment_config.json" ^
     --results_dir "output\segment" ^
+    --checkpoint_fullfname "output\checkpoint.json" ^
+    --log_file_fullfname "output\log.txt" ^
     --max_processes 4 ^
     --max_batch_memory 1.0
