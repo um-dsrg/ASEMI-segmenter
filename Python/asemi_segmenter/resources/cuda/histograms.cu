@@ -197,7 +197,7 @@ __global__ void ISTOGRAMMA(
       // copy histogram from shared memory to global memory (non-coalesced)
       for (int ibin = 0; ibin < NBINS; ibin++)
          {
-         if (ix < NX && iy < NY)
+         if (ix < HX && iy < HY)
             d_volume_histo[ibin + NBINS * (ix + HX * (iy + HY * iz))] =
                   myhisto(ibin);
          }
