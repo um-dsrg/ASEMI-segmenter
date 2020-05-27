@@ -169,7 +169,7 @@ __global__ void ISTOGRAMMA(
 
    // every thread clears its histogram in shared memory
    for (int i = 0; i < NBINS; i++)
-      myhisto(i)= 0;
+      myhisto(i) = 0;
 
    // computation of first slice
    for (int z_offset = -RADIUS_H; z_offset <= RADIUS_H; z_offset++)
