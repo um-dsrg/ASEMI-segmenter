@@ -15,11 +15,11 @@ from asemi_segmenter.lib import arrayprocs
 
 
 #########################################
-def extract_features(preproc_volume_fullfname, featuriser_config, volume_slice_index, max_processes, max_batch_memory, save_as=None):
+def extract_features(preproc_volume_fullfname, featuriser_config, volume_slice_index, max_processes, max_batch_memory, save_as=None, use_gpu=False):
     full_volume = volumes.FullVolume(preproc_volume_fullfname)
     full_volume.load()
 
-    featuriser = featurisers.load_featuriser_from_config(featuriser_config)
+    featuriser = featurisers.load_featuriser_from_config(featuriser_config, use_gpu=use_gpu)
 
     best_block_shape = arrayprocs.get_optimal_block_size(
         full_volume.get_shape(),
@@ -75,6 +75,8 @@ def main():
         help='The maximum number of processes to use.')
     parser.add_argument('--max_batch_memory', required=True, type=float,
         help='The maximum amount of memory in GB to use.')
+    parser.add_argument('--use_gpu', required=False, default='no', choices=['yes', 'no'],
+        help='Whether to use the GPU for computing feature.')
     args = parser.parse_args()
 
     with open(args.feature_config_fullfname, 'r', encoding='utf-8') as f:
@@ -88,7 +90,8 @@ def main():
         volume_slice_index=args.volume_slice_index,
         save_as=args.save_as,
         max_processes=2,
-        max_batch_memory=0.1
+        max_batch_memory=0.1,
+        use_gpu=args.use_gpu == 'yes'
         )
 
 

@@ -1,0 +1,15 @@
+{
+		"type": "composite",
+		"params": {
+			"featuriser_list": [
+				{
+					"type": "histogram",
+					"params": {
+						"radius": 11,
+						"scale": 0,
+						"num_bins": 32
+					}
+				}
+			]
+		}
+	}
