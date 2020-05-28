@@ -24,11 +24,11 @@ __device__ void update_slice(
       // thread index in CUDA block ( tid >= 0 && tid < blockDim.y * blockDim.x )
       const int tid,
       // size of the section of slice read in this block
-      const int WW_Y, const int WW_X,
+      const int WW_X, const int WW_Y,
       // neighbourhood radius around voxel for computing histogram
       const int RADIUS_H,
-      // x,y coordinates of thread's voxel in global volume
-      const int block_cy, const int block_cx,
+      // x,y coordinates of block's corner in global volume
+      const int block_cx, const int block_cy,
       // z coordinate of thread's voxel in global volume
       const int global_z,
       // number of bins in histogram
@@ -69,7 +69,7 @@ __device__ void update_slice(
          const float v = SLICE[threadIdx.x + sx + RADIUS_H + WW_X * (threadIdx.y + sy + RADIUS_H)];
          // add to histogram if within limits
          if (v >= 0 && v < NBINS)
-            myhisto((int) v) += iadd;
+            myhisto(int(v)) += iadd;
          }
    // make sure all slice section is processed
    __syncthreads();
@@ -150,17 +150,17 @@ __global__ void ISTOGRAMMA(
       const int RADIUS_H)
    {
    // size of the section of slice read in this block
-   const int WW_Y = RADIUS_H + blockDim.y + RADIUS_H;
    const int WW_X = RADIUS_H + blockDim.x + RADIUS_H;
+   const int WW_Y = RADIUS_H + blockDim.y + RADIUS_H;
    // x,y coordinates of block's corner in global volume
    const int block_cx = x_start + blockIdx.x * blockDim.x;
    const int block_cy = y_start + blockIdx.y * blockDim.y;
    // thread index in CUDA block ( tid >= 0 && tid < blockDim.y * blockDim.x )
    const int tid = threadIdx.y * blockDim.x + threadIdx.x;
    // size of the histogram output matrix
-   const int HZ = z_stop - z_start;
-   const int HY = y_stop - y_start;
    const int HX = x_stop - x_start;
+   const int HY = y_stop - y_start;
+   const int HZ = z_stop - z_start;
    // x,y coordinates of thread's voxel in histogram output matrix
    const int ix = block_cx + threadIdx.x - x_start;
    const int iy = block_cy + threadIdx.y - y_start;
@@ -174,8 +174,8 @@ __global__ void ISTOGRAMMA(
    // computation of first slice
    for (int z_offset = -RADIUS_H; z_offset <= RADIUS_H; z_offset++)
       {
-      update_slice(+1, tid, WW_Y, WW_X, RADIUS_H,
-            block_cy, block_cx, z_start + iz + z_offset,
+      update_slice(+1, tid, WW_X, WW_Y, RADIUS_H, block_cx, block_cy,
+            z_start + iz + z_offset,
             NBINS, d_volume_in, NX, NY, NZ);
       }
    // copy histogram from shared memory to global memory (non-coalesced)
@@ -188,11 +188,11 @@ __global__ void ISTOGRAMMA(
    // computation of following slices
    for (iz++; iz < HZ; iz++)
       {
-      update_slice(-1, tid, WW_Y, WW_X, RADIUS_H,
-            block_cy, block_cx, z_start + iz - 1 - RADIUS_H,
+      update_slice(-1, tid, WW_X, WW_Y, RADIUS_H, block_cx, block_cy,
+            z_start + iz - 1 - RADIUS_H,
             NBINS, d_volume_in, NX, NY, NZ);
-      update_slice(+1, tid, WW_Y, WW_X, RADIUS_H,
-            block_cy, block_cx, z_start + iz + RADIUS_H,
+      update_slice(+1, tid, WW_X, WW_Y, RADIUS_H, block_cx, block_cy,
+            z_start + iz + RADIUS_H,
             NBINS, d_volume_in, NX, NY, NZ);
       // copy histogram from shared memory to global memory (non-coalesced)
       for (int ibin = 0; ibin < NBINS; ibin++)
