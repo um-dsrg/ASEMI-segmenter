@@ -289,6 +289,8 @@ def _tuning(
 
         features_table.load()
 
+    last_global_iteration = 0
+
     class TimedOut(Exception):
         '''Time out exception.'''
         pass
@@ -395,10 +397,13 @@ def _tuning(
                                 evaluation.evaluate(prediction, eval_subvolume_slice_labels[i*slice_size:(i+1)*slice_size])
 
                     tuning_results_file.add(
+                        'global',
+                        iteration,
                         segmenter.get_config(),
                         sub_timer.duration,
                         extra_col_values
                         )
+                    last_global_iteration = iteration
                 listener.current_progress_update(iteration)
             listener.current_progress_end()
         except TimedOut as ex:
@@ -508,6 +513,8 @@ def _tuning(
                                 evaluation.evaluate(prediction, eval_subvolume_slice_labels[i*slice_size:(i+1)*slice_size])
 
                     tuning_results_file.add(
+                        'local',
+                        last_global_iteration + iteration,
                         segmenter.get_config(),
                         sub_timer.duration,
                         extra_col_values

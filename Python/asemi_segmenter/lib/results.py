@@ -255,6 +255,8 @@ class TuningResultsFile(object):
         '''
         with open(self.results_fullfname, 'w', encoding='utf-8') as f:
             print(
+                'phase',
+                'iteration',
                 'json config',
                 'global {}'.format(self.evaluation.name),
                 'min {}'.format(self.evaluation.name),
@@ -271,7 +273,7 @@ class TuningResultsFile(object):
         best_jsonconfig = None
         with open(self.results_fullfname, 'r', encoding='utf-8') as f:
             for line in f.read().strip().split('\n')[1:]:
-                [json_config, global_score] = line.split('\t')[:2]
+                [json_config, global_score] = line.split('\t')[2:4]
                 if self.evaluation.is_percentage:
                     global_score = global_score[:-1]
                 global_score = float(global_score)
@@ -282,14 +284,19 @@ class TuningResultsFile(object):
             self.best_config = json.loads(best_jsonconfig)
 
     #########################################
-    def add(self, config, total_duration, extra_col_values=[]):
+    def add(self, phase, iteration, config, total_duration, extra_col_values=[]):
         '''
         Add a new result to the file.
 
+        :param str phase: The tuning phase which is either 'global' or 'local'.
+        :param int iteration: The iteration number of the tuning (continues on change of phase).
         :param dict config: The configuation dictionary used to produce these results.
         :param float total_duration: The total duration to compute the row.
         :param list extra_col_values: A list of extra columns to add.
         '''
+        if phase not in ['global', 'local']:
+            raise ValueError('phase is not a valid value.')
+
         (label_scores, global_score) = self.evaluation.get_global_results()
         if global_score > self.best_globalscore:
             self.best_globalscore = global_score
@@ -297,6 +304,8 @@ class TuningResultsFile(object):
 
         with open(self.results_fullfname, 'a', encoding='utf-8') as f:
             print(
+                phase,
+                iteration,
                 json.dumps(config),
                 '{:.3{}}'.format(
                     global_score,
