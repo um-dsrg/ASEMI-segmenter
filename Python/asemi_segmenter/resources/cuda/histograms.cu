@@ -4,6 +4,8 @@
  * Integrated and updated by Johann A. Briffa
  */
 
+#include <stdint.h>
+
 /* Dynamic shared memory region
  *
  * The first WW_X * WW_Y elements hold the tile neighbourhood, where:
@@ -92,7 +94,7 @@ __device__ void update_slice(
          const ${index_t} v = shared_tile[threadIdx.x + sx + radius + WW_X * (threadIdx.y + sy + radius)];
          // add to histogram if within limits
          if (v >= 0 && v < num_bins)
-            shared_hist[v * blockDim.y * blockDim.x + tid] += iadd;
+            shared_hist[int(v) * blockDim.y * blockDim.x + tid] += iadd;
          }
    // make sure all slice section is processed
    __syncthreads();

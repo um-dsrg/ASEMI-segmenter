@@ -249,7 +249,6 @@ def gpu_apply_histogram_to_all_neighbourhoods_in_slice_3d(array_3d, slice_index,
 
     # input volume
     # assert array_3d.dtype == np.uint16
-    array_3d_float = array_3d.astype(np.float32, order='C')
     NZ, NY, NX = array_3d.shape
 
     # GPU block size (working sizes)
@@ -260,18 +259,20 @@ def gpu_apply_histogram_to_all_neighbourhoods_in_slice_3d(array_3d, slice_index,
     gridsize = ( int(math.ceil( float(cols) / float(WS_X) )),
                  int(math.ceil( float(rows) / float(WS_Y) )),
                  1 )
-    sharedsize = 4 * (2 * radius + WS_X) * (2 * radius + WS_Y) + \
-                 WS_Y * WS_X * num_bins * 4
+    sharedsize_tile = 4 * (2 * radius + WS_X) * (2 * radius + WS_Y) # index_t
+    sharedsize_hist = 4 * WS_Y * WS_X * num_bins # result_t
+    sharedsize = sharedsize_tile + sharedsize_hist
 
     # CUDA code
     code = Template(pkg_resources.resource_string('asemi_segmenter.resources.cuda', 'histograms.cu').decode())
-    mod = pycuda.compiler.SourceModule(code.substitute(data_t='float', result_t='float', index_t='int'))
+    mod = pycuda.compiler.SourceModule(code.substitute(data_t='float',
+            result_t='float', index_t='int'))
 
     # kernel call
     histogram_3d = mod.get_function("histogram_3d")
     histogram_3d( drv.Out(result),
                 np.int32(min_range), np.int32(max_range), np.int32(num_bins),
-                drv.In(array_3d_float),
+                drv.In(array_3d.astype(np.float32)),
                 np.int32(NX), np.int32(NY), np.int32(NZ),
                 np.int32(col_slice.start), np.int32(col_slice.stop),
                 np.int32(row_slice.start), np.int32(row_slice.stop),
