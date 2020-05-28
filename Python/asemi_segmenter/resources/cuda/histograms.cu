@@ -14,11 +14,7 @@
  * each thread (i.e. a separate histogram for every voxel in the tile).
  */
 
-extern __shared__ float SLICE[];
-
-// Macro to determine absolute index for i'th bin of this thread's histogram
-
-#define myhisto(i) SLICE[WW_Y * WW_X + (i) * blockDim.y * blockDim.x + tid]
+extern __shared__ float shared_memory[];
 
 /* Computes the contribution to the histogram from the slice at global_z.
  * (Auxiliary Function)
@@ -65,6 +61,9 @@ __device__ void update_slice(
       const float *d_volume_in,
       const int NX, const int NY, const int NZ)
    {
+   // pointers for shared-memory regions
+   float *shared_tile = (float *)(shared_memory);
+   float *shared_hist = (float *)&shared_tile[WW_Y * WW_X];
    // parallel read of section of slice into shared memory
    for (int i_in_tile = tid;
          i_in_tile < WW_Y * WW_X;
@@ -82,7 +81,7 @@ __device__ void update_slice(
       // convert value to corresponding histogram bin index
       const int res = num_bins * (val - min_range) / (max_range - min_range);
       // store in shared memory
-      SLICE[i_in_tile] = res;
+      shared_tile[i_in_tile] = res;
       }
    // make sure all slice section is read
    __syncthreads();
@@ -91,10 +90,10 @@ __device__ void update_slice(
       for (int sy = -radius; sy <= radius; sy++)
          {
          // get neighbouring pixel value (bin index, really)
-         const float v = SLICE[threadIdx.x + sx + radius + WW_X * (threadIdx.y + sy + radius)];
+         const float v = shared_tile[threadIdx.x + sx + radius + WW_X * (threadIdx.y + sy + radius)];
          // add to histogram if within limits
          if (v >= 0 && v < num_bins)
-            myhisto(int(v)) += iadd;
+            shared_hist[int(v) * blockDim.y * blockDim.x + tid] += iadd;
          }
    // make sure all slice section is processed
    __syncthreads();
@@ -156,10 +155,13 @@ __global__ void histogram_3d(
    const int iy = block_cy + threadIdx.y - y_start;
    // z coordinate of thread's voxel in histogram output matrix (loop variable)
    int iz = 0;
+   // pointers for shared-memory regions
+   float *shared_tile = (float *)(shared_memory);
+   float *shared_hist = (float *)&shared_tile[WW_Y * WW_X];
 
    // every thread clears its histogram in shared memory
    for (int i = 0; i < num_bins; i++)
-      myhisto(i) = 0;
+      shared_hist[i * blockDim.y * blockDim.x + tid]  = 0;
 
    // computation of first slice
    for (int z_offset = -radius; z_offset <= radius; z_offset++)
@@ -173,7 +175,7 @@ __global__ void histogram_3d(
       {
       if (ix < HX && iy < HY)
          d_volume_histo[ibin + num_bins * (ix + HX * (iy + HY * iz))] =
-               myhisto(ibin);
+               shared_hist[ibin * blockDim.y * blockDim.x + tid];
       }
    // computation of following slices
    for (iz++; iz < HZ; iz++)
@@ -189,7 +191,7 @@ __global__ void histogram_3d(
          {
          if (ix < HX && iy < HY)
             d_volume_histo[ibin + num_bins * (ix + HX * (iy + HY * iz))] =
-                  myhisto(ibin);
+                  shared_hist[ibin * blockDim.y * blockDim.x + tid];
          }
       }
    }
