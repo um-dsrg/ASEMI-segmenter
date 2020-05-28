@@ -167,8 +167,6 @@ __global__ void histogram_3d(
    // every thread clears its histogram in shared memory
    for (int i = 0; i < NBINS; i++)
       myhisto(i) = 0;
-   // make sure all threads have reset their histogram
-   __syncthreads();
 
    // computation of first slice
    for (int z_offset = -RADIUS_H; z_offset <= RADIUS_H; z_offset++)
