@@ -7,6 +7,7 @@ import sys
 import math
 import pkg_resources
 from asemi_segmenter.lib import regions
+from string import Template
 
 import pycuda
 try:
@@ -226,9 +227,6 @@ def gpu_apply_histogram_to_all_neighbourhoods_in_slice_3d(array_3d, slice_index,
     if not gpu_available:
         raise ValueError('GPU is not available.')
 
-    # CUDA code
-    mod = pycuda.compiler.SourceModule(pkg_resources.resource_string('asemi_segmenter.resources.cuda', 'histograms.cu').decode())
-
     ## Example parameters
     # array_3d.shape = (23, 172, 202)
     # slice_index = 11
@@ -262,8 +260,12 @@ def gpu_apply_histogram_to_all_neighbourhoods_in_slice_3d(array_3d, slice_index,
     gridsize = ( int(math.ceil( float(cols) / float(WS_X) )),
                  int(math.ceil( float(rows) / float(WS_Y) )),
                  1 )
-    sharedsize = 4 * (radius + WS_X + radius) * (radius + WS_Y + radius) + \
+    sharedsize = 4 * (2 * radius + WS_X) * (2 * radius + WS_Y) + \
                  WS_Y * WS_X * num_bins * 4
+
+    # CUDA code
+    code = Template(pkg_resources.resource_string('asemi_segmenter.resources.cuda', 'histograms.cu').decode())
+    mod = pycuda.compiler.SourceModule(code.substitute(data_t='float', result_t='float', index_t='int'))
 
     # kernel call
     histogram_3d = mod.get_function("histogram_3d")

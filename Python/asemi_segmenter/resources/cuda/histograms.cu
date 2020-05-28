@@ -14,7 +14,7 @@
  * each thread (i.e. a separate histogram for every voxel in the tile).
  */
 
-extern __shared__ float shared_memory[];
+extern __shared__ int8_t shared_memory[];
 
 /* Computes the contribution to the histogram from the slice at global_z.
  * (Auxiliary Function)
@@ -58,12 +58,12 @@ __device__ void update_slice(
       // histogram definition
       const int min_range, const int max_range, const int num_bins,
       // input volume and size
-      const float *d_volume_in,
+      const ${data_t} *d_volume_in,
       const int NX, const int NY, const int NZ)
    {
    // pointers for shared-memory regions
-   float *shared_tile = (float *)(shared_memory);
-   float *shared_hist = (float *)&shared_tile[WW_Y * WW_X];
+   ${index_t} *shared_tile = (${index_t} *)(shared_memory);
+   ${result_t} *shared_hist = (${result_t} *)&shared_tile[WW_Y * WW_X];
    // parallel read of section of slice into shared memory
    for (int i_in_tile = tid;
          i_in_tile < WW_Y * WW_X;
@@ -73,15 +73,14 @@ __device__ void update_slice(
       const int global_x = block_cx + (i_in_tile % WW_X) - radius;
       const int global_y = block_cy + (i_in_tile / WW_X) - radius;
       // read value at x,y from global memory if exists, zero otherwise
-      float val = 0;
+      ${data_t} val = 0;
       if( global_x >= 0 && global_x < NX &&
           global_y >= 0 && global_y < NY &&
           global_z >= 0 && global_z < NZ )
          val = d_volume_in[global_x + NX * (global_y + NY * global_z)];
       // convert value to corresponding histogram bin index
-      const int res = num_bins * (val - min_range) / (max_range - min_range);
-      // store in shared memory
-      shared_tile[i_in_tile] = res;
+      // and store in shared memory
+      shared_tile[i_in_tile] = int(num_bins * (val - min_range) / float(max_range - min_range));
       }
    // make sure all slice section is read
    __syncthreads();
@@ -89,11 +88,11 @@ __device__ void update_slice(
    for (int sx = -radius; sx <= radius; sx++)
       for (int sy = -radius; sy <= radius; sy++)
          {
-         // get neighbouring pixel value (bin index, really)
-         const float v = shared_tile[threadIdx.x + sx + radius + WW_X * (threadIdx.y + sy + radius)];
+         // get neighbouring pixel bin index
+         const ${index_t} v = shared_tile[threadIdx.x + sx + radius + WW_X * (threadIdx.y + sy + radius)];
          // add to histogram if within limits
          if (v >= 0 && v < num_bins)
-            shared_hist[int(v) * blockDim.y * blockDim.x + tid] += iadd;
+            shared_hist[v * blockDim.y * blockDim.x + tid] += iadd;
          }
    // make sure all slice section is processed
    __syncthreads();
@@ -125,11 +124,11 @@ __device__ void update_slice(
  */
 __global__ void histogram_3d(
       // histogram output matrix
-      float *d_volume_histo,
+      ${result_t} *d_volume_histo,
       // histogram definition
       const int min_range, const int max_range, const int num_bins,
       // input volume and size
-      const float *d_volume_in,
+      const ${data_t} *d_volume_in,
       const int NX, const int NY, const int NZ,
       // range of slices to consider in each dimension (half-open)
       const int x_start, const int x_stop,
@@ -139,8 +138,8 @@ __global__ void histogram_3d(
       const int radius)
    {
    // size of the section of slice read in this block
-   const int WW_X = radius + blockDim.x + radius;
-   const int WW_Y = radius + blockDim.y + radius;
+   const int WW_X = 2 * radius + blockDim.x;
+   const int WW_Y = 2 * radius + blockDim.y;
    // x,y coordinates of block's corner in global volume
    const int block_cx = x_start + blockIdx.x * blockDim.x;
    const int block_cy = y_start + blockIdx.y * blockDim.y;
@@ -156,8 +155,8 @@ __global__ void histogram_3d(
    // z coordinate of thread's voxel in histogram output matrix (loop variable)
    int iz = 0;
    // pointers for shared-memory regions
-   float *shared_tile = (float *)(shared_memory);
-   float *shared_hist = (float *)&shared_tile[WW_Y * WW_X];
+   ${index_t} *shared_tile = (${index_t} *)(shared_memory);
+   ${result_t} *shared_hist = (${result_t} *)&shared_tile[WW_Y * WW_X];
 
    // every thread clears its histogram in shared memory
    for (int i = 0; i < num_bins; i++)
