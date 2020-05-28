@@ -17,7 +17,7 @@ from asemi_segmenter.lib import volumes
 #########################################
 def _loading_data(
         preproc_volume_fullfname, subvolume_dir, label_dirs, config,
-        result_segmenter_fullfname, trainingset_file_fullfname,
+        result_segmenter_fullfname, trainingset_file_fullfname, train_sample_seed,
         checkpoint_fullfname, checkpoint_namespace, reset_checkpoint,
         checkpoint_init, max_processes, max_batch_memory, use_gpu, listener
     ):
@@ -86,6 +86,8 @@ def _loading_data(
     hash_function.init(slice_shape, seed=0)
 
     listener.log_output('> Other parameters:')
+    if train_sample_seed is not None:
+        listener.log_output('>> data sample seed: {}'.format(train_sample_seed))
     listener.log_output('>> reset_checkpoint: {}'.format(reset_checkpoint))
     listener.log_output('>> max_processes: {}'.format(max_processes))
     listener.log_output('>> max_batch_memory: {}GB'.format(max_batch_memory))
@@ -133,7 +135,8 @@ def _constructing_labels_dataset(
 
 #########################################
 def _constructing_trainingset(
-        full_volume, subvolume_fullfnames, volume_slice_indexes_in_subvolume, slice_shape, slice_size, subvolume_slice_labels, segmenter, training_set, checkpoint, max_processes, max_batch_memory, listener
+        full_volume, subvolume_fullfnames, volume_slice_indexes_in_subvolume, slice_shape, slice_size, subvolume_slice_labels, segmenter, training_set, train_sample_seed, checkpoint,
+        max_processes, max_batch_memory, listener
     ):
     '''Constructing training set stage.'''
     listener.log_output('> Sampling training items')
@@ -146,7 +149,7 @@ def _constructing_trainingset(
             volume_slice_indexes_in_subvolume,
             slice_shape,
             segmenter.train_config['training_set']['samples_to_skip_per_label'],
-            seed=0
+            seed=train_sample_seed
             )
 
     listener.log_output('> Train label sizes:')
@@ -256,6 +259,7 @@ def main(
         config,
         result_segmenter_fullfname=None,
         trainingset_file_fullfname=None,
+        train_sample_seed=None,
         checkpoint_fullfname=None,
         checkpoint_namespace='train',
         reset_checkpoint=False,
@@ -282,6 +286,8 @@ def main(
         directly). See user guide for description of the train configuration.
     :type config: str or dict
     :param str result_segmenter_fullfname: Full file name (with path) to pickle file to create. If None then it will not be saved.
+    :param int train_sample_seed: Seed for the random number generator which samples voxels.
+        If None then the random number generator will be non-deterministic.
     :param str checkpoint_fullfname: Full file name (with path) to checkpoint pickle.
         If None then no checkpointing is used.
     :param str checkpoint_namespace: Namespace for the checkpoint file.
@@ -317,7 +323,7 @@ def main(
                 (full_volume, subvolume_fullfnames, labels_data, slice_shape, slice_size, segmenter, training_set, hash_function, checkpoint) = _loading_data(
                     preproc_volume_fullfname, subvolume_dir, label_dirs, config,
                     result_segmenter_fullfname, trainingset_file_fullfname,
-                    checkpoint_fullfname, checkpoint_namespace, reset_checkpoint,
+                    train_sample_seed, checkpoint_fullfname, checkpoint_namespace, reset_checkpoint,
                     checkpoint_init, max_processes, max_batch_memory, use_gpu,
                     listener
                     )
@@ -353,7 +359,7 @@ def main(
             listener.log_output(times.get_timestamp())
             listener.log_output('Constructing training set')
             with times.Timer() as timer:
-                () = _constructing_trainingset(full_volume, subvolume_fullfnames, volume_slice_indexes_in_subvolume, slice_shape, slice_size, subvolume_slice_labels, segmenter, training_set, checkpoint, max_processes, max_batch_memory, listener)
+                () = _constructing_trainingset(full_volume, subvolume_fullfnames, volume_slice_indexes_in_subvolume, slice_shape, slice_size, subvolume_slice_labels, segmenter, training_set, train_sample_seed, checkpoint, max_processes, max_batch_memory, listener)
             listener.log_output('Training set constructed')
             listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
             listener.log_output('')

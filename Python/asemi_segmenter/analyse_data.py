@@ -16,7 +16,7 @@ from asemi_segmenter.lib import checkpoints
 #########################################
 def _loading_data(
         subvolume_dir, label_dirs, config, highlight_radius,
-        results_dir, checkpoint_fullfname, checkpoint_namespace,
+        results_dir, data_sample_seed, checkpoint_fullfname, checkpoint_namespace,
         reset_checkpoint, checkpoint_init, listener
     ):
     '''Loading data stage.'''
@@ -70,6 +70,8 @@ def _loading_data(
     listener.log_output('> Initialising')
 
     listener.log_output('> Other parameters:')
+    if data_sample_seed is not None:
+        listener.log_output('>> data sample seed: {}'.format(data_sample_seed))
     listener.log_output('>> reset_checkpoint: {}'.format(reset_checkpoint))
 
     return (subvolume_fullfnames, labels_data, config_data, checkpoint)
@@ -78,7 +80,7 @@ def _loading_data(
 #########################################
 def _analysing(
         subvolume_fullfnames, labels_data, config_data, highlight_radius,
-        results_dir, checkpoint, listener
+        results_dir, data_sample_seed, checkpoint, listener
     ):
     '''Analysing stage.'''
     sample_size_per_label = config_data['dataset']['sample_size_per_label']
@@ -140,7 +142,7 @@ def _analysing(
                 list(range(len(subvolume_fullfnames))),
                 labels_data[0].shape,
                 config_data['dataset']['samples_to_skip_per_label'],
-                seed=0
+                seed=data_sample_seed
                 )
 
             label_palette = colours.LabelPalette(labels, skip_colours=1)
@@ -179,6 +181,7 @@ def main(
         config,
         results_dir,
         highlight_radius=1,
+        data_sample_seed=None,
         checkpoint_fullfname=None,
         checkpoint_namespace='analyse_data',
         reset_checkpoint=False,
@@ -201,6 +204,8 @@ def main(
     :type config: str or dict
     :param str results_dir: The path to the directory in which to store the output files.
     :param int highlight_radius: The radius of squares that mark the sampled voxels.
+    :param int data_sample_seed: Seed for the random number generator which samples voxels.
+        If None then the random number generator will be non-deterministic.
     :param str checkpoint_fullfname: Full file name (with path) to checkpoint pickle.
         If None then no checkpointing is used.
     :param str checkpoint_namespace: Namespace for the checkpoint file.
@@ -228,7 +233,7 @@ def main(
             with times.Timer() as timer:
                 (subvolume_fullfnames, labels_data, config_data, checkpoint) = _loading_data(
                     subvolume_dir, label_dirs, config, highlight_radius,
-                    results_dir, checkpoint_fullfname, checkpoint_namespace,
+                    results_dir, data_sample_seed, checkpoint_fullfname, checkpoint_namespace,
                     reset_checkpoint, checkpoint_init, listener
                     )
             listener.log_output('Data loaded')
@@ -243,7 +248,7 @@ def main(
             with times.Timer() as timer:
                 () = _analysing(
                     subvolume_fullfnames, labels_data, config_data, highlight_radius,
-                    results_dir, checkpoint, listener
+                    results_dir, data_sample_seed, checkpoint, listener
                     )
             listener.log_output('Analysed')
             listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))

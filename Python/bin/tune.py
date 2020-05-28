@@ -81,6 +81,27 @@ if __name__ == '__main__':
             help='Full path to HDF file to store precomputed features to speed up this process (*.hdf). Used on both training and evaluation sets but only if they are sampled (sample_size_per_label is not -1). If left out, then features will be kept in memory.'
         )
     parser.add_argument(
+            '--train_sample_seed',
+            required=False,
+            default=None,
+            type=int,
+            help='Seed for the random number generator which samples training voxels. If left out then the random number generator will be non-deterministic.'
+        )
+    parser.add_argument(
+            '--eval_sample_seed',
+            required=False,
+            default=None,
+            type=int,
+            help='Seed for the random number generator which samples evaluation voxels. If left out then the random number generator will be non-deterministic.'
+        )
+    parser.add_argument(
+            '--parameter_selection_seed',
+            required=False,
+            default=None,
+            type=int,
+            help='Seed for the random number generator which samples parameters. If left out then the random number generator will be non-deterministic.'
+        )
+    parser.add_argument(
             '--checkpoint_fullfname',
             required=False,
             default=None,
@@ -152,6 +173,9 @@ if __name__ == '__main__':
             parameter_selection_timeout=args.parameter_selection_timeout,
             use_features_table=args.use_features_table == 'yes',
             features_table_fullfname=args.features_table_fullfname,
+            train_sample_seed=args.train_sample_seed,
+            eval_sample_seed=args.eval_sample_seed,
+            parameter_selection_seed=args.parameter_selection_seed,
             checkpoint_fullfname=args.checkpoint_fullfname,
             checkpoint_namespace='tune',
             reset_checkpoint=args.reset_checkpoint == 'yes',

@@ -346,8 +346,8 @@ def main(
             with times.Timer() as timer:
                 (full_volume, slice_shape, slice_size, segmenter, subvolume_fullfnames, labels_data, hash_function, evaluation, evaluation_results_file, checkpoint) = _loading_data(
                     segmenter, preproc_volume_fullfname, subvolume_dir, label_dirs, results_dir,
-                    checkpoint_fullfname, checkpoint_namespace, reset_checkpoint, checkpoint_init,
-                    max_processes, max_batch_memory, use_gpu, listener
+                    checkpoint_fullfname, checkpoint_namespace, reset_checkpoint,
+                    checkpoint_init, max_processes, max_batch_memory, use_gpu, listener
                     )
             listener.log_output('Data loaded')
             listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))

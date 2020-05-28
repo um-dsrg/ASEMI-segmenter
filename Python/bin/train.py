@@ -53,6 +53,13 @@ if __name__ == '__main__':
             help='Full path to file that is used to store the training set (*.hdf). Note that if this is left out then there is nothing to checkpoint.'
         )
     parser.add_argument(
+            '--train_sample_seed',
+            required=False,
+            default=None,
+            type=int,
+            help='Seed for the random number generator which samples voxels. If left out then the random number generator will be non-deterministic.'
+        )
+    parser.add_argument(
             '--checkpoint_fullfname',
             required=False,
             default=None,
@@ -119,6 +126,7 @@ if __name__ == '__main__':
             config=args.config_fullfname,
             result_segmenter_fullfname=args.result_segmenter_fullfname,
             trainingset_file_fullfname=args.trainingset_file_fullfname,
+            train_sample_seed=args.train_sample_seed,
             checkpoint_fullfname=args.checkpoint_fullfname,
             checkpoint_namespace='train',
             reset_checkpoint=args.reset_checkpoint == 'yes',

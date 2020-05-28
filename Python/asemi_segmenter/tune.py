@@ -24,7 +24,8 @@ def _loading_data(
         preproc_volume_fullfname, train_subvolume_dir, train_label_dirs,
         eval_subvolume_dir, eval_label_dirs, config, search_results_fullfname,
         best_result_fullfname, parameter_selection_timeout, use_features_table,
-        features_table_fullfname, checkpoint_fullfname, checkpoint_namespace,
+        features_table_fullfname, train_sample_seed, eval_sample_seed,
+        parameter_selection_seed, checkpoint_fullfname, checkpoint_namespace,
         reset_checkpoint, checkpoint_init, max_processes, max_batch_memory, use_gpu, listener
     ):
     '''Loading data stage.'''
@@ -88,7 +89,7 @@ def _loading_data(
         config_data['training_set']['samples_to_skip_per_label'] = 0
     if 'samples_to_skip_per_label' not in config_data['evaluation_set']:
         config_data['evaluation_set']['samples_to_skip_per_label'] = 0
-    sampler_factory = samplers.SamplerFactory(seed=0)
+    sampler_factory = samplers.SamplerFactory(seed=parameter_selection_seed)
     for variable_name in config_data['variables']:
         if config_data['variables'][variable_name]['type'] == 'integer':
             sampler_factory.create_integer_sampler(
@@ -161,6 +162,12 @@ def _loading_data(
     training_set = datasets.DataSet(None)
 
     listener.log_output('> Other parameters:')
+    if train_sample_seed is not None:
+        listener.log_output('>> train sample seed: {}'.format(train_sample_seed))
+    if eval_sample_seed is not None:
+        listener.log_output('>> evaluation sample seed: {}'.format(eval_sample_seed))
+    if parameter_selection_seed is not None:
+        listener.log_output('>> parameter selection seed: {}'.format(parameter_selection_seed))
     listener.log_output('>> reset_checkpoint: {}'.format(reset_checkpoint))
     listener.log_output('>> max_processes: {}'.format(max_processes))
     listener.log_output('>> max_batch_memory: {}GB'.format(max_batch_memory))
@@ -231,7 +238,7 @@ def _constructing_labels_dataset(
 
 #########################################
 def _tuning(
-        config_data, segmenter, slice_shape, slice_size, full_volume, train_subvolume_slice_labels, volume_slice_indexes_in_train_subvolume, eval_subvolume_slice_labels, volume_slice_indexes_in_eval_subvolume, training_set, evaluation, parameter_selection_timeout, tuning_results_file, features_table, checkpoint, max_processes, max_batch_memory, listener, extra_col_names, extra_col_values
+        config_data, segmenter, slice_shape, slice_size, full_volume, train_subvolume_slice_labels, volume_slice_indexes_in_train_subvolume, eval_subvolume_slice_labels, volume_slice_indexes_in_eval_subvolume, training_set, evaluation, parameter_selection_timeout, tuning_results_file, features_table, train_sample_seed, eval_sample_seed, checkpoint, max_processes, max_batch_memory, listener, extra_col_names, extra_col_values
     ):
     '''Tuning stage.'''
     train_sample_size_per_label = config_data['training_set']['sample_size_per_label']
@@ -246,7 +253,7 @@ def _tuning(
             volume_slice_indexes_in_train_subvolume,
             slice_shape,
             config_data['training_set']['samples_to_skip_per_label'],
-            seed=0
+            seed=train_sample_seed
             )
         for (label, label_slice) in zip(segmenter.classifier.labels, train_label_positions):
             listener.log_output('>> {}: {}'.format(label, label_slice.stop - label_slice.start))
@@ -263,7 +270,7 @@ def _tuning(
             volume_slice_indexes_in_eval_subvolume,
             slice_shape,
             config_data['evaluation_set']['samples_to_skip_per_label'],
-            seed=0
+            seed=eval_sample_seed
             )
         for (label, label_slice) in zip(segmenter.classifier.labels, eval_label_positions):
             listener.log_output('>> {}: {}'.format(label, label_slice.stop - label_slice.start))
@@ -553,6 +560,9 @@ def main(
         features_table_fullfname=None,
         extra_result_col_names=[],
         extra_result_col_values=[],
+        train_sample_seed=None,
+        eval_sample_seed=None,
+        parameter_selection_seed=None,
         checkpoint_fullfname=None,
         checkpoint_namespace='tune',
         reset_checkpoint=False,
@@ -599,6 +609,12 @@ def main(
         (sample_size_per_label is not -1).
     :param list extra_result_col_names: Names of any extra columns to add to the result file.
     :param list extra_result_col_values: Values (fixed) of any extra columns to add to the result file.
+    :param int train_sample_seed: Seed for the random number generator which samples training
+        voxels. If None then the random number generator will be non-deterministic.
+    :param int eval_sample_seed: Seed for the random number generator which samples evaluation
+        voxels. If None then the random number generator will be non-deterministic.
+    :param int parameter_selection_seed: Seed for the random number generator which samples
+        parameters. If None then the random number generator will be non-deterministic.
     :param str checkpoint_fullfname: Full file name (with path) to checkpoint pickle.
         If None then no checkpointing is used.
     :param str checkpoint_namespace: Namespace for the checkpoint file.
@@ -634,7 +650,7 @@ def main(
                     preproc_volume_fullfname, train_subvolume_dir, train_label_dirs,
                     eval_subvolume_dir, eval_label_dirs, config, search_results_fullfname,
                     best_result_fullfname, parameter_selection_timeout, use_features_table,
-                    features_table_fullfname, checkpoint_fullfname, checkpoint_namespace,
+                    features_table_fullfname, train_sample_seed, eval_sample_seed, parameter_selection_seed, checkpoint_fullfname, checkpoint_namespace,
                     reset_checkpoint, checkpoint_init, max_processes, max_batch_memory, use_gpu, listener
                     )
             listener.log_output('Input data')
@@ -680,7 +696,7 @@ def main(
             listener.log_output(times.get_timestamp())
             listener.log_output('Tuning')
             with times.Timer() as timer:
-                () = _tuning(config_data, segmenter, slice_shape, slice_size, full_volume, train_subvolume_slice_labels, volume_slice_indexes_in_train_subvolume, eval_subvolume_slice_labels, volume_slice_indexes_in_eval_subvolume, training_set, evaluation, parameter_selection_timeout, tuning_results_file, features_table, checkpoint, max_processes, max_batch_memory, listener, extra_result_col_names, extra_result_col_values)
+                () = _tuning(config_data, segmenter, slice_shape, slice_size, full_volume, train_subvolume_slice_labels, volume_slice_indexes_in_train_subvolume, eval_subvolume_slice_labels, volume_slice_indexes_in_eval_subvolume, training_set, evaluation, parameter_selection_timeout, tuning_results_file, features_table, train_sample_seed, eval_sample_seed, checkpoint, max_processes, max_batch_memory, listener, extra_result_col_names, extra_result_col_values)
             listener.log_output('Tuned')
             listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
             listener.log_output('')

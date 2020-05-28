@@ -18,10 +18,11 @@ python ..\bin\analyse_data.py ^
         "training_set\labels\tissues" ^
         "training_set\labels\bones" ^
     --config "configs\analyse_data_config.json" ^
-    --checkpoint_fullfname "output\checkpoint.json" ^
-    --log_file_fullfname "output\log.txt" ^
     --highlight_radius 3 ^
-    --results_dir "output\analyse_data"
+    --results_dir "output\analyse_data" ^
+    --data_sample_seed 0 ^
+    --checkpoint_fullfname "output\checkpoint.json" ^
+    --log_file_fullfname "output\log.txt"
 
 python ..\bin\tune.py ^
     --preproc_volume_fullfname "output\preprocess\volume.hdf" ^
@@ -41,6 +42,9 @@ python ..\bin\tune.py ^
     --parameter_selection_timeout 2 ^
     --use_features_table "yes" ^
     --features_table_fullfname "output\tune\features.hdf" ^
+    --train_sample_seed 0 ^
+    --eval_sample_seed 0 ^
+    --parameter_selection_seed 0 ^
     --checkpoint_fullfname "output\checkpoint.json" ^
     --log_file_fullfname "output\log.txt" ^
     --max_processes 4 ^
@@ -56,6 +60,7 @@ python ..\bin\train.py ^
     --config_fullfname "configs\train_config.json" ^
     --result_segmenter_fullfname "output\train\segmenter.pkl" ^
     --trainingset_file_fullfname "output\train\trainingset.hdf" ^
+    --train_sample_seed 0 ^
     --checkpoint_fullfname "output\checkpoint.json" ^
     --log_file_fullfname "output\log.txt" ^
     --max_processes 4 ^

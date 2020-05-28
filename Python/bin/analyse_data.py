@@ -47,6 +47,13 @@ if __name__ == '__main__':
             help='Directory of folder to contain results.'
         )
     parser.add_argument(
+            '--data_sample_seed',
+            required=False,
+            default=None,
+            type=int,
+            help='Seed for the random number generator which samples voxels. If left out then the random number generator will be non-deterministic.'
+        )
+    parser.add_argument(
             '--checkpoint_fullfname',
             required=False,
             default=None,
@@ -91,6 +98,7 @@ if __name__ == '__main__':
             config=args.config_fullfname,
             highlight_radius=args.highlight_radius,
             results_dir=args.results_dir,
+            data_sample_seed=args.data_sample_seed,
             checkpoint_fullfname=args.checkpoint_fullfname,
             checkpoint_namespace='analyse_data',
             reset_checkpoint=args.reset_checkpoint == 'yes',
