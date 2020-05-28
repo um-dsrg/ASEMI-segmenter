@@ -272,8 +272,8 @@ def gpu_apply_histogram_to_all_neighbourhoods_in_slice_3d(array_3d, slice_index,
                  WS_Y * WS_X * num_bins * 4
 
     # kernel call
-    ISTOGRAMMA = mod.get_function("ISTOGRAMMA")
-    ISTOGRAMMA( drv.Out(result),
+    histogram_3d = mod.get_function("histogram_3d")
+    histogram_3d( drv.Out(result),
                 np.int32(num_bins),
                 drv.In(array_3d_float),
                 np.int32(NX), np.int32(NY), np.int32(NZ),

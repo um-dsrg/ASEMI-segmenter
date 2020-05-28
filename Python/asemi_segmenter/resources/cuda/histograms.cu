@@ -82,7 +82,7 @@ __device__ void update_slice(
    }
 
 /*  =======================================
- * ISTOGRAMMA: Kernel principale
+ * histogram_3d: Kernel principale
  *
  * Istogramma is launched with a 2D grid of 2D blocks.
  * The dimensions of each block are (from slow (Y) to fast (X) )  WS_Y, WS_X
@@ -140,7 +140,7 @@ __device__ void update_slice(
  * There could be a conflict when WW_X<16 or, if the hardware has warps of
  * 32, when WW_X>16 but not a multiple of 16
  */
-__global__ void ISTOGRAMMA(
+__global__ void histogram_3d(
       // histogram output matrix
       float *d_volume_histo,
       // number of bins in histogram
