@@ -1,3 +1,9 @@
+/* CUDA 3D neighborood histogram
+ *
+ * Originally written by Alessandro Mirone for the ASEMI project.
+ * Integrated and updated by Johann A. Briffa
+ */
+
 #define MAXBINLIMS 41
 
 __device__ __constant__ float bins_limits[MAXBINLIMS];
