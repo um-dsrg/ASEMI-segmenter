@@ -23,7 +23,8 @@ from asemi_segmenter.lib import featurisers
 def _loading_data(
         preproc_volume_fullfname, train_subvolume_dir, train_label_dirs,
         eval_subvolume_dir, eval_label_dirs, config, search_results_fullfname,
-        best_result_fullfname, parameter_selection_timeout, features_table_fullfname, checkpoint_fullfname, checkpoint_namespace,
+        best_result_fullfname, parameter_selection_timeout, use_features_table,
+        features_table_fullfname, checkpoint_fullfname, checkpoint_namespace,
         reset_checkpoint, checkpoint_init, max_processes, max_batch_memory, use_gpu, listener
     ):
     '''Loading data stage.'''
@@ -134,9 +135,12 @@ def _loading_data(
         raise ValueError('Must be a positive number.')
 
     listener.log_output('> Feature table')
-    if features_table_fullfname is not None:
-        listener.log_output('>> {}'.format(features_table_fullfname))
-        validations.check_filename(features_table_fullfname, '.hdf', False)
+    if use_features_table:
+        if features_table_fullfname is not None:
+            listener.log_output('>> {}'.format(features_table_fullfname))
+            validations.check_filename(features_table_fullfname, '.hdf', False)
+        else:
+            listener.log_output('>> in memory')
         features_table = featurisers.FeaturesTable(features_table_fullfname)
     else:
         features_table = None
@@ -538,6 +542,7 @@ def main(
         search_results_fullfname,
         best_result_fullfname=None,
         parameter_selection_timeout=1,
+        use_features_table=False,
         features_table_fullfname=None,
         extra_result_col_names=[],
         extra_result_col_values=[],
@@ -580,9 +585,11 @@ def main(
     :param int parameter_selection_timeout: The next set of parameters to try are randomly
         generated until a new set is found. This is the number of seconds to allow the command
         to randomly generate parameters before it times out and ends the search.
+    :param bool use_features_table: Whether to create a lookup table speeding up tuning or not.
     :param str features_table_fullfname: Full file name (with path) to the HDF file that will
-        contain precomputed features to speed up the search. If None then no file will be saved.
-        Used on both training and evaluation sets but only if they are sampled (sample_size_per_label is not -1).
+        contain precomputed features to speed up the search. If None then table will be kept in
+        memory instead. Used on both training and evaluation sets but only if they are sampled
+        (sample_size_per_label is not -1).
     :param list extra_result_col_names: Names of any extra columns to add to the result file.
     :param list extra_result_col_values: Values (fixed) of any extra columns to add to the result file.
     :param str checkpoint_fullfname: Full file name (with path) to checkpoint pickle.
@@ -619,9 +626,9 @@ def main(
                 (config_data, full_volume, slice_shape, slice_size, segmenter, train_subvolume_fullfnames, train_labels_data, eval_subvolume_fullfnames, eval_labels_data, training_set, hash_function, evaluation, tuning_results_file, features_table, checkpoint) = _loading_data(
                     preproc_volume_fullfname, train_subvolume_dir, train_label_dirs,
                     eval_subvolume_dir, eval_label_dirs, config, search_results_fullfname,
-                    best_result_fullfname, parameter_selection_timeout, features_table_fullfname,
-                    checkpoint_fullfname, checkpoint_namespace, reset_checkpoint, checkpoint_init,
-                    max_processes, max_batch_memory, use_gpu, listener
+                    best_result_fullfname, parameter_selection_timeout, use_features_table,
+                    features_table_fullfname, checkpoint_fullfname, checkpoint_namespace,
+                    reset_checkpoint, checkpoint_init, max_processes, max_batch_memory, use_gpu, listener
                     )
             listener.log_output('Input data')
             listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))

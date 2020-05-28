@@ -69,9 +69,16 @@ if __name__ == '__main__':
             help='The next set of parameters to try are randomly generated until a new set is found. This is the number of seconds to allow the command to randomly generate parameters before it times out and ends the search.'
         )
     parser.add_argument(
+            '--use_features_table',
+            required=False,
+            default='no',
+            choices=['yes', 'no'],
+            help='Whether to use a lookup table for storing precomputed features to speed up thie process.'
+        )
+    parser.add_argument(
             '--features_table_fullfname',
             required=False,
-            help='Full path to HDF file to store precomputed features to speed up this process (*.hdf). Used on both training and evaluation sets but only if they are sampled (sample_size_per_label is not -1).'
+            help='Full path to HDF file to store precomputed features to speed up this process (*.hdf). Used on both training and evaluation sets but only if they are sampled (sample_size_per_label is not -1). If left out, then features will be kept in memory.'
         )
     parser.add_argument(
             '--checkpoint_fullfname',
@@ -143,6 +150,7 @@ if __name__ == '__main__':
             search_results_fullfname=args.search_results_fullfname,
             best_result_fullfname=args.best_result_fullfname,
             parameter_selection_timeout=args.parameter_selection_timeout,
+            use_features_table=args.use_features_table == 'yes',
             features_table_fullfname=args.features_table_fullfname,
             checkpoint_fullfname=args.checkpoint_fullfname,
             checkpoint_namespace='tune',

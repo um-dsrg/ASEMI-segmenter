@@ -40,6 +40,7 @@
     --search_results_fullfname "output/tune/results.txt" \
     --best_result_fullfname "output/tune/result.json" \
     --parameter_selection_timeout 2 \
+    --use_features_table "yes" \
     --features_table_fullfname "output/tune/features.hdf" \
     --checkpoint_fullfname "output/checkpoint.json" \
     --log_file_fullfname "output/log.txt" \

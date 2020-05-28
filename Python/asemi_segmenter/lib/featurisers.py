@@ -184,11 +184,12 @@ class FeaturesTable(object):
     '''Lookup table to speed up featurisation.'''
 
     #########################################
-    def __init__(self, data_fullfname):
+    def __init__(self, data_fullfname=None):
         '''
         Constructor.
 
         :param str data_fullfname: Full file name (with path) to table HDF file.
+            If None then lookup table will be kept in memory.
         '''
         self.data_fullfname = data_fullfname
         self.data = None
@@ -196,13 +197,17 @@ class FeaturesTable(object):
     #########################################
     def create(self):
         '''Create a new table.'''
-        with h5py.File(self.data_fullfname, 'w') as data_f:
-            pass
+        if self.data_fullfname is not None:
+            with h5py.File(self.data_fullfname, 'w') as data_f:
+                pass
+        else:
+            self.data = dict()
 
     #########################################
     def load(self):
         '''Load the HDF file.'''
-        self.data = h5py.File(self.data_fullfname, 'r+')
+        if self.data_fullfname is not None:
+            self.data = h5py.File(self.data_fullfname, 'r+')
 
     #########################################
     def add_features(self, featuriser_id, featuriser_params, dataset_name, features):
@@ -219,18 +224,28 @@ class FeaturesTable(object):
         if features.dtype != np.float32:
             raise ValueError('Features must be type float32.')
 
-        try:
-            g = self.data[featuriser_id]
-        except KeyError as ex:
-            g = self.data.create_group(featuriser_id)
-
         params = json.dumps(featuriser_params)
-        try:
-            g = g[params]
-        except KeyError as ex:
-            g = g.create_group(params)
+        if self.data_fullfname is not None:
+            try:
+                g = self.data[featuriser_id]
+            except KeyError as ex:
+                g = self.data.create_group(featuriser_id)
 
-        g.create_dataset(dataset_name, data=features, chunks=None)
+            try:
+                g = g[params]
+            except KeyError as ex:
+                g = g.create_group(params)
+
+            g.create_dataset(dataset_name, data=features, chunks=None)
+        else:
+            if featuriser_id not in self.data:
+                self.data[featuriser_id] = dict()
+            g = self.data[featuriser_id]
+
+            if params not in g:
+                g[params] = dict()
+            g = g[params]
+            g[dataset_name] = features
 
     #########################################
     def get_features(self, featuriser_id, featuriser_params, dataset_name):
@@ -249,7 +264,8 @@ class FeaturesTable(object):
     #########################################
     def close(self):
         '''Close the HDF file.'''
-        self.data.close()
+        if self.data_fullfname is not None:
+            self.data.close()
         self.data = None
 
 
