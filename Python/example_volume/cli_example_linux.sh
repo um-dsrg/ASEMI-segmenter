@@ -20,6 +20,7 @@
         "training_set/labels/tissues" \
         "training_set/labels/bones" \
     --config "configs/analyse_data_config.json" \
+    --checkpoint_fullfname "output/checkpoint.json" \
     --log_file_fullfname "output/log.txt" \
     --highlight_radius 3 \
     --results_dir "output/analyse_data"

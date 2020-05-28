@@ -18,6 +18,8 @@ python ..\bin\analyse_data.py ^
         "training_set\labels\tissues" ^
         "training_set\labels\bones" ^
     --config "configs\analyse_data_config.json" ^
+    --checkpoint_fullfname "output\checkpoint.json" ^
+    --log_file_fullfname "output\log.txt" ^
     --highlight_radius 3 ^
     --results_dir "output\analyse_data"
 
@@ -36,6 +38,8 @@ python ..\bin\tune.py ^
     --config_fullfname "configs\tune_config.json" ^
     --search_results_fullfname "output\tune\results.txt" ^
     --best_result_fullfname "output\tune\result.json" ^
+    --parameter_selection_timeout 2 ^
+    --use_features_table "yes" ^
     --features_table_fullfname "output\tune\features.hdf" ^
     --checkpoint_fullfname "output\checkpoint.json" ^
     --log_file_fullfname "output\log.txt" ^

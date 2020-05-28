@@ -47,6 +47,19 @@ if __name__ == '__main__':
             help='Directory of folder to contain results.'
         )
     parser.add_argument(
+            '--checkpoint_fullfname',
+            required=False,
+            default=None,
+            help='Full path to file that is used to let the process save its progress and continue from where it left off in case of interruption (*.pkl). If left out then the process will run from beginning to end without saving any checkpoints.'
+        )
+    parser.add_argument(
+            '--reset_checkpoint',
+            required=False,
+            default='no',
+            choices=['yes', 'no'],
+            help='Whether to clear the checkpoints about this command from the checkpoint file and start afresh or not (default is no).'
+        )
+    parser.add_argument(
             '--log_file_fullfname',
             required=False,
             default=None,
@@ -78,6 +91,10 @@ if __name__ == '__main__':
             config=args.config_fullfname,
             highlight_radius=args.highlight_radius,
             results_dir=args.results_dir,
+            checkpoint_fullfname=args.checkpoint_fullfname,
+            checkpoint_namespace='analyse_data',
+            reset_checkpoint=args.reset_checkpoint == 'yes',
+            checkpoint_init=dict(),
             listener=listener,
             debug_mode=args.debug_mode == 'yes'
             )
