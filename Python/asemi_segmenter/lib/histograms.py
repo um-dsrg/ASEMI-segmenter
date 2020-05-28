@@ -234,7 +234,7 @@ def gpu_apply_histogram_to_all_neighbourhoods_in_slice_3d(array_3d, slice_index,
     result = np.zeros((rows, cols, num_bins), dtype=np.float32)
 
     # histogram bins
-    mylimits = np.linspace(min_range, max_range, num_bins, endpoint=False, dtype=np.float32)
+    mylimits = np.linspace(min_range, max_range, num_bins + 1, endpoint=True, dtype=np.float32)
     bins_limits, size = mod.get_global("bins_limits")
     assert( size >= mylimits.size*4 )
     drv.memcpy_htod(bins_limits, mylimits)
