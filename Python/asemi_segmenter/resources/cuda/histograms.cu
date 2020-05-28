@@ -8,22 +8,48 @@
 
 __device__ __constant__ float bins_limits[MAXBINLIMS];
 
-// ogni blocco legge un pezzo di slice nella memoria shared
-//
-// ogni thread tiene il suo histogramma nella memoria share
-// si usa la variabile SLICE
+/* Dynamic shared memory region
+ *
+ * The first WW_X * WW_Y elements hold the tile neighbourhood, where:
+ *    WW_X = (RADIUS_H + blockDim.x + RADIUS_H)
+ *    WW_Y = (RADIUS_H + blockDim.y + RADIUS_H)
+ *
+ * The next blockDim.y * blockDim.x * NBINS elements hold the histograms for
+ * each thread (i.e. a separate histogram for every voxel in the tile).
+ */
 
 extern __shared__ float SLICE[];
 
-//  WW_Y e WW_X sono le dimensioni del pezzo di slice che si legge.
-// Al di sopra si pone anche l'istogramma privatizzato ( i e' l'indice dell'istogramma, tid e' il numero della thread)
+// Macro to determine absolute index for i'th bin of this thread's histogram
 
 #define myhisto(i) SLICE[WW_Y * WW_X + (i) * blockDim.y * blockDim.x + tid]
 
-// ========================================================================
-// update_slice : FUNZIONE AUSILIARIA CHIAMATA DAL KERNEL PRINCIPALE
-//
-
+/* Computes the contribution to the histogram from the slice at global_z.
+ * (Auxiliary Function)
+ *
+ * Optimisations in this function include:
+ *
+ * 1) Parallel reading of tile neighbourhood into shared memory.
+ *    Once this neighbourhood is loaded in shared memory, all the threads in
+ *    the block can access the voxels of the current slice from shared memory.
+ *
+ * 2) Neighbourhood access by warp threads when writing into shared memory is
+ *    on different memory banks because successive threads access adjacent
+ *    shared memory locations.
+ *
+ * 3) Neighbourhood access by warp threads when reading from shared memory is
+ *    also on different memory banks because again successive threads access
+ *    adjacent shared memory locations, with threadIdx.x carying over a range
+ *    of width 16. There could be a conflict when WW_X < 16 or when WW_X > 16
+ *    but not a multiple of 16. (Need to check last statement.)
+ *
+ * 4) Histogram for each thread is also held in shared memory.
+ *    This speeds up computation and facilitates holding intermediate values
+ *    between slice updates.
+ *
+ * 5) Histogram elements for thread A and thread B are on different shared
+ *    memory banks.
+ */
 __device__ void update_slice(
       // iadd = +1/-1 to add/subtract
       const int iadd,
@@ -81,64 +107,29 @@ __device__ void update_slice(
    __syncthreads();
    }
 
-/*  =======================================
- * histogram_3d: Kernel principale
+/* Computes the neighbourhood histogram for a given range of voxels.
+ * (Main Kernel)
  *
- * Istogramma is launched with a 2D grid of 2D blocks.
- * The dimensions of each block are (from slow (Y) to fast (X) )  WS_Y, WS_X
- * A block, then, works on a tile of a 2D slice, and, inside the kernel,
- * there is a loop on the Z dimension, named iz.
+ * Kernel is launched with a 2D grid of 2D blocks, covering a single slice of
+ * voxels in the XY plane. A range of slices are considered with an internal
+ * loop over the Z dimension. For each voxel (ix,iy,iz) we need to compute the
+ * neighbourhood histogram.
  *
- * The block and grid coordinates are translated to (iy,ix) which are the
- * planar coordinates of a voxel. The z coordinate is represented by the loop
- * variable iz.
+ * Storage is always in row-major order, so from slow to fast the dimensions
+ * are Z, Y, X, or slice, row, column.
  *
- * Now, imagine that for a given voxel at (iz,iy,ix) you know the histogram.
- * Then the variable iz increase by one. How do we obtain the histogram for
- * voxel at (iz,iy,ix) when we know already the histogram at (iz-1,iy,ix)?
- * We remove the contribution from slice  iz-1 - RADIUS_H
- * the we add the contribution from slice iz + RADIUS_H
+ * The histograms of all voxels in a slice are computed in parallel, with
+ * the computation for voxels in the same block benefiting from the use of
+ * shared memory.
  *
- * This is done by calling
- * update_slice( -1, .......,  iz-1 - RADIUS_H, .....)   for removal
- * update_slice( +1, .......,  iz   + RADIUS_H, .....)   for addition
- *
- * So the update function is where the optimised things occur.
- * To optimise the reading between neighbouring voxels of the working group
- * formed by the  WS_Y*WS_X  neighbouring voxels of a slice we read in
- * parallel the (RADIUS_H + WS_Y + RADIUS_H)(RADIUS_H + WS_X + RADIUS_H)
- * interesting voxels of a mutualised slice.
- * Once such interesting area is loaded in shared memory, all the threads
- * of the working group can access the interesting voxels of the slice
- * (iz-1 - RADIUS_H) for subtraction or addition.
- *
- * We use for this the variable SLICE which is declared as
- * extern __shared__ float SLICE[] ;
- *
- * which will be used to address the voxels of the loaded interesting
- * region.
- * But it is not over.
- * We need also to store the vector of histogram values.
- * Each thread keeps a vector of its histogram values
- * To do this we define
- *
- * #define myhisto(i)     SLICE[WW_Y*WW_X + (i)*blockDim.y*blockDim.x + tid ]
- *
- * This address the shared memory so that we don't interfere with the bottom
- * WW_Y*WW_X block which is dedicated to the loaded interesting regions, and
- * in a way such that myhisto(i) addresses a privatised vector which is
- * privatised for each thread tid.
- * The basic idea is that thread tid_a has all its histogram on a different
- * memory-bank than thread tid_b when tid_a is different from tid_b
- *
- * Memory banks for SLICE access are different when loading because i_in_tile
- * is initialised to tid.
- *
- * They are also different when accessing SLICE because
- * float v = SLICE[ threadIdx.x+sx +RADIUS_H + WW_X * (threadIdx.y+sy+RADIUS_H) ];
- * and threadIdx.x varies over a range of width 16.
- * There could be a conflict when WW_X<16 or, if the hardware has warps of
- * 32, when WW_X>16 but not a multiple of 16
+ * The histograms for the first slice are computing by summing over the
+ * contributions from slices making up the neighbourhood (±radius) in a loop.
+ * Histograms for successive slices (iz) are computed using a rolling histogram,
+ * that is:
+ *    - subtracting the contribution from slice iz-radius-1, which does not
+ *      contribute to the histograms of this slice (iz)
+ *    - adding the contribution from slice iz+radius, which did not contribute
+ *      to the histograms already computed
  */
 __global__ void histogram_3d(
       // histogram output matrix
