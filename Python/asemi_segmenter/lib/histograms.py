@@ -249,12 +249,6 @@ def gpu_apply_histogram_to_all_neighbourhoods_in_slice_3d(array_3d, slice_index,
     cols = col_slice.stop - col_slice.start
     result = np.zeros((rows, cols, num_bins), dtype=np.float32)
 
-    # histogram bins
-    mylimits = np.linspace(min_range, max_range, num_bins + 1, endpoint=True, dtype=np.float32)
-    bins_limits, size = mod.get_global("bins_limits")
-    assert( size >= mylimits.size*4 )
-    drv.memcpy_htod(bins_limits, mylimits)
-
     # input volume
     # assert array_3d.dtype == np.uint16
     array_3d_float = array_3d.astype(np.float32, order='C')
@@ -274,7 +268,7 @@ def gpu_apply_histogram_to_all_neighbourhoods_in_slice_3d(array_3d, slice_index,
     # kernel call
     histogram_3d = mod.get_function("histogram_3d")
     histogram_3d( drv.Out(result),
-                np.int32(num_bins),
+                np.int32(min_range), np.int32(max_range), np.int32(num_bins),
                 drv.In(array_3d_float),
                 np.int32(NX), np.int32(NY), np.int32(NZ),
                 np.int32(col_slice.start), np.int32(col_slice.stop),

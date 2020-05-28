@@ -4,10 +4,6 @@
  * Integrated and updated by Johann A. Briffa
  */
 
-#define MAXBINLIMS 41
-
-__device__ __constant__ float bins_limits[MAXBINLIMS];
-
 /* Dynamic shared memory region
  *
  * The first WW_X * WW_Y elements hold the tile neighbourhood, where:
@@ -63,8 +59,8 @@ __device__ void update_slice(
       const int block_cx, const int block_cy,
       // z coordinate of thread's voxel in global volume
       const int global_z,
-      // number of bins in histogram
-      const int NBINS,
+      // histogram definition
+      const int min_range, const int max_range, const int NBINS,
       // input volume and size
       const float *d_volume_in,
       const int NX, const int NY, const int NZ)
@@ -84,10 +80,7 @@ __device__ void update_slice(
           global_z >= 0 && global_z < NZ )
          val = d_volume_in[global_x + NX * (global_y + NY * global_z)];
       // convert value to corresponding histogram bin index
-      float res = -1;
-      for(int i = 0; i < NBINS + 1; i++)
-         if(val >= bins_limits[i])
-            res = i;
+      const int res = NBINS * (val - min_range) / (max_range - min_range);
       // store in shared memory
       SLICE[i_in_tile] = res;
       }
@@ -134,8 +127,8 @@ __device__ void update_slice(
 __global__ void histogram_3d(
       // histogram output matrix
       float *d_volume_histo,
-      // number of bins in histogram
-      const int NBINS,
+      // histogram definition
+      const int min_range, const int max_range, const int NBINS,
       // input volume and size
       const float *d_volume_in,
       const int NX, const int NY, const int NZ,
@@ -173,7 +166,7 @@ __global__ void histogram_3d(
       {
       update_slice(+1, tid, WW_X, WW_Y, RADIUS_H, block_cx, block_cy,
             z_start + iz + z_offset,
-            NBINS, d_volume_in, NX, NY, NZ);
+            min_range, max_range, NBINS, d_volume_in, NX, NY, NZ);
       }
    // copy histogram from shared memory to global memory (non-coalesced)
    for (int ibin = 0; ibin < NBINS; ibin++)
@@ -187,10 +180,10 @@ __global__ void histogram_3d(
       {
       update_slice(-1, tid, WW_X, WW_Y, RADIUS_H, block_cx, block_cy,
             z_start + iz - 1 - RADIUS_H,
-            NBINS, d_volume_in, NX, NY, NZ);
+            min_range, max_range, NBINS, d_volume_in, NX, NY, NZ);
       update_slice(+1, tid, WW_X, WW_Y, RADIUS_H, block_cx, block_cy,
             z_start + iz + RADIUS_H,
-            NBINS, d_volume_in, NX, NY, NZ);
+            min_range, max_range, NBINS, d_volume_in, NX, NY, NZ);
       // copy histogram from shared memory to global memory (non-coalesced)
       for (int ibin = 0; ibin < NBINS; ibin++)
          {
