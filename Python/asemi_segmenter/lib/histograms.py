@@ -241,6 +241,7 @@ def gpu_apply_histogram_to_all_neighbourhoods_in_slice_3d(array_3d, slice_index,
 
     # input volume
     # assert array_3d.dtype == np.uint16
+    array_3d_float = array_3d.astype(np.float32, order='C')
     NZ, NY, NX = array_3d.shape
 
     # GPU block size (working sizes)
@@ -258,7 +259,7 @@ def gpu_apply_histogram_to_all_neighbourhoods_in_slice_3d(array_3d, slice_index,
     ISTOGRAMMA = mod.get_function("ISTOGRAMMA")
     ISTOGRAMMA( drv.Out(result),
                 np.int32(num_bins),
-                drv.In(array_3d.astype(np.float32)),
+                drv.In(array_3d_float),
                 np.int32(NX), np.int32(NY), np.int32(NZ),
                 np.int32(col_slice.start), np.int32(col_slice.stop),
                 np.int32(row_slice.start), np.int32(row_slice.stop),
