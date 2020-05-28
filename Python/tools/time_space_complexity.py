@@ -22,7 +22,7 @@ from asemi_segmenter import train
 from asemi_segmenter import segment
 
 #########################################
-def measure(side_lengths, max_batch_memory_list, max_processes_list, num_training_slices, num_labels, num_runs, train_config):
+def measure(side_lengths, max_batch_memory_list, max_processes_list, num_training_slices, num_labels, num_runs, train_config, voxel_seed, label_seed):
     checkpoint = checkpoints.CheckpointManager(
         'timespace',
         'checkpoint.json'
@@ -66,7 +66,7 @@ def measure(side_lengths, max_batch_memory_list, max_processes_list, num_trainin
             with tempfile.TemporaryDirectory(dir='.') as temp_dir:
                 print(' Creating full volume slices')
                 files.mkdir(os.path.join(temp_dir, 'volume'))
-                r = np.random.RandomState(0)
+                r = np.random.RandomState(voxel_seed)
                 for i in range(side_length):
                     images.save_image(os.path.join(temp_dir, 'volume', '{}.tif'.format(i)), r.randint(0, 2**16, size=[side_length,side_length], dtype=np.uint16))
 
@@ -77,7 +77,7 @@ def measure(side_lengths, max_batch_memory_list, max_processes_list, num_trainin
 
                 print(' Creating label slices')
                 files.mkdir(os.path.join(temp_dir, 'labels'))
-                r = np.random.RandomState(0)
+                r = np.random.RandomState(label_seed)
                 for label in range(num_labels):
                     files.mkdir(os.path.join(temp_dir, 'labels', '_{}'.format(label)))
                     for i in range(0, side_length-side_length%num_training_slices, side_length//num_training_slices):
@@ -163,7 +163,7 @@ def measure(side_lengths, max_batch_memory_list, max_processes_list, num_trainin
                                 segment_memory = max(mem_usage)
 
                                 with open('time_space_complexity.txt', 'a', encoding='utf-8') as f:
-                                    print(side_length, max_batch_memory, max_processes, side_length**2, side_length**3, run, train_time, train_memory, segment_time, segment_memory, sep='\t', file=f)
+                                    print(side_length, max_batch_memory, max_processes, side_length**2, side_length**3, run, round(train_time, 1), train_memory, round(segment_time, 1), segment_memory, sep='\t', file=f)
 
                         print()
 
@@ -189,12 +189,16 @@ def main():
         help='The number of different labels to put in the training slices.')
     parser.add_argument('--num_runs', required=True, type=int,
         help='The number of times to run each measurement.')
+    parser.add_argument('--voxel_seed', required=False, default=None, type=int,
+        help='Seed for the random number generator to generate voxel values. If left out then it will be non-deterministic.')
+    parser.add_argument('--label_seed', required=False, default=None, type=int,
+        help='Seed for the random number generator to generate labels. If left out then it will be non-deterministic.')
     args = parser.parse_args()
 
     with open(args.train_config_fullfname, 'r', encoding='utf-8') as f:
         train_config = json.load(f)
 
-    measure(args.side_length, args.max_batch_memory, args.max_processes, args.num_training_slices, args.num_labels, args.num_runs, train_config)
+    measure(args.side_length, args.max_batch_memory, args.max_processes, args.num_training_slices, args.num_labels, args.num_runs, train_config, args.voxel_seed, args.label_seed)
 
 
 # main entry point
