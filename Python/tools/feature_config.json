@@ -5,7 +5,7 @@
 				{
 					"type": "histogram",
 					"params": {
-						"radius": 11,
+						"radius": 32,
 						"scale": 0,
 						"num_bins": 32
 					}
