@@ -242,7 +242,7 @@ def gpu_apply_histogram_to_all_neighbourhoods_in_slice_3d(array_3d, slice_index,
     NZ, NY, NX = array_3d.shape
 
     # GPU block size (working sizes)
-    WS_Y = 8
+    WS_Y = 16
     WS_X = 16
     # kernel parameters
     blocksize = (WS_X, WS_Y, 1)
