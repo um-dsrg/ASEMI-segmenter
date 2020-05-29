@@ -249,7 +249,7 @@ def gpu_apply_histogram_to_all_neighbourhoods_in_slice_3d(array_3d, slice_index,
     gridsize = ( int(math.ceil( float(cols) / float(WS_X) )),
                  int(math.ceil( float(rows) / float(WS_Y) )),
                  1 )
-    sharedsize_tile = 4 * (2 * radius + WS_X) * (2 * radius + WS_Y) # index_t
+    sharedsize_tile = 1 * (2 * radius + WS_X) * (2 * radius + WS_Y) # index_t
     sharedsize_hist = 4 * WS_Y * WS_X * num_bins # result_t
     sharedsize = sharedsize_tile + sharedsize_hist
 
