@@ -480,7 +480,7 @@ def process_array_in_blocks(
 class SliceBasedArrayCacher(object):
     '''
     Decorate a slow array with a seemless cache for slice array processor.
-    
+
     An example of a slow array is an HDF file.
     '''
 
@@ -488,32 +488,32 @@ class SliceBasedArrayCacher(object):
     def __init__(self, slow_array, context_needed=0):
         '''
         Constructor.
-        
+
         :param array_like slow_array: A 3D array that is loaded from a slow medium.
         :param int context_needed: The maximum amount of extra context slices from each
             side when loading one slice.
         '''
         self.slow_array = slow_array
         self.context_needed = context_needed
-        
+
         self.shape = slow_array.shape
         self.dtype = slow_array.dtype
-        
+
         (num_slcs, num_rows, num_cols) = slow_array.shape
         self.cache = np.empty((2*context_needed + 1, num_rows, num_cols), slow_array.dtype)
         self.cached_slice = None
-    
+
     #########################################
     def fetch(self, slice_index):
         '''
         Fetch a slice from the slow array and load it into cache.
-        
+
         :param int slice_index: The index of the slice to fetch.
         '''
         if self.cached_slice is not None:
             if slice_index == self.cached_slice:
                 return
-            
+
             displacement = abs(slice_index - self.cached_slice)
             if displacement <= self.context_needed:
                 if slice_index < self.cached_slice:
@@ -567,7 +567,7 @@ class SliceBasedArrayCacher(object):
                 slice_index - self.context_needed,
                 slice_index + self.context_needed + 1
                 )
-        
+
         self.cache[cache_slices_to_update, :, :] = regions.get_subarray_3d(
             self.slow_array,
             volume_slices_to_copy,
@@ -575,15 +575,15 @@ class SliceBasedArrayCacher(object):
             slice(None)
             )
         self.cached_slice = slice_index
-    
+
     #########################################
     def __getitem__(self, index):
         '''
         Get an subarray from the cache, fetching new data to cache if necessary.
-        
+
         Note that the fetch will be on the slice at the index
         (index[0].start + index[1].stop)//2.
-        
+
         :param tuple index: Tuple with 3 Python slices specifying which subarray
             to return with respect to the slow array.
         :return: The subarray.
@@ -620,7 +620,7 @@ def process_array_in_blocks_single_slice(
     Version of process_array_in_blocks that is meant to work on a single slice in a volume.
 
     This function works exactly like process_array_in_blocks but is tuned for the special case
-    when a single slice in a volume is being processed with context from adjacent slices). Note
+    when a single slice in a volume is being processed (with context from adjacent slices). Note
     that the first dimensions of contextless_slices_wrt_whole and contextless_slices_wrt_block are
     an integer rather than a slice so as to access the slice as a 2D array.
 
@@ -712,5 +712,90 @@ def process_array_in_blocks_single_slice(
         pad_value,
         n_jobs,
         (slice_index, context_size)+extra_params,
+        progress_listener
+        )
+
+
+#########################################
+def process_array_in_blocks_slice_range(
+        in_array_scales, out_array, processor, block_shape, slice_range, scales=None,
+        in_ranges=None, context_size=0, pad_value=0, n_jobs=1, extra_params=(),
+        progress_listener=lambda num_ready, num_new: None
+    ):
+    '''
+    Version of process_array_in_blocks that is meant to work on a range of slices in a volume.
+
+    This function works exactly like process_array_in_blocks but is tuned for the special case
+    when a range of slices in a volume are being processed (with context from adjacent slices)
+    at once (the block must include all the slices in the range).
+
+    :param dict in_array_scales: As explained in process_array_in_blocks.
+    :param nump.ndarray out_array: As explained in process_array_in_blocks.
+    :param callable processor: As explained in process_array_in_blocks, but with
+        contextless_slices_wrt_whole and contextless_slices_wrt_block being integers instead of
+        Python slices.
+    :param tuple block_shape: As explained in process_array_in_blocks but only for the
+        rows and columns.
+    :param slice slice_range: The python slice giving the range of the slices to process in the
+        volume.
+    :param set scales: As explained in process_array_in_blocks.
+    :param list in_ranges: As explained in process_array_in_blocks.
+    :param int context_size: As explained in process_array_in_blocks.
+    :param int pad_value: As explained in process_array_in_blocks.
+    :param int n_jobs: As explained in process_array_in_blocks.
+    :param tuple extra_params: As explained in process_array_in_blocks.
+    :param callable progress_listener: As explained in process_array_in_blocks.
+    :return: A reference to out_array.
+    :rtype: numpy.ndarray
+    '''
+    if scales is None:
+        scales = sorted(in_array_scales.keys())
+    if any((scale not in in_array_scales) for scale in scales):
+        raise ValueError('Requested scales that are not available in in_array_scales.')
+    if 0 not in in_array_scales:
+        raise ValueError('Input array must include scale 0.')
+    if any(len(in_array_scales[scale].shape) != 3 for scale in in_array_scales):
+        raise ValueError('Input arrays must be 3 dimensional.')
+    if any(
+            in_array_scales[scale].shape != downscales.predict_new_shape(
+                in_array_scales[0].shape, scale
+                )
+            for scale in in_array_scales
+        ):
+        raise ValueError('Input array shapes must be according to their scale.')
+    if any(l <= 2*context_size for l in block_shape):
+        raise ValueError(
+            'One or more sides of the block shape is too small to contain even one voxel in '
+            'context (must all be at least {}).'.format(2*context_size+1)
+            )
+    if slice_range.start is None or slice_range.stop is None:
+        raise ValueError('slice_range must have defined start and stop values.')
+
+    slice_range = slice(
+        max(slice_range.start, 0),
+        min(slice_range.stop, in_array_scales[0].shape[0])
+        )
+
+    new_in_ranges = [
+        slice_range
+        ] + (
+            list(in_ranges) if in_ranges is not None else [slice(None), slice(None)]
+        )
+
+    new_block_shape = tuple(
+        [2*context_size + (slice_range.stop - slice_range.start)] + list(block_shape)
+        )
+
+    return process_array_in_blocks(
+        in_array_scales,
+        out_array,
+        processor,
+        new_block_shape,
+        scales,
+        new_in_ranges,
+        context_size,
+        pad_value,
+        n_jobs,
+        extra_params,
         progress_listener
         )

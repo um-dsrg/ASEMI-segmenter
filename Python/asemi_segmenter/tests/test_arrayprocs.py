@@ -8,7 +8,7 @@ from asemi_segmenter.lib import regions
 
 #########################################
 class ArrayProcs(unittest.TestCase):
-    
+
     #########################################
     def test_process_array_in_blocks(self):
         for downsample_kernel in [
@@ -18,9 +18,9 @@ class ArrayProcs(unittest.TestCase):
             scaled_data = { 0: (np.arange(7*7*7) + 1).reshape([7,7,7]) }
             scaled_data[1] = downscales.downscale(scaled_data[0], downsample_kernel, 1)
             scaled_data[2] = downscales.downscale(scaled_data[0], downsample_kernel, 2)
-            
+
             out = np.zeros_like(scaled_data[0])
-            
+
             with self.assertRaises(ValueError):
                 out[:,:,:] = 0
                 arrayprocs.process_array_in_blocks(
@@ -42,7 +42,7 @@ class ArrayProcs(unittest.TestCase):
                     lambda params:(-params[0]['block'][params[0]['contextless_slices_wrt_block']], params[0]['contextless_slices_wrt_whole']),
                     block_shape=[4]*3, context_size=2, n_jobs=1
                 )
-            
+
             def test_block_processor(params, scaled_data, block_shape, context_size, scale):
                 assert all(params[scale]['block'].shape[i] <= block_shape[i] for i in range(3)), '{}, {}, position={}, context_size={}, scale={}'.format(params[scale]['block'].shape, block_shape, params[scale]['incontext_slices_wrt_whole'], context_size, scale)
                 np.testing.assert_equal(
@@ -64,10 +64,10 @@ class ArrayProcs(unittest.TestCase):
                         -params[scale]['block'][params[scale]['contextless_slices_wrt_block']],
                         params[scale]['contextless_slices_wrt_whole']
                     )
-            
+
             for scale in [ 0, 1, 2 ]:
                 out = np.zeros_like(scaled_data[scale])
-                
+
                 for (block_shape, context_size, n_jobs) in [
                         ([1]*3, 0, 1),
                         ([2]*3, 0, 1),
@@ -79,7 +79,7 @@ class ArrayProcs(unittest.TestCase):
                     context_size += downsample_kernel.get_context_needed(scale)
                     if block_shape[0] < 2*context_size + 1:
                         continue
-                    
+
                     out[:,:,:] = 0
                     np.testing.assert_equal(
                             arrayprocs.process_array_in_blocks(
@@ -90,9 +90,9 @@ class ArrayProcs(unittest.TestCase):
                             -scaled_data[scale],
                             'downsample_kernel={}, scale={}, block_shape={}, context_size={}, n_jobs={}'.format(downsample_kernel.name, scale, block_shape, context_size, n_jobs)
                         )
-        
+
         out = np.zeros([7,7,7,7*7*7], np.int32)
-        
+
         out[:,:,:,:] = 0
         np.testing.assert_equal(
                 arrayprocs.process_array_in_blocks(
@@ -109,7 +109,7 @@ class ArrayProcs(unittest.TestCase):
                         ] for slice_index in range(scaled_data[0].shape[0])
                     ], np.int32)
             )
-        
+
         out[:,:,:,:] = 0
         np.testing.assert_equal(
                 arrayprocs.process_array_in_blocks(
@@ -126,7 +126,7 @@ class ArrayProcs(unittest.TestCase):
                         ] for slice_index in range(scaled_data[0].shape[0])
                     ], np.int32)
             )
-        
+
         out[:,:,:,:] = 0
         np.testing.assert_equal(
                 arrayprocs.process_array_in_blocks(
@@ -154,14 +154,14 @@ class ArrayProcs(unittest.TestCase):
                         ] for slice_index in range(scaled_data[0].shape[0])
                     ], np.int32)
             )
-    
+
     #########################################
     def test_process_array_in_blocks_single_slice(self):
         scaled_data = { 0: (np.arange(5*5*5) + 1).reshape([5,5,5]) }
-        
+
         for slice_index in range(scaled_data[0].shape[0]):
             out = np.zeros([5,5], scaled_data[0].dtype)
-            
+
             with self.assertRaises(ValueError):
                 out[:,:] = 0
                 arrayprocs.process_array_in_blocks_single_slice(
@@ -183,7 +183,7 @@ class ArrayProcs(unittest.TestCase):
                     lambda params:(params[0]['block'][params[0]['contextless_slices_wrt_block']]+1, params[0]['contextless_slices_wrt_whole'][1:]),
                     block_shape=[4]*2, slice_index=slice_index, context_size=2, n_jobs=1
                 )
-            
+
             out[:,:] = 0
             np.testing.assert_equal(
                     arrayprocs.process_array_in_blocks_single_slice(
@@ -194,7 +194,7 @@ class ArrayProcs(unittest.TestCase):
                     scaled_data[0][slice_index,:,:]+1,
                     'slice_index={}'.format(slice_index)
                 )
-            
+
             out[:,:] = 0
             np.testing.assert_equal(
                     arrayprocs.process_array_in_blocks_single_slice(
@@ -205,7 +205,7 @@ class ArrayProcs(unittest.TestCase):
                     scaled_data[0][slice_index,:,:]+1,
                     'slice_index={}'.format(slice_index)
                 )
-            
+
             out[:,:] = 0
             np.testing.assert_equal(
                     arrayprocs.process_array_in_blocks_single_slice(
@@ -216,7 +216,7 @@ class ArrayProcs(unittest.TestCase):
                     scaled_data[0][slice_index,:,:]+1,
                     'slice_index={}'.format(slice_index)
                 )
-            
+
             out[:,:] = 0
             np.testing.assert_equal(
                     arrayprocs.process_array_in_blocks_single_slice(
@@ -227,7 +227,7 @@ class ArrayProcs(unittest.TestCase):
                     scaled_data[0][slice_index,:,:]+1,
                     'slice_index={}'.format(slice_index)
                 )
-            
+
             out[:,:] = 0
             np.testing.assert_equal(
                     arrayprocs.process_array_in_blocks_single_slice(
@@ -238,9 +238,9 @@ class ArrayProcs(unittest.TestCase):
                     scaled_data[0][slice_index,:,:]+1,
                     'slice_index={}'.format(slice_index)
                 )
-            
+
             out = np.zeros([5,5,5*5*5], np.int32)
-        
+
             out[:,:,:] = 0
             np.testing.assert_equal(
                     arrayprocs.process_array_in_blocks_single_slice(
@@ -256,7 +256,7 @@ class ArrayProcs(unittest.TestCase):
                         ], np.int32),
                     'slice_index={}'.format(slice_index)
                 )
-            
+
             out[:,:,:] = 0
             np.testing.assert_equal(
                     arrayprocs.process_array_in_blocks_single_slice(
@@ -272,7 +272,7 @@ class ArrayProcs(unittest.TestCase):
                         ], np.int32),
                     'slice_index={}'.format(slice_index)
                 )
-            
+
             out[:,:,:] = 0
             np.testing.assert_equal(
                     arrayprocs.process_array_in_blocks_single_slice(
@@ -297,6 +297,79 @@ class ArrayProcs(unittest.TestCase):
                         ], np.int32),
                     'slice_index={}'.format(slice_index)
                 )
+
+    #########################################
+    def test_process_array_in_blocks_slice_range(self):
+        scaled_data = { 0: (np.arange(5*5*5) + 1).reshape([5,5,5]) }
+
+        for num_slices in range(1, 3):
+            for slice_index in range(scaled_data[0].shape[0]):
+                actual_num_slices = min(scaled_data[0].shape[0] - slice_index, num_slices)
+                out = np.zeros([actual_num_slices, 5, 5], scaled_data[0].dtype)
+                slice_range = slice(slice_index, slice_index+num_slices)
+
+                def processor(params):
+                    return (
+                        params[0]['block'][params[0]['contextless_slices_wrt_block']] + 1,
+                        params[0]['contextless_slices_wrt_range']
+                        )
+                expected_output = scaled_data[0][slice_range,:,:] + 1
+
+                out[:, :, :] = 0
+                np.testing.assert_equal(
+                        arrayprocs.process_array_in_blocks_slice_range(
+                                scaled_data, out,
+                                processor,
+                                block_shape=[1]*2, slice_range=slice_range, context_size=0, n_jobs=1
+                            ),
+                        expected_output,
+                        'slice_range={}'.format(slice_range)
+                    )
+
+                out[:, :, :] = 0
+                np.testing.assert_equal(
+                        arrayprocs.process_array_in_blocks_slice_range(
+                                scaled_data, out,
+                                processor,
+                                block_shape=[2]*2, slice_range=slice_range, context_size=0, n_jobs=1
+                            ),
+                        expected_output,
+                        'slice_range={}'.format(slice_range)
+                    )
+
+                out[:, :, :] = 0
+                np.testing.assert_equal(
+                        arrayprocs.process_array_in_blocks_slice_range(
+                                scaled_data, out,
+                                processor,
+                                block_shape=[3]*2, slice_range=slice_range, context_size=1, n_jobs=1
+                            ),
+                        expected_output,
+                        'slice_range={}'.format(slice_range)
+                    )
+
+                out[:, :, :] = 0
+                np.testing.assert_equal(
+                        arrayprocs.process_array_in_blocks_slice_range(
+                                scaled_data, out,
+                                processor,
+                                block_shape=[6]*2, slice_range=slice_range, context_size=2, n_jobs=1
+                            ),
+                        expected_output,
+                        'slice_range={}'.format(slice_range)
+                    )
+
+                out[:, :, :] = 0
+                np.testing.assert_equal(
+                        arrayprocs.process_array_in_blocks_slice_range(
+                                scaled_data, out,
+                                processor,
+                                block_shape=[6]*2, slice_range=slice_range, context_size=2, n_jobs=2
+                            ),
+                        expected_output,
+                        'slice_range={}'.format(slice_range)
+                    )
+
 
 if __name__ == '__main__':
     unittest.main()
