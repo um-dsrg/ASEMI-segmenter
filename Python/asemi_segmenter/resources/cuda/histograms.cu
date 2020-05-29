@@ -91,10 +91,10 @@ __device__ void update_slice(
       for (int sy = -radius; sy <= radius; sy++)
          {
          // get neighbouring pixel bin index
-         const ${index_t} v = shared_tile[threadIdx.x + sx + radius + WW_X * (threadIdx.y + sy + radius)];
+         const int v = int(shared_tile[threadIdx.x + sx + radius + WW_X * (threadIdx.y + sy + radius)]);
          // add to histogram if within limits
          if (v >= 0 && v < num_bins)
-            shared_hist[int(v) * blockDim.y * blockDim.x + tid] += iadd;
+            shared_hist[v * blockDim.y * blockDim.x + tid] += iadd;
          }
    // make sure all slice section is processed
    __syncthreads();

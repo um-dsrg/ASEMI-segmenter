@@ -23,7 +23,7 @@ class histograms():
             # load and compile CUDA code
             code = pkg_resources.resource_string('asemi_segmenter.resources.cuda', 'histograms.cu').decode()
             code = Template(code)
-            code = code.substitute(data_t='float', result_t='float', index_t='int')
+            code = code.substitute(data_t='uint16_t', result_t='float', index_t='uint8_t')
             self.__class__.__mod = pycuda.compiler.SourceModule(code)
             # get function pointers
             self.__class__.histogram_3d = self.__class__.__mod.get_function("histogram_3d")

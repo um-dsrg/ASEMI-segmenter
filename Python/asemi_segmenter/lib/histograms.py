@@ -238,7 +238,7 @@ def gpu_apply_histogram_to_all_neighbourhoods_in_slice_3d(array_3d, slice_index,
     result = np.zeros((rows, cols, num_bins), dtype=np.float32)
 
     # input volume
-    # assert array_3d.dtype == np.uint16
+    assert array_3d.dtype == np.uint16
     NZ, NY, NX = array_3d.shape
 
     # GPU block size (working sizes)
@@ -257,7 +257,7 @@ def gpu_apply_histogram_to_all_neighbourhoods_in_slice_3d(array_3d, slice_index,
     ch = cuda.histograms()
     ch.histogram_3d( cuda.drv.Out(result),
                 np.int32(min_range), np.int32(max_range), np.int32(num_bins),
-                cuda.drv.In(array_3d.astype(np.float32)),
+                cuda.drv.In(array_3d),
                 np.int32(NX), np.int32(NY), np.int32(NZ),
                 np.int32(col_slice.start), np.int32(col_slice.stop),
                 np.int32(row_slice.start), np.int32(row_slice.stop),
