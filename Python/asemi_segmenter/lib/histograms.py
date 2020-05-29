@@ -5,18 +5,8 @@ import numpy as np
 import fast_histogram
 import sys
 import math
-import pkg_resources
 from asemi_segmenter.lib import regions
-from string import Template
-
-import pycuda
-try:
-    import pycuda.autoinit
-    import pycuda.driver as drv
-    import pycuda.compiler
-    gpu_available = True
-except pycuda._driver.RuntimeError:
-    gpu_available = False
+from asemi_segmenter.lib import cuda
 
 #########################################
 def histogram(array, num_bins, value_range):
@@ -224,7 +214,7 @@ def gpu_apply_histogram_to_all_neighbourhoods_in_slice_3d(array_3d, slice_index,
     :rtype: numpy.ndarray
     '''
 
-    if not gpu_available:
+    if not cuda.gpu_available:
         raise ValueError('GPU is not available.')
 
     ## Example parameters
@@ -263,16 +253,11 @@ def gpu_apply_histogram_to_all_neighbourhoods_in_slice_3d(array_3d, slice_index,
     sharedsize_hist = 4 * WS_Y * WS_X * num_bins # result_t
     sharedsize = sharedsize_tile + sharedsize_hist
 
-    # CUDA code
-    code = Template(pkg_resources.resource_string('asemi_segmenter.resources.cuda', 'histograms.cu').decode())
-    mod = pycuda.compiler.SourceModule(code.substitute(data_t='float',
-            result_t='float', index_t='int'))
-
     # kernel call
-    histogram_3d = mod.get_function("histogram_3d")
-    histogram_3d( drv.Out(result),
+    ch = cuda.histograms()
+    ch.histogram_3d( cuda.drv.Out(result),
                 np.int32(min_range), np.int32(max_range), np.int32(num_bins),
-                drv.In(array_3d.astype(np.float32)),
+                cuda.drv.In(array_3d.astype(np.float32)),
                 np.int32(NX), np.int32(NY), np.int32(NZ),
                 np.int32(col_slice.start), np.int32(col_slice.stop),
                 np.int32(row_slice.start), np.int32(row_slice.stop),
