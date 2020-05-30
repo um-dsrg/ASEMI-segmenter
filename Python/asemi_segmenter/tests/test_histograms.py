@@ -15,7 +15,7 @@ def histogram(array, min_range, max_range, num_bins):
 
 #########################################
 class Histograms(unittest.TestCase):
-    
+
     #########################################
     def test_apply_histogram_to_all_neighbourhoods_in_slice_3d(self):
         for data_type in range(2):
@@ -25,8 +25,8 @@ class Histograms(unittest.TestCase):
                 rand = np.random.RandomState(0)
                 scaled_data = { 0: rand.randint(0, 2**16, [4,4,4], np.uint16) }
             scaled_data[1] = downscales.downscale(scaled_data[0], downscales.NullDownsampleKernel(), 1)
-            
-            for scale in [ 1 ]:
+
+            for scale in [ 0, 1 ]:
                 scale_multiple = 2**scale
                 for (radius, min_range, max_range, num_bins, row_slice, col_slice) in [
                         (1, 0, scaled_data[scale].max()+1, scaled_data[scale].size+1, slice(None), slice(None)),
@@ -44,6 +44,21 @@ class Histograms(unittest.TestCase):
                                         ], np.float32),
                                     'data_type={}, scale={}, radius={}, min_range={}, max_range={}, num_bins={}, row_slice={}, col_slice={}, neighbouring_dims={}, slice_index={}'.format(data_type, scale, radius, min_range, max_range, num_bins, row_slice, col_slice, neighbouring_dims, slice_index)
                                 )
-    
+
+                            for num_slices in range(1, 3+1):
+                                np.testing.assert_equal(
+                                        histograms.apply_histogram_to_all_neighbourhoods_in_slice_3d(scaled_data[scale], slice(slice_index, slice_index+num_slices), radius, neighbouring_dims, min_range, max_range, num_bins, pad=0, row_slice=row_slice, col_slice=col_slice),
+                                        np.array([
+                                                [
+                                                    [
+                                                        histogram(regions.get_neighbourhood_array_3d(scaled_data[scale], (slc,row,col), radius, neighbouring_dims, pad=0), min_range, max_range, num_bins)
+                                                        for col in range(col_slice.start or 0, col_slice.stop or scaled_data[scale].shape[2])
+                                                    ] for row in range(row_slice.start or 0, row_slice.stop or scaled_data[scale].shape[1])
+                                                ]
+                                                for slc in range(slice_index, slice_index+num_slices)
+                                            ], np.float32),
+                                        'data_type={}, scale={}, radius={}, min_range={}, max_range={}, num_bins={}, row_slice={}, col_slice={}, neighbouring_dims={}, slice_index={}, num_slices={}'.format(data_type, scale, radius, min_range, max_range, num_bins, row_slice, col_slice, neighbouring_dims, slice_index, num_slices)
+                                    )
+
 if __name__ == '__main__':
     unittest.main()
