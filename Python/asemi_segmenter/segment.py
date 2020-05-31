@@ -104,8 +104,7 @@ def _segmenting(
             files.mkdir(os.path.join(results_dir, label))
 
     num_digits_in_filename = math.ceil(math.log10(full_volume.get_shape()[0]+1))
-    best_block_shape = [ s+2*segmenter.featuriser.get_context_needed() for s in slice_shape ]
-    '''
+
     best_block_shape = arrayprocs.get_optimal_block_size(
         slice_shape,
         full_volume.get_dtype(),
@@ -114,7 +113,6 @@ def _segmenting(
         max_batch_memory,
         implicit_depth=True
         )
-    '''
 
     def save_slice(volume_slice_index, segmentation, label=None):
         '''Save image slice.'''
