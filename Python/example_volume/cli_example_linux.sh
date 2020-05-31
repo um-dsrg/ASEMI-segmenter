@@ -50,7 +50,8 @@
     --checkpoint_fullfname "output/checkpoint.json" \
     --log_file_fullfname "output/log.txt" \
     --max_processes 4 \
-    --max_batch_memory 1.0
+    --max_batch_memory 1.0 \
+    --use_gpu "no"
 
 ../bin/train.py \
     --preproc_volume_fullfname "output/preprocess/volume.hdf" \
@@ -66,7 +67,8 @@
     --checkpoint_fullfname "output/checkpoint.json" \
     --log_file_fullfname "output/log.txt" \
     --max_processes 4 \
-    --max_batch_memory 1.0
+    --max_batch_memory 1.0 \
+    --use_gpu "no"
 
 ../bin/evaluate.py \
     --segmenter_fullfname "output/train/segmenter.pkl" \
@@ -80,7 +82,8 @@
     --checkpoint_fullfname "output/checkpoint.json" \
     --log_file_fullfname "output/log.txt" \
     --max_processes 4 \
-    --max_batch_memory 1.0
+    --max_batch_memory 1.0 \
+    --use_gpu "no"
 
 ../bin/segment.py \
     --segmenter_fullfname "output/train/segmenter.pkl" \
@@ -88,6 +91,9 @@
     --config_fullfname "configs/segment_config.json" \
     --results_dir "output/segment" \
     --checkpoint_fullfname "output/checkpoint.json" \
+    --reset_checkpoint "yes" \
     --log_file_fullfname "output/log.txt" \
     --max_processes 4 \
-    --max_batch_memory 1.0
+    --max_batch_memory 1.0 \
+    --num_simultaneous_slices 2 \
+    --use_gpu "no"

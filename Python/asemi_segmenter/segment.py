@@ -19,8 +19,9 @@ from asemi_segmenter.lib import volumes
 #########################################
 def _loading_data(
         segmenter, preproc_volume_fullfname, config, results_dir,
-        checkpoint_fullfname, checkpoint_namespace, reset_checkpoint,
-        checkpoint_init, max_processes, max_batch_memory, use_gpu, listener
+        slice_indexes, checkpoint_fullfname, checkpoint_namespace, reset_checkpoint,
+        checkpoint_init, max_processes, max_batch_memory, num_simultaneous_slices,
+        use_gpu, listener
     ):
     '''Loading data stage.'''
     listener.log_output('> Volume')
@@ -72,13 +73,20 @@ def _loading_data(
     listener.log_output('>> reset_checkpoint: {}'.format(reset_checkpoint))
     listener.log_output('>> max_processes: {}'.format(max_processes))
     listener.log_output('>> max_batch_memory: {}GB'.format(max_batch_memory))
+    listener.log_output('>> num_simultaneous_slices: {}'.format(num_simultaneous_slices))
+    if slice_indexes is not None:
+        listener.log_output('>> slice_indexes: {}'.format(slice_indexes))
+    if num_simultaneous_slices < 1:
+        raise ValueError('num_simultaneous_slices must be a positive number.')
+    if slice_indexes is not None and num_simultaneous_slices > 1:
+        raise ValueError('num_simultaneous_slices can only be more than 1 when segmenting whole volume.')
 
     return (config_data, full_volume, slice_shape, segmenter, checkpoint)
 
 
 #########################################
 def _segmenting(
-        config_data, full_volume, slice_shape, segmenter, results_dir, slice_indexes, max_processes, max_batch_memory, checkpoint, listener
+        config_data, full_volume, slice_shape, segmenter, results_dir, slice_indexes, max_processes, max_batch_memory, checkpoint, num_simultaneous_slices, listener
     ):
     '''Segmenting stage.'''
     if slice_indexes is None:
@@ -89,11 +97,15 @@ def _segmenting(
     else:
         num_slices = len(slice_indexes)
 
+    slice_size = slice_shape[0]*slice_shape[1]
+
     if config_data['as_masks']:
         for label in segmenter.classifier.labels:
             files.mkdir(os.path.join(results_dir, label))
 
     num_digits_in_filename = math.ceil(math.log10(full_volume.get_shape()[0]+1))
+    best_block_shape = [ s+2*segmenter.featuriser.get_context_needed() for s in slice_shape ]
+    '''
     best_block_shape = arrayprocs.get_optimal_block_size(
         slice_shape,
         full_volume.get_dtype(),
@@ -102,6 +114,7 @@ def _segmenting(
         max_batch_memory,
         implicit_depth=True
         )
+    '''
 
     def save_slice(volume_slice_index, segmentation, label=None):
         '''Save image slice.'''
@@ -136,22 +149,24 @@ def _segmenting(
 
     start = checkpoint.get_next_to_process('segment_prog')
     listener.current_progress_start(start, num_slices)
-    for (i, volume_slice_index) in enumerate(slice_indexes):
+    for (i, first_volume_slice_index) in enumerate(slice_indexes):
         if i < start:
             continue
         with checkpoint.apply('segment_prog'):
-            slice_features = segmenter.featuriser.featurise_slice(
-                full_volume.get_scale_arrays(segmenter.featuriser.get_scales_needed()),
-                slice_index=volume_slice_index,
-                block_rows=best_block_shape[0],
-                block_cols=best_block_shape[1],
-                n_jobs=max_processes
-                )
-            if config_data['as_masks']:
-                for (label, mask) in zip(segmenter.classifier.labels, segmenter.segment_to_labels_iter(slice_features, config_data['soft_segmentation'], max_processes)):
-                    save_slice(volume_slice_index, mask, label)
-            else:
-                save_slice(volume_slice_index, segmenter.segment_to_label_indexes(slice_features, max_processes))
+            if i%num_simultaneous_slices == 0:
+                slice_features = segmenter.featuriser.featurise_slice(
+                    full_volume.get_scale_arrays(segmenter.featuriser.get_scales_needed()),
+                    slice_index=slice(first_volume_slice_index, first_volume_slice_index+num_simultaneous_slices),
+                    block_rows=best_block_shape[0],
+                    block_cols=best_block_shape[1],
+                    n_jobs=max_processes
+                    )
+                for j in range(num_simultaneous_slices):
+                    if config_data['as_masks']:
+                        for (label, mask) in zip(segmenter.classifier.labels, segmenter.segment_to_labels_iter(slice_features[j*slice_size:(j+1)*slice_size,:], config_data['soft_segmentation'], max_processes)):
+                            save_slice(first_volume_slice_index + j, mask, label)
+                    else:
+                        save_slice(first_volume_slice_index + j, segmenter.segment_to_label_indexes(slice_features[j*slice_size:(j+1)*slice_size,:], max_processes))
         listener.current_progress_update(i+1)
     listener.current_progress_end()
 
@@ -172,6 +187,7 @@ def main(
         max_processes=-1,
         max_batch_memory=1,
         use_gpu=False,
+        num_simultaneous_slices=1,
         listener=listeners.ProgressListener(),
         debug_mode=False
     ):
@@ -204,6 +220,7 @@ def main(
     :param float max_batch_memory: The maximum number of gigabytes to use between all processes.
     :param bool use_gpu: Whether to use the GPU for computing features. Note that this
         parameter does not do anything if the segmenter is provided directly.
+    :param int num_simultaneous_slices: The number of adjacent slices to process together.
     :param ProgressListener listener: The command's progress listener.
     :param bool debug_mode: Whether to show full error messages or just simple ones.
     '''
@@ -223,9 +240,9 @@ def main(
             with times.Timer() as timer:
                 (config_data, full_volume, slice_shape, segmenter, checkpoint) = _loading_data(
                     segmenter, preproc_volume_fullfname, config, results_dir,
-                    checkpoint_fullfname, checkpoint_namespace, reset_checkpoint,
-                    checkpoint_init, max_processes, max_batch_memory, use_gpu,
-                    listener
+                    slice_indexes, checkpoint_fullfname, checkpoint_namespace, reset_checkpoint,
+                    checkpoint_init, max_processes, max_batch_memory, num_simultaneous_slices,
+                    use_gpu, listener
                     )
             listener.log_output('Data loaded')
             listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
@@ -237,7 +254,7 @@ def main(
             listener.log_output(times.get_timestamp())
             listener.log_output('Segmenting')
             with times.Timer() as timer:
-                () = _segmenting(config_data, full_volume, slice_shape, segmenter, results_dir, slice_indexes, max_processes, max_batch_memory, checkpoint, listener)
+                () = _segmenting(config_data, full_volume, slice_shape, segmenter, results_dir, slice_indexes, max_processes, max_batch_memory, checkpoint, num_simultaneous_slices, listener)
             listener.log_output('Volume segmented')
             listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
             listener.log_output('')

@@ -76,6 +76,13 @@ if __name__ == '__main__':
             help='Maximum amount of GB to allow for processing the volume in batches (-1 to use maximum, default).'
         )
     parser.add_argument(
+            '--num_simultaneous_slices',
+            required=False,
+            default=0,
+            type=int,
+            help='The number of adjacent slices to process together.'
+        )
+    parser.add_argument(
             '--use_gpu',
             required=False,
             default='no',
@@ -117,6 +124,7 @@ if __name__ == '__main__':
                 if args.max_batch_memory > 0
                 else psutil.virtual_memory().available/(1024**3)
                 ),
+            num_simultaneous_slices=args.num_simultaneous_slices,
             use_gpu=args.use_gpu == 'yes',
             listener=listener,
             debug_mode=args.debug_mode == 'yes'
