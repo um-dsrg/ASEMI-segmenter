@@ -117,7 +117,6 @@ def apply_histogram_to_all_neighbourhoods_in_slice_3d(array_3d, slice_index, rad
     num_cols_out = col_slice.stop - col_slice.start
 
     result = np.empty([ num_slcs_out, num_rows_out, num_cols_out, num_bins ], np.float32)
-
     if neighbouring_dims == {0,1,2}:
         for (slc_out, slc_in) in enumerate(range(slc_slice.start, slc_slice.stop)):
             for (row_out, row_in) in enumerate(range(row_slice.start, row_slice.stop)):

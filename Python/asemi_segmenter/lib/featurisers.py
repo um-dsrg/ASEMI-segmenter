@@ -439,6 +439,52 @@ class Featuriser(object):
         return (rows_needed, cols_needed, row_range, col_range, output)
 
     #########################################
+    def _prepare_featurise_slice_range(self, data_scales, slice_index, row_range, col_range, output, output_start_row_index, output_start_col_index):
+        '''
+        (Protected method) Fix any missing parameters sent to featurise_slice method with slice_index being a range.
+
+        :param dict data_scales: A dictionary of different scales of the volume.
+        :param slice slice_index: The range of slices to featurise.
+        :param slice row_range: The range of rows to featurise (if only a part of the slice is
+            needed).
+        :param slice col_range: The range of columns to featurise (if only a part of the slice is
+            needed).
+        :param numpy.ndarray output: The output dataset to contain the features (will be created
+            if None). Must be 2D.
+        :param int output_start_row_index: The row index in the output dataset to start putting
+            feature vectors in.
+        :param int output_start_col_index: The column index in the output dataset to start putting
+            feature vectors from.
+        :return: Tuple with fixed parameters (rows_needed, cols_needed, row_range, col_range,
+            output).
+        :rtype: tuple
+        '''
+        feature_size = self.get_feature_size()
+
+        slc_range = slice(
+            slice_index.start if slice_index.start is not None else 0,
+            slice_index.stop if slice_index.stop is not None else data_scales[0].shape[0]
+            )
+        (row_range, col_range) = self._fix_ranges(data_scales, row_range, col_range)
+
+        if output is None:
+            output = np.empty(((slc_range.stop-slc_range.start)*(row_range.stop-row_range.start)*(col_range.stop-col_range.start), feature_size), np.float32)
+        if len(output.shape) != 2 or output.dtype != np.float32:
+            raise ValueError('Output array must be a float32 matrix.')
+
+        rows_needed = (slc_range.stop-slc_range.start)*(row_range.stop - row_range.start)*(col_range.stop - col_range.start)
+        last_output_row_index = output_start_row_index + rows_needed - 1
+        if last_output_row_index >= output.shape[0]:
+            raise ValueError('Provided output array does not have enough rows to hold result in expected range (array rows = {}, rows needed = {}, last output row index = {}).'.format(output.shape[0], rows_needed, last_output_row_index))
+
+        cols_needed = feature_size
+        last_output_col_index = output_start_col_index + cols_needed - 1
+        if last_output_col_index >= output.shape[1]:
+            raise ValueError('Provided output array does not have enough columns to hold result in expected range (array columns = {}, columns needed = {}, last output column index = {}).'.format(output.shape[1], cols_needed, last_output_col_index))
+
+        return (rows_needed, cols_needed, slc_range, row_range, col_range, output)
+
+    #########################################
     def featurise_voxels(self, data_scales, indexes, output=None, output_start_row_index=0, output_start_col_index=0, dataset_name=None, features_table=None):
         '''
         Turn a set of voxels into a matrix of feature vectors.
@@ -483,7 +529,9 @@ class Featuriser(object):
         and output_start_col_index parameters.
 
         :param dict data_scales: A dictionary of different scales of the volume.
-        :param int slice_index: The index of the slice in the volume to featurise.
+        :param slice_index: The index of the slice in the volume to featurise or the range of
+            slice indices.
+        :type slice_index: int or slice
         :param int block_rows: The first dimension of the block shape (2D).
         :param int block_cols: The second dimension of the block shape (2D).
         :param slice row_range: The range of rows to featurise (if only a part of the slice is
@@ -633,7 +681,8 @@ class VoxelFeaturiser(Featuriser):
         See super class for more information.
 
         :param dict data_scales: As described in the super class.
-        :param int slice_index: As described in the super class.
+        :param slice_index: As described in the super class.
+        :type slice_index: int or slice
         :param int block_rows: As described in the super class.
         :param int block_cols: As described in the super class.
         :param slice row_range: As described in the super class.
@@ -646,13 +695,23 @@ class VoxelFeaturiser(Featuriser):
         :return: As described in the super class.
         :rtype: numpy.ndarray
         '''
-        (output_rows_needed, output_cols_needed, row_range, col_range, output) = self._prepare_featurise_slice(data_scales, row_range, col_range, output, output_start_row_index, output_start_col_index)
+        if isinstance(slice_index, int):
+            (output_rows_needed, output_cols_needed, row_range, col_range, output) = self._prepare_featurise_slice(data_scales, row_range, col_range, output, output_start_row_index, output_start_col_index)
 
-        output[
-            output_start_row_index:output_start_row_index+output_rows_needed,
-            output_start_col_index:output_start_col_index+output_cols_needed
-            ] = np.reshape(data_scales[0][slice_index, row_range, col_range], (-1, 1))
-        return output
+            output[
+                output_start_row_index:output_start_row_index+output_rows_needed,
+                output_start_col_index:output_start_col_index+output_cols_needed
+                ] = np.reshape(data_scales[0][slice_index, row_range, col_range], (-1, 1))
+            return output
+
+        else:
+            (output_rows_needed, output_cols_needed, slc_range, row_range, col_range, output) = self._prepare_featurise_slice_range(data_scales, slice_index, row_range, col_range, output, output_start_row_index, output_start_col_index)
+
+            output[
+                output_start_row_index:output_start_row_index+output_rows_needed,
+                output_start_col_index:output_start_col_index+output_cols_needed
+                ] = np.reshape(data_scales[0][slice_index, row_range, col_range], (-1, 1))
+            return output
 
 
 #########################################
@@ -832,7 +891,8 @@ class HistogramFeaturiser(Featuriser):
         See super class for more information.
 
         :param dict data_scales: As described in the super class.
-        :param int slice_index: As described in the super class.
+        :param slice_index: As described in the super class.
+        :type slice_index: int or slice
         :param int block_rows: As described in the super class.
         :param int block_cols: As described in the super class.
         :param slice row_range: As described in the super class.
@@ -845,56 +905,113 @@ class HistogramFeaturiser(Featuriser):
         :return: As described in the super class.
         :rtype: numpy.ndarray
         '''
-        (output_rows_needed, output_cols_needed, row_range, col_range, output) = self._prepare_featurise_slice(data_scales, row_range, col_range, output, output_start_row_index, output_start_col_index)
+        if isinstance(slice_index, int):
+            (output_rows_needed, output_cols_needed, row_range, col_range, output) = self._prepare_featurise_slice(data_scales, row_range, col_range, output, output_start_row_index, output_start_col_index)
 
-        def processor(params, radius, scale, num_bins, full_input_ranges, output_start_row_index, output_start_col_index, use_gpu):
-            '''Processor for process_array_in_blocks_single_slice.'''
-            [ num_rows_out, num_cols_out ] = params[0]['contextless_shape']
+            def processor(params, radius, scale, num_bins, full_input_ranges, output_start_row_index, output_start_col_index, use_gpu):
+                '''Processor for process_array_in_blocks_single_slice.'''
+                [ num_rows_out, num_cols_out ] = params[0]['contextless_shape']
 
-            if use_gpu:
-                hists = histograms.gpu_apply_histogram_to_all_neighbourhoods_in_slice_3d(
-                    params[scale]['block'],
-                    params[scale]['contextless_slices_wrt_block'][0],
-                    radius,
-                    {0,1,2},
-                    0, 2**16,
-                    num_bins,
-                    row_slice=params[scale]['contextless_slices_wrt_block'][1], col_slice=params[scale]['contextless_slices_wrt_block'][2]
+                if use_gpu:
+                    hists = histograms.gpu_apply_histogram_to_all_neighbourhoods_in_slice_3d(
+                        params[scale]['block'],
+                        params[scale]['contextless_slices_wrt_block'][0],
+                        radius,
+                        {0,1,2},
+                        0, 2**16,
+                        num_bins,
+                        row_slice=params[scale]['contextless_slices_wrt_block'][1], col_slice=params[scale]['contextless_slices_wrt_block'][2]
+                        )
+                else:
+                    hists = histograms.apply_histogram_to_all_neighbourhoods_in_slice_3d(
+                        params[scale]['block'],
+                        params[scale]['contextless_slices_wrt_block'][0],
+                        radius,
+                        {0,1,2},
+                        0, 2**16,
+                        num_bins,
+                        row_slice=params[scale]['contextless_slices_wrt_block'][1], col_slice=params[scale]['contextless_slices_wrt_block'][2]
+                        )
+
+                features = np.reshape(downscales.grow_array(hists, scale, [0, 1], params[0]['contextless_shape']), (-1, num_bins)).astype(np.float32)
+
+                out_indexes = (
+                        [
+                            output_start_row_index + row*(full_input_ranges[1].stop - full_input_ranges[1].start) + col
+                            for row in range(params[0]['contextless_slices_wrt_range'][1].start, params[0]['contextless_slices_wrt_range'][1].stop)
+                            for col in range(params[0]['contextless_slices_wrt_range'][2].start, params[0]['contextless_slices_wrt_range'][2].stop)
+                        ],
+                        slice(output_start_col_index, output_start_col_index+num_bins)
                     )
-            else:
-                hists = histograms.apply_histogram_to_all_neighbourhoods_in_slice_3d(
-                    params[scale]['block'],
-                    params[scale]['contextless_slices_wrt_block'][0],
-                    radius,
-                    {0,1,2},
-                    0, 2**16,
-                    num_bins,
-                    row_slice=params[scale]['contextless_slices_wrt_block'][1], col_slice=params[scale]['contextless_slices_wrt_block'][2]
-                    )
-            features = np.reshape(downscales.grow_array(hists, scale, [0, 1], params[0]['contextless_shape']), (-1, num_bins)).astype(np.float32)
 
-            out_indexes = (
-                    [
-                        output_start_row_index + row*(full_input_ranges[1].stop - full_input_ranges[1].start) + col
-                        for row in range(params[0]['contextless_slices_wrt_range'][1].start, params[0]['contextless_slices_wrt_range'][1].stop)
-                        for col in range(params[0]['contextless_slices_wrt_range'][2].start, params[0]['contextless_slices_wrt_range'][2].stop)
-                    ],
-                    slice(output_start_col_index, output_start_col_index+num_bins)
+                return (features, out_indexes)
+
+            return arrayprocs.process_array_in_blocks_single_slice(
+                data_scales,
+                output,
+                processor,
+                block_shape=(block_rows, block_cols),
+                slice_index=slice_index,
+                scales=self.get_scales_needed(),
+                in_ranges=[row_range, col_range],
+                context_size=self.get_context_needed(),
+                n_jobs=n_jobs,
+                extra_params=(self.radius, self.scale, self.num_bins, (row_range, col_range), output_start_row_index, output_start_col_index, self.use_gpu),
                 )
-            return (features, out_indexes)
 
-        return arrayprocs.process_array_in_blocks_single_slice(
-            data_scales,
-            output,
-            processor,
-            block_shape=(block_rows, block_cols),
-            slice_index=slice_index,
-            scales=self.get_scales_needed(),
-            in_ranges=[row_range, col_range],
-            context_size=self.get_context_needed(),
-            n_jobs=n_jobs,
-            extra_params=(self.radius, self.scale, self.num_bins, (row_range, col_range), output_start_row_index, output_start_col_index, self.use_gpu),
-            )
+        else:
+            (output_rows_needed, output_cols_needed, slc_range, row_range, col_range, output) = self._prepare_featurise_slice_range(data_scales, slice_index, row_range, col_range, output, output_start_row_index, output_start_col_index)
+
+            def processor(params, radius, scale, num_bins, full_input_ranges, output_start_row_index, output_start_col_index, use_gpu):
+                '''Processor for process_array_in_blocks_slice_range.'''
+                [ num_slcs_out, num_rows_out, num_cols_out ] = params[0]['contextless_shape']
+
+                if use_gpu:
+                    hists = histograms.gpu_apply_histogram_to_all_neighbourhoods_in_slice_3d(
+                        params[scale]['block'],
+                        params[scale]['contextless_slices_wrt_block'][0],
+                        radius,
+                        {0,1,2},
+                        0, 2**16,
+                        num_bins,
+                        row_slice=params[scale]['contextless_slices_wrt_block'][1], col_slice=params[scale]['contextless_slices_wrt_block'][2]
+                        )
+                else:
+                    hists = histograms.apply_histogram_to_all_neighbourhoods_in_slice_3d(
+                        params[scale]['block'],
+                        params[scale]['contextless_slices_wrt_block'][0],
+                        radius,
+                        {0,1,2},
+                        0, 2**16,
+                        num_bins,
+                        row_slice=params[scale]['contextless_slices_wrt_block'][1], col_slice=params[scale]['contextless_slices_wrt_block'][2]
+                        )
+
+                features = np.reshape(downscales.grow_array(hists, scale, [0, 1, 2], params[0]['contextless_shape']), (-1, num_bins)).astype(np.float32)
+
+                out_indexes = (
+                        [
+                            output_start_row_index + slc*(full_input_ranges[0].stop - full_input_ranges[0].start)*(full_input_ranges[1].stop - full_input_ranges[1].start) + row*(full_input_ranges[0].stop - full_input_ranges[0].start) + col
+                            for slc in range(params[0]['contextless_slices_wrt_range'][0].start, params[0]['contextless_slices_wrt_range'][0].stop)
+                            for row in range(params[0]['contextless_slices_wrt_range'][1].start, params[0]['contextless_slices_wrt_range'][1].stop)
+                            for col in range(params[0]['contextless_slices_wrt_range'][2].start, params[0]['contextless_slices_wrt_range'][2].stop)
+                        ],
+                        slice(output_start_col_index, output_start_col_index+num_bins)
+                    )
+                return (features, out_indexes)
+
+            return arrayprocs.process_array_in_blocks_slice_range(
+                data_scales,
+                output,
+                processor,
+                block_shape=(block_rows, block_cols),
+                slice_range=slice_index,
+                scales=self.get_scales_needed(),
+                in_ranges=[row_range, col_range],
+                context_size=self.get_context_needed(),
+                n_jobs=n_jobs,
+                extra_params=(self.radius, self.scale, self.num_bins, (row_range, col_range), output_start_row_index, output_start_col_index, self.use_gpu),
+                )
 
 
 #########################################
@@ -1075,7 +1192,8 @@ class LocalBinaryPatternFeaturiser(Featuriser):
         See super class for more information.
 
         :param dict data_scales: As described in the super class.
-        :param int slice_index: As described in the super class.
+        :param slice_index: As described in the super class.
+        :type slice_index: int or slice
         :param int block_rows: As described in the super class.
         :param int block_cols: As described in the super class.
         :param slice row_range: As described in the super class.
@@ -1088,57 +1206,115 @@ class LocalBinaryPatternFeaturiser(Featuriser):
         :return: As described in the super class.
         :rtype: numpy.ndarray
         '''
-        (output_rows_needed, output_cols_needed, row_range, col_range, output) = self._prepare_featurise_slice(data_scales, row_range, col_range, output, output_start_row_index, output_start_col_index)
+        if isinstance(slice_index, int):
+            (output_rows_needed, output_cols_needed, row_range, col_range, output) = self._prepare_featurise_slice(data_scales, row_range, col_range, output, output_start_row_index, output_start_col_index)
 
-        def processor(params, neighbouring_dims, radius, scale, full_input_ranges, output_start_row_index, output_start_col_index):
-            '''Processor for process_array_in_blocks_single_slice.'''
-            [ num_rows_out, num_cols_out ] = params[0]['contextless_shape']
+            def processor(params, neighbouring_dims, radius, scale, full_input_ranges, output_start_row_index, output_start_col_index):
+                '''Processor for process_array_in_blocks_single_slice.'''
+                [ num_rows_out, num_cols_out ] = params[0]['contextless_shape']
 
-            lbp_codes = np.empty_like(params[scale]['block'])
-            if neighbouring_dims == {1,2}:
-                data_index = params[scale]['contextless_slices_wrt_block'][0]
-                lbp_codes[data_index, :, :] = skimage.feature.local_binary_pattern(params[scale]['block'][data_index,:,:], 8, 1, 'uniform')
-            else:
-                dim = ({0,1,2} - neighbouring_dims).pop()
-                index = [ slice(None), slice(None), slice(None) ]
-                for i in range(lbp_codes.shape[dim]):
-                    index[dim] = i
-                    index_ = tuple(index)
-                    lbp_codes[index_] = skimage.feature.local_binary_pattern(params[scale]['block'][index_], 8, 1, 'uniform')
+                lbp_codes = np.empty_like(params[scale]['block'])
+                if neighbouring_dims == {1,2}:
+                    data_index = params[scale]['contextless_slices_wrt_block'][0]
+                    lbp_codes[data_index, :, :] = skimage.feature.local_binary_pattern(params[scale]['block'][data_index,:,:], 8, 1, 'uniform')
+                else:
+                    dim = ({0,1,2} - neighbouring_dims).pop()
+                    index = [ slice(None), slice(None), slice(None) ]
+                    for i in range(lbp_codes.shape[dim]):
+                        index[dim] = i
+                        index_ = tuple(index)
+                        lbp_codes[index_] = skimage.feature.local_binary_pattern(params[scale]['block'][index_], 8, 1, 'uniform')
 
-            hists = histograms.apply_histogram_to_all_neighbourhoods_in_slice_3d(
-                lbp_codes,
-                params[scale]['contextless_slices_wrt_block'][0],
-                radius,
-                neighbouring_dims,
-                0, 10,
-                10,
-                row_slice=params[scale]['contextless_slices_wrt_block'][1], col_slice=params[scale]['contextless_slices_wrt_block'][2]
+                hists = histograms.apply_histogram_to_all_neighbourhoods_in_slice_3d(
+                    lbp_codes,
+                    params[scale]['contextless_slices_wrt_block'][0],
+                    radius,
+                    neighbouring_dims,
+                    0, 10,
+                    10,
+                    row_slice=params[scale]['contextless_slices_wrt_block'][1], col_slice=params[scale]['contextless_slices_wrt_block'][2]
+                    )
+                features = np.reshape(downscales.grow_array(hists, scale, [0, 1], params[0]['contextless_shape']), (-1, 10)).astype(np.float32)
+
+                out_indexes = (
+                        [
+                            output_start_row_index + row*(full_input_ranges[1].stop - full_input_ranges[1].start) + col
+                            for row in range(params[0]['contextless_slices_wrt_range'][1].start, params[0]['contextless_slices_wrt_range'][1].stop)
+                            for col in range(params[0]['contextless_slices_wrt_range'][2].start, params[0]['contextless_slices_wrt_range'][2].stop)
+                        ],
+                        slice(output_start_col_index, output_start_col_index+10)
+                    )
+                return (features, out_indexes)
+
+            return arrayprocs.process_array_in_blocks_single_slice(
+                data_scales,
+                output,
+                processor,
+                block_shape=(block_rows, block_cols),
+                slice_index=slice_index,
+                scales=self.get_scales_needed(),
+                in_ranges=[row_range, col_range],
+                context_size=self.get_context_needed(),
+                n_jobs=n_jobs,
+                extra_params=(self.neighbouring_dims, self.radius, self.scale, (row_range, col_range), output_start_row_index, output_start_col_index),
                 )
-            features = np.reshape(downscales.grow_array(hists, scale, [0, 1], params[0]['contextless_shape']), (-1, 10)).astype(np.float32)
 
-            out_indexes = (
-                    [
-                        output_start_row_index + row*(full_input_ranges[1].stop - full_input_ranges[1].start) + col
-                        for row in range(params[0]['contextless_slices_wrt_range'][1].start, params[0]['contextless_slices_wrt_range'][1].stop)
-                        for col in range(params[0]['contextless_slices_wrt_range'][2].start, params[0]['contextless_slices_wrt_range'][2].stop)
-                    ],
-                    slice(output_start_col_index, output_start_col_index+10)
+        else:
+            (output_rows_needed, output_cols_needed, slc_range, row_range, col_range, output) = self._prepare_featurise_slice_range(data_scales, slice_index, row_range, col_range, output, output_start_row_index, output_start_col_index)
+
+            def processor(params, neighbouring_dims, radius, scale, full_input_ranges, output_start_row_index, output_start_col_index):
+                '''Processor for process_array_in_blocks_single_slice.'''
+                [ num_slcs_out, num_rows_out, num_cols_out ] = params[0]['contextless_shape']
+
+                lbp_codes = np.empty_like(params[scale]['block'])
+                if neighbouring_dims == {1,2}:
+                    for data_index in range(
+                            params[scale]['contextless_slices_wrt_block'][0].start,
+                            params[scale]['contextless_slices_wrt_block'][0].stop
+                        ):
+                        lbp_codes[data_index, :, :] = skimage.feature.local_binary_pattern(params[scale]['block'][data_index,:,:], 8, 1, 'uniform')
+                else:
+                    dim = ({0,1,2} - neighbouring_dims).pop()
+                    index = [ slice(None), slice(None), slice(None) ]
+                    for i in range(lbp_codes.shape[dim]):
+                        index[dim] = i
+                        index_ = tuple(index)
+                        lbp_codes[index_] = skimage.feature.local_binary_pattern(params[scale]['block'][index_], 8, 1, 'uniform')
+
+                hists = histograms.apply_histogram_to_all_neighbourhoods_in_slice_3d(
+                    lbp_codes,
+                    params[scale]['contextless_slices_wrt_block'][0],
+                    radius,
+                    neighbouring_dims,
+                    0, 10,
+                    10,
+                    row_slice=params[scale]['contextless_slices_wrt_block'][1], col_slice=params[scale]['contextless_slices_wrt_block'][2]
+                    )
+                features = np.reshape(downscales.grow_array(hists, scale, [0, 1, 2], params[0]['contextless_shape']), (-1, 10)).astype(np.float32)
+
+                out_indexes = (
+                        [
+                            output_start_row_index + slc*(full_input_ranges[0].stop - full_input_ranges[0].start)*(full_input_ranges[1].stop - full_input_ranges[1].start) + row*(full_input_ranges[0].stop - full_input_ranges[0].start) + col
+                            for slc in range(params[0]['contextless_slices_wrt_range'][0].start, params[0]['contextless_slices_wrt_range'][0].stop)
+                            for row in range(params[0]['contextless_slices_wrt_range'][1].start, params[0]['contextless_slices_wrt_range'][1].stop)
+                            for col in range(params[0]['contextless_slices_wrt_range'][2].start, params[0]['contextless_slices_wrt_range'][2].stop)
+                        ],
+                        slice(output_start_col_index, output_start_col_index+10)
+                    )
+                return (features, out_indexes)
+
+            return arrayprocs.process_array_in_blocks_slice_range(
+                data_scales,
+                output,
+                processor,
+                block_shape=(block_rows, block_cols),
+                slice_range=slice_index,
+                scales=self.get_scales_needed(),
+                in_ranges=[row_range, col_range],
+                context_size=self.get_context_needed(),
+                n_jobs=n_jobs,
+                extra_params=(self.neighbouring_dims, self.radius, self.scale, (row_range, col_range), output_start_row_index, output_start_col_index),
                 )
-            return (features, out_indexes)
-
-        return arrayprocs.process_array_in_blocks_single_slice(
-            data_scales,
-            output,
-            processor,
-            block_shape=(block_rows, block_cols),
-            slice_index=slice_index,
-            scales=self.get_scales_needed(),
-            in_ranges=[row_range, col_range],
-            context_size=self.get_context_needed(),
-            n_jobs=n_jobs,
-            extra_params=(self.neighbouring_dims, self.radius, self.scale, (row_range, col_range), output_start_row_index, output_start_col_index),
-            )
 
 
 #########################################
@@ -1255,7 +1431,8 @@ class CompositeFeaturiser(Featuriser):
         See super class for more information.
 
         :param dict data_scales: As described in the super class.
-        :param int slice_index: As described in the super class.
+        :param slice_index: As described in the super class.
+        :type slice_index: int or slice
         :param int block_rows: As described in the super class.
         :param int block_cols: As described in the super class.
         :param slice row_range: As described in the super class.
@@ -1267,10 +1444,20 @@ class CompositeFeaturiser(Featuriser):
         :return: As described in the super class.
         :rtype: numpy.ndarray
         '''
-        (output_rows_needed, output_cols_needed, row_range, col_range, output) = self._prepare_featurise_slice(data_scales, row_range, col_range, output, output_start_row_index, output_start_col_index)
+        if isinstance(slice_index, int):
+            (output_rows_needed, output_cols_needed, row_range, col_range, output) = self._prepare_featurise_slice(data_scales, row_range, col_range, output, output_start_row_index, output_start_col_index)
 
-        for featuriser in self.featuriser_list:
-            featuriser.featurise_slice(data_scales, slice_index, block_rows, block_cols, row_range, col_range, output, output_start_row_index, output_start_col_index, n_jobs)
-            output_start_col_index += featuriser.get_feature_size()
+            for featuriser in self.featuriser_list:
+                featuriser.featurise_slice(data_scales, slice_index, block_rows, block_cols, row_range, col_range, output, output_start_row_index, output_start_col_index, n_jobs)
+                output_start_col_index += featuriser.get_feature_size()
 
-        return output
+            return output
+
+        else:
+            (output_rows_needed, output_cols_needed, slc_range, row_range, col_range, output) = self._prepare_featurise_slice_range(data_scales, slice_index, row_range, col_range, output, output_start_row_index, output_start_col_index)
+
+            for featuriser in self.featuriser_list:
+                featuriser.featurise_slice(data_scales, slice_index, block_rows, block_cols, row_range, col_range, output, output_start_row_index, output_start_col_index, n_jobs)
+                output_start_col_index += featuriser.get_feature_size()
+
+            return output

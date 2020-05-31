@@ -9,7 +9,7 @@ from asemi_segmenter.lib import regions
 from asemi_segmenter.lib import histograms
 
 #########################################
-class Features(unittest.TestCase):
+class Featurisers(unittest.TestCase):
 
     #########################################
     def test_histogram_featuriser_voxels(self):
@@ -74,6 +74,27 @@ class Features(unittest.TestCase):
                     expected_output[2:-2, :] = slice_features
                     slice_features = featuriser.featurise_slice(scaled_data, slice_index, block_rows=batch_size, block_cols=batch_size, output=output, output_start_row_index=2, n_jobs=n_jobs)
                     np.testing.assert_equal(expected_output, slice_features, 'downsample_kernel={}, featuriser_params={}, batch_size={}, n_jobs={}, slice_index={}'.format(downsample_kernel.name, (radius, scale, num_bins), batch_size, n_jobs, slice_index))
+
+                true_slice_features = [
+                        [
+                            [
+                                []
+                                for col in range(scaled_data[0].shape[2])
+                            ] for row in range(scaled_data[0].shape[1])
+                        ] for slc in range(scaled_data[0].shape[0])
+                    ]
+                for slc in range(scaled_data[0].shape[0]):
+                    for row in range(scaled_data[0].shape[1]):
+                        for col in range(scaled_data[0].shape[2]):
+                            neighbourhood = regions.get_neighbourhood_array_3d(scaled_data[scale], (slc, row, col), radius, {0,1,2}, scale=scale)
+                            true_slice_features[slc][row][col].extend(histograms.histogram(neighbourhood, num_bins, (0, 2**16)))
+                true_slice_features = np.array(true_slice_features, np.float32)
+                for slice_range in [
+                        slice(0, 1),
+                        slice(0, 2),
+                    ]:
+                    slice_features = featuriser.featurise_slice(scaled_data, slice_range, block_rows=batch_size, block_cols=batch_size, n_jobs=n_jobs)
+                    np.testing.assert_equal(true_slice_features[slice_range].reshape([-1, len(true_slice_features[0][0][0])]), slice_features, 'downsample_kernel={}, featuriser_params={}, batch_size={}, n_jobs={}, slice_range={}'.format(downsample_kernel.name, (radius, scale, num_bins), batch_size, n_jobs, slice_range))
 
     #########################################
     def test_lbp_featuriser_voxels(self):
@@ -158,6 +179,28 @@ class Features(unittest.TestCase):
                     slice_features = featuriser.featurise_slice(scaled_data, slice_index, block_rows=batch_size, block_cols=batch_size, output=output, output_start_row_index=2, n_jobs=n_jobs)
                     np.testing.assert_equal(expected_output, slice_features, 'downsample_kernel={}, featuriser_params={}, batch_size={}, n_jobs={}, slice_index={}'.format(downsample_kernel.name, (neighbouring_dims, radius, scale), batch_size, n_jobs, slice_index))
 
+                    true_slice_features = [
+                            [
+                                [
+                                    []
+                                    for col in range(scaled_data[0].shape[2])
+                                ] for row in range(scaled_data[0].shape[1])
+                            ] for slc in range(scaled_data[0].shape[0])
+                        ]
+                    for slc in range(scaled_data[0].shape[0]):
+                        for row in range(scaled_data[0].shape[1]):
+                            for col in range(scaled_data[0].shape[2]):
+                                neighbourhood = regions.get_neighbourhood_array_3d(scaled_data[scale], (slc, row, col), radius+1, neighbouring_dims, scale=scale)
+                                lbp = skimage.feature.local_binary_pattern(neighbourhood, 8, 1, 'uniform')[1:-1,1:-1]
+                                true_slice_features[slc][row][col].extend(histograms.histogram(lbp, 10, (0, 10)))
+                    true_slice_features = np.array(true_slice_features, np.float32)
+                    for slice_range in [
+                            slice(0, 1),
+                            slice(0, 2),
+                        ]:
+                        slice_features = featuriser.featurise_slice(scaled_data, slice_range, block_rows=batch_size, block_cols=batch_size, n_jobs=n_jobs)
+                        np.testing.assert_equal(true_slice_features[slice_range].reshape([-1, len(true_slice_features[0][0][0])]), slice_features, 'downsample_kernel={}, featuriser_params={}, batch_size={}, n_jobs={}, slice_range={}'.format(downsample_kernel.name, (radius, scale), batch_size, n_jobs, slice_range))
+
     #########################################
     def test_voxel_featuriser_voxels(self):
         indexes = [(0,0,0), (2,7,7), (4,14,14)]
@@ -199,6 +242,26 @@ class Features(unittest.TestCase):
             expected_output[2:-2, :] = slice_features
             slice_features = featuriser.featurise_slice(scaled_data, slice_index, block_rows=batch_size, block_cols=batch_size, output=output, output_start_row_index=2)
             np.testing.assert_equal(expected_output, slice_features, 'slice_index={}'.format(slice_index))
+
+            true_slice_features = [
+                    [
+                        [
+                            []
+                            for col in range(scaled_data[0].shape[2])
+                        ] for row in range(scaled_data[0].shape[1])
+                    ] for slc in range(scaled_data[0].shape[0])
+                ]
+            for slc in range(scaled_data[0].shape[0]):
+                for row in range(scaled_data[0].shape[1]):
+                    for col in range(scaled_data[0].shape[2]):
+                        true_slice_features[slc][row][col].append(scaled_data[0][slc,row,col])
+            true_slice_features = np.array(true_slice_features, np.float32)
+            for slice_range in [
+                    slice(0, 1),
+                    slice(0, 2),
+                ]:
+                slice_features = featuriser.featurise_slice(scaled_data, slice_range, block_rows=batch_size, block_cols=batch_size)
+                np.testing.assert_equal(true_slice_features[slice_range].reshape([-1, len(true_slice_features[0][0][0])]), slice_features, 'slice_range={}'.format(slice_range))
 
     #########################################
     def test_composite_featuriser_voxels(self):
@@ -267,6 +330,31 @@ class Features(unittest.TestCase):
                     expected_output[2:-2, :] = slice_features
                     slice_features = featuriser.featurise_slice(scaled_data, slice_index, block_rows=batch_size, block_cols=batch_size, output=output, output_start_row_index=2, n_jobs=n_jobs)
                     np.testing.assert_equal(expected_output, slice_features, 'downsample_kernel={}, name={}, batch_size={}, n_jobs={}, slice_index={}'.format(downsample_kernel.name, name, batch_size, n_jobs, slice_index))
+
+                true_slice_features = [
+                        [
+                            [
+                                []
+                                for col in range(scaled_data[0].shape[2])
+                            ] for row in range(scaled_data[0].shape[1])
+                        ] for slc in range(scaled_data[0].shape[0])
+                    ]
+                for slc in range(scaled_data[0].shape[0]):
+                    for row in range(scaled_data[0].shape[1]):
+                        for col in range(scaled_data[0].shape[2]):
+                            for sub_featuriser in featuriser_list:
+                                if isinstance(sub_featuriser, featurisers.VoxelFeaturiser):
+                                    true_slice_features[slc][row][col].append(scaled_data[0][slc, row, col])
+                                elif isinstance(sub_featuriser, featurisers.HistogramFeaturiser):
+                                    neighbourhood = regions.get_neighbourhood_array_3d(scaled_data[sub_featuriser.scale], (slc, row, col), sub_featuriser.radius, {0,1,2}, scale=sub_featuriser.scale)
+                                    true_slice_features[slc][row][col].extend(histograms.histogram(neighbourhood, sub_featuriser.num_bins, (0, 2**16)))
+                true_slice_features = np.array(true_slice_features, np.float32)
+                for slice_range in [
+                        slice(0, 1),
+                        slice(0, 2),
+                    ]:
+                    slice_features = featuriser.featurise_slice(scaled_data, slice_range, block_rows=batch_size, block_cols=batch_size)
+                    np.testing.assert_equal(true_slice_features[slice_range].reshape([-1, len(true_slice_features[0][0][0])]), slice_features, 'downsample_kernel={}, name={}, batch_size={}, n_jobs={}, slice_range={}'.format(downsample_kernel.name, name, batch_size, n_jobs, slice_range))
 
 if __name__ == '__main__':
     unittest.main()

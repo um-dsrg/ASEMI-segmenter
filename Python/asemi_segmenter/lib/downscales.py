@@ -26,55 +26,55 @@ from asemi_segmenter.lib import validations
 def load_downsamplekernel_from_config(config):
     '''
     Load a downsample kernel from a configuration dictionary.
-    
+
     :param dict config: Configuration of the downsample kernel.
     :return: A downsample kernel object.
     :rtype: DownsampleKernel
     '''
     validations.validate_json_with_schema_file(config, 'downsample_filter.json')
-    
+
     if config['type'] == 'none':
         return NullDownsampleKernel()
     elif config['type'] == 'gaussian':
         sigma = config['params']['sigma']
         return GaussianDownsampleKernel(sigma)
-    
+
 
 
 #########################################
 class DownsampleKernel(object):
     '''
     Base class for all downsample kernels.
-    
+
     A downsample kernel is used to eliminate high frequencies from an image by blurring it. This
     allows the image to be reduced in size by half by just dropping every second element.
     '''
-    
+
     #########################################
     def __init__(self, name):
         '''
         Constructor.
-        
+
         :param str name: The name of the kernel.
         '''
         self.name = name
-        
+
     #########################################
     def get_context_needed(self, scale):
         '''
         Get the amount of context needed around every element for the kernel to work.
-        
+
         :param int scale: The scale of the data on which this kernel will be used on.
         :return: The amount of context needed.
         :rtype: int
         '''
         raise NotImplementedError()
-    
+
     #########################################
     def get_kernel(self, scale, ndims=3):
         '''
         Get the actual kernel to convolve.
-        
+
         :param int scale: The scale of the data on which this kernel will be used on.
         :param int ndims: The number of dimensions in the data on which this kernel will be used
             on.
@@ -87,33 +87,33 @@ class DownsampleKernel(object):
 #########################################
 class NullDownsampleKernel(DownsampleKernel):
     '''A downsample kernel that does nothing and exists only as a baseline.'''
-    
+
     #########################################
     def __init__(self, name='null'):
         '''
         Constructor.
-        
+
         :param str name: The name of the kernel.
         '''
         super().__init__(name)
-    
+
     #########################################
     def get_context_needed(self, scale):
         '''
         Get the amount of context needed around every element for the kernel to work.
-        
+
         :param int scale: The scale of the data on which this kernel will be used on (not used in
             this class).
         :return: Just returns zero.
         :rtype: int
         '''
         return 0
-    
+
     #########################################
     def get_kernel(self, scale, ndims=3):
         '''
         Get the actual kernel to convolve.
-        
+
         :param int scale: The scale of the data on which this kernel will be used on (not used in
             this class).
         :param int ndims: The number of dimensions in the data on which this kernel will be used
@@ -127,24 +127,24 @@ class NullDownsampleKernel(DownsampleKernel):
 #########################################
 class GaussianDownsampleKernel(DownsampleKernel):
     '''Gaussian blur: https://en.wikipedia.org/wiki/Gaussian_filter'''
-    
+
     #########################################
     def __init__(self, sigma=math.sqrt(2), name='gaussian'):
         '''
         Constructor.
-        
+
         :param float sigma: The sigma value of the gaussian function.
         :param str name: The name of the kernel.
         '''
         super().__init__(name)
         self.sigma = sigma
         self.num_sigmas_from_mean = 3
-    
+
     #########################################
     def get_sigma(self, scale):
         '''
         Get the sigma value needed to resize an array to a given scale.
-        
+
         :param int scale: The target scale.
         :return: The sigma value.
         :rtype: float
@@ -154,12 +154,12 @@ class GaussianDownsampleKernel(DownsampleKernel):
             return self.sigma*(math.sqrt(2)**(scale-1))
         else:
             return 0
-    
+
     #########################################
     def get_kernel_size(self, scale):
         '''
         Get the size of a side of the kernel filter needed in order to cover 3 standard deviations.
-        
+
         :param int scale: The target scale for which the kernel shall be used.
         :return: The kernel size.
         :rtype: int
@@ -168,12 +168,12 @@ class GaussianDownsampleKernel(DownsampleKernel):
             return int(math.ceil((self.num_sigmas_from_mean*self.get_sigma(scale))*2 + 1))
         else:
             return 1
-    
+
     #########################################
     def get_context_needed(self, scale):
         '''
         Get the amount of context needed around every element for the kernel to work.
-        
+
         :param int scale: The scale of the data on which this kernel will be used on.
         :return: The amount of context needed.
         :rtype: int
@@ -182,12 +182,12 @@ class GaussianDownsampleKernel(DownsampleKernel):
             return int(math.ceil(self.get_kernel_size(scale)/2))
         else:
             return 0
-    
+
     #########################################
     def get_kernel(self, scale, ndims=3):
         '''
         Get the actual kernel to convolve.
-        
+
         :param int scale: The scale of the data on which this kernel will be used on.
         :param int ndims: The number of dimensions in the data on which this kernel will be used
             on.
@@ -197,11 +197,11 @@ class GaussianDownsampleKernel(DownsampleKernel):
         if scale > 0:
             sigma = self.get_sigma(scale)
             xs = np.meshgrid(*[ np.linspace(-self.num_sigmas_from_mean*sigma, self.num_sigmas_from_mean*sigma, self.get_kernel_size(scale)) ]*ndims)
-            
+
             two_sigma_sqr = 2*(sigma**2)
             kernel = np.prod([ np.exp(-(x**2)/two_sigma_sqr)/math.sqrt(math.pi*two_sigma_sqr) for x in xs ], axis=0)
             kernel = kernel/np.sum(kernel)
-            
+
             return kernel
         else:
             return np.ones([1]*ndims, np.float32)
@@ -211,10 +211,10 @@ class GaussianDownsampleKernel(DownsampleKernel):
 def downscale_pos(position, scale):
     '''
     Find where a position (coordinate) moves to in a downsampled array.
-    
+
     Given a position in a full sized array, find the corresponding position when the array is
     downscaled.
-    
+
     :param position: The coordinate in the full sized array.
     :type position: list or tuple or int
     :param int scale: The scale of the target array.
@@ -234,7 +234,7 @@ def downscale_pos(position, scale):
 def downscale_slice(slice_, scale):
     '''
     Given a range (Python slice) in the full sized array, get the corresponding resized range.
-    
+
     :param slice slice_: The Python slice to resize.
     :param int scale: The scale to resize the range to.
     :return: The resized range.
@@ -251,7 +251,7 @@ def downscale_slice(slice_, scale):
 def predict_new_shape(shape, scale):
     '''
     Get the new shape after an array is rescaled.
-    
+
     :param tuple shape: The shape of the full sized array.
     :param int scale: The target scale of the array.
     :return: The new shape.
@@ -268,21 +268,21 @@ def predict_new_shape(shape, scale):
 def downscale(in_array, downsample_kernel, scale, remove_pad=False, trim_front=None):
     '''
     Resize an array to a given scale.
-    
+
     When this is used for resizing a large array using blocks, the trim_front parameter becomes
     useful. If we're only keeping every fourth element in an array (to downscale it to a quarter
     of its original size) and we're using blocks of size 5, the following situation might happen
     (using a 1D array as an example):
-    
+
     Array:   abcdefghijklmn
     To keep: a   e   i   m
     Blocks:  11111222223333
-    
+
     Note how if we're dropping elements within the blocks rather than from the full array, then we
     cannot just keep every fourth element starting from the beginning of the block as the blocks
     and decimations are not in sync. By using trim_front we can trim the blocks to start from the
     first element to survive the decimation.
-    
+
     :param numpy.ndarray in_array: The array to resize.
     :param DownsampleKernel downsample_kernel: The filter to downsample with.
     :param int scale: The scale to resize to.
@@ -311,7 +311,7 @@ def downscale(in_array, downsample_kernel, scale, remove_pad=False, trim_front=N
 def downscale_in_blocks(in_array, out_array, block_shape, downsample_kernel, scale, n_jobs=1, progress_listener=lambda num_ready, num_new:None):
     '''
     Like downscale but for use with very large arrays that need to be processed in blocks.
-    
+
     :param numpy.ndarray in_array: The array to downscale (can be HDF file).
     :param numpy.ndarray out_array: The resulting resized array (can be HDF file). Use
         predict_new_shape to know what shape to use.
@@ -331,23 +331,23 @@ def downscale_in_blocks(in_array, out_array, block_shape, downsample_kernel, sca
         trim_front = [ math.ceil(s.start/scale_factor)*scale_factor - s.start for s in params[0]['contextless_slices_wrt_whole'] ]
         if any(l <= 2*context_needed + t for (l, t) in zip(params[0]['block'].shape, trim_front)):
             return None
-        
+
         downsampled = downscale(params[0]['block'], downsample_kernel, scale, remove_pad=True, trim_front=trim_front)
-        
+
         new_pos = []
         for (s, t, l) in zip(params[0]['contextless_slices_wrt_whole'], trim_front, downsampled.shape):
             start = downscale_pos(s.start + t, scale)
             stop = start + l
             new_pos.append(slice(start, stop))
-        
+
         return (downsampled, tuple(new_pos))
-    
+
     context_needed = downsample_kernel.get_context_needed(scale)
     if len(out_array.shape) != len(in_array.shape) or out_array.dtype != in_array.dtype:
         raise ValueError('Output array must be an array of the same type and number of dimensions as input array.')
     if out_array.shape != predict_new_shape(in_array.shape, scale):
         raise ValueError('Output array shape is not equal to the predicted shape of in_array after downscaling (array shape={}, predicted shape={}).'.format(out_array.shape, predict_new_shape(in_array.shape, scale)))
-    
+
     return arrayprocs.process_array_in_blocks(
             { 0: in_array },
             out_array,
@@ -365,17 +365,17 @@ def downscale_in_blocks(in_array, out_array, block_shape, downsample_kernel, sca
 def grow_array(array, scale, axises=None, orig_shape=None):
     '''
     Grow an array to be back to the size it was before downscaling by repeating its values.
-    
+
     This is useful for knowing which values in the original array is each value in the downscaled
     array standing in for. For example:
-    
+
     Original array:   abcdefghijklmn
     Downscaled array: acegikm
     Grown array:      aacceeggiikkmm
-    
+
     Note how when the grown array is compared to the original array we can see that 'a' is standing
     in for 'a' and 'b', 'c' is standing in for 'c' and 'd', etc.
-    
+
     :param numpy.ndarray array: The downscaled array.
     :param int scale: The scale at which it was downscaled.
     :param list axises: The list of dimensions to grow (to leave some dimensions as-is).
@@ -385,6 +385,7 @@ def grow_array(array, scale, axises=None, orig_shape=None):
     :rtype: numpy.ndarray
     '''
     scale_factor = 2**scale
+
     if axises is None:
         axises = range(len(array.shape))
     for axis in axises:
@@ -394,11 +395,11 @@ def grow_array(array, scale, axises=None, orig_shape=None):
             pre_slices = [ slice(None) for _ in array.shape ]
             pre_slices[axis] = slice(0, int(np.ceil(orig_shape[axis]/scale_factor)))
             pre_slices = tuple(pre_slices)
-            
+
             post_slices = [ slice(None) for _ in array.shape ]
             post_slices[axis] = slice(0, orig_shape[axis])
             post_slices = tuple(post_slices)
-            
+
             array = np.repeat(
                     array[pre_slices],
                     scale_factor,
