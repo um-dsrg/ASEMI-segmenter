@@ -345,21 +345,24 @@ class Featuriser(object):
         raise NotImplementedError()
 
     #########################################
-    def _fix_ranges(self, data_scales, row_range, col_range):
+    def _fix_range(self, data_scales, dim, rng):
         '''
-        (Protected method) Replace None in the row and column ranges with actual numbers.
+        (Protected method) Replace None in a range with actual numbers.
 
         :param dict data_scales: A dictionary of different scales of the volume.
-        :param slice row_range: The range of rows to featurise (if only a part of the slice is
-            needed).
-        :param slice col_range: The range of columns to featurise (if only a part of the slice is
-            needed).
-        :return: Tuple with ranges fixed (row_range, col_range)
+        :param int dim: The dimension (in the data) of the range being fixed.
+        :param slice rng: The range of data.
+        :return: The fixed range.
         :rtype: tuple
         '''
-        row_range = slice(row_range.start if row_range.start is not None else 0, row_range.stop if row_range.stop is not None else data_scales[0].shape[1])
-        col_range = slice(col_range.start if col_range.start is not None else 0, col_range.stop if col_range.stop is not None else data_scales[0].shape[2])
-        return (row_range, col_range)
+        return slice(
+            min(max(rng.start, 0), data_scales[0].shape[dim]-1)
+                if rng.start is not None
+                else 0,
+            min(max(rng.stop, 1), data_scales[0].shape[dim])
+                if rng.stop is not None
+                else data_scales[0].shape[dim]
+            )
 
     #########################################
     def _prepare_featurise_voxels(self, data_scales, indexes, output, output_start_row_index, output_start_col_index):
@@ -419,7 +422,8 @@ class Featuriser(object):
         '''
         feature_size = self.get_feature_size()
 
-        (row_range, col_range) = self._fix_ranges(data_scales, row_range, col_range)
+        row_range = self._fix_range(data_scales, 1, row_range)
+        col_range = self._fix_range(data_scales, 2, col_range)
 
         if output is None:
             output = np.empty(((row_range.stop-row_range.start)*(col_range.stop-col_range.start), feature_size), np.float32)
@@ -461,11 +465,9 @@ class Featuriser(object):
         '''
         feature_size = self.get_feature_size()
 
-        slc_range = slice(
-            slice_index.start if slice_index.start is not None else 0,
-            slice_index.stop if slice_index.stop is not None else data_scales[0].shape[0]
-            )
-        (row_range, col_range) = self._fix_ranges(data_scales, row_range, col_range)
+        slc_range = self._fix_range(data_scales, 0, slice_index)
+        row_range = self._fix_range(data_scales, 1, row_range)
+        col_range = self._fix_range(data_scales, 2, col_range)
 
         if output is None:
             output = np.empty(((slc_range.stop-slc_range.start)*(row_range.stop-row_range.start)*(col_range.stop-col_range.start), feature_size), np.float32)

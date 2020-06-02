@@ -66,10 +66,8 @@ class Featurisers(unittest.TestCase):
                     for col in range(scaled_data[0].shape[2]):
                         true_slice_features[slc][row][col].append(scaled_data[0][slc,row,col])
             true_slice_features = np.array(true_slice_features, np.float32)
-            for slice_range in [
-                    slice(0, 1),
-                    slice(0, 2),
-                ]:
+            for num_slices in range(1, 3+1):
+                slice_range = slice(slice_index, slice_index+num_slices)
                 slice_features = featuriser.featurise_slice(scaled_data, slice_range, block_rows=batch_size, block_cols=batch_size)
                 np.testing.assert_equal(true_slice_features[slice_range].reshape([-1, len(true_slice_features[0][0][0])]), slice_features, 'slice_range={}'.format(slice_range))
 
