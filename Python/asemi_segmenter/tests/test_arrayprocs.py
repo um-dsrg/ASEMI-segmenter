@@ -246,7 +246,7 @@ class ArrayProcs(unittest.TestCase):
                     arrayprocs.process_array_in_blocks_single_slice(
                             scaled_data, out,
                             lambda params:(np.histogram(params[0]['block'], 5*5*5, (1, 5*5*5+1))[0], params[0]['contextless_slices_wrt_whole'][1:]+(slice(None),)),
-                            block_shape=[3]*3, slice_index=slice_index, context_size=1, n_jobs=1
+                            block_shape=[3]*2, slice_index=slice_index, context_size=1, n_jobs=1
                         ),
                     np.array([
                             [
@@ -262,7 +262,7 @@ class ArrayProcs(unittest.TestCase):
                     arrayprocs.process_array_in_blocks_single_slice(
                             scaled_data, out,
                             lambda params:(np.histogram(params[0]['block'], 5*5*5, (1, 5*5*5+1))[0], params[0]['contextless_slices_wrt_whole'][1:]+(slice(None),)),
-                            block_shape=[5]*3, slice_index=slice_index, context_size=2, n_jobs=1
+                            block_shape=[5]*2, slice_index=slice_index, context_size=2, n_jobs=1
                         ),
                     np.array([
                             [
@@ -287,7 +287,7 @@ class ArrayProcs(unittest.TestCase):
                                             ], np.int32),
                                         params[0]['contextless_slices_wrt_whole'][1:]+(slice(None),)
                                     ),
-                            block_shape=[4]*3, slice_index=slice_index, context_size=1, n_jobs=1
+                            block_shape=[4]*2, slice_index=slice_index, context_size=1, n_jobs=1
                         ),
                     np.array([
                             [
@@ -307,7 +307,7 @@ class ArrayProcs(unittest.TestCase):
                 actual_num_slices = min(scaled_data[0].shape[0] - slice_index, num_slices)
                 out = np.zeros([actual_num_slices, 5, 5], scaled_data[0].dtype)
                 slice_range = slice(slice_index, slice_index+num_slices)
-
+                '''
                 def processor(params):
                     return (
                         params[0]['block'][params[0]['contextless_slices_wrt_block']] + 1,
@@ -369,6 +369,37 @@ class ArrayProcs(unittest.TestCase):
                         expected_output,
                         'slice_range={}'.format(slice_range)
                     )
+                '''
+                out = np.zeros([actual_num_slices,5,5,3,3,3], scaled_data[0].dtype)
+                expected_output = np.array([
+                        [
+                            [
+                                regions.get_neighbourhood_array_3d(scaled_data[0], (slc, row, col), 1, {0,1,2})
+                                for col in range(scaled_data[0].shape[2])
+                            ] for row in range(scaled_data[0].shape[1])
+                        ] for slc in range(scaled_data[0].shape[0])
+                    ], scaled_data[0].dtype)[slice_range,:,:,:]
+
+                out[:,:,:,:,:,:] = 0
+                np.testing.assert_equal(
+                        arrayprocs.process_array_in_blocks_slice_range(
+                                scaled_data, out,
+                                lambda params: (
+                                        np.array([
+                                                [
+                                                    [
+                                                        regions.get_neighbourhood_array_3d(params[0]['block'], (slc, row, col), 1, {0,1,2})
+                                                        for col in range(params[0]['contextless_slices_wrt_block'][2].start, params[0]['contextless_slices_wrt_block'][2].stop)
+                                                    ] for row in range(params[0]['contextless_slices_wrt_block'][1].start, params[0]['contextless_slices_wrt_block'][1].stop)
+                                                ] for slc in range(params[0]['contextless_slices_wrt_block'][0].start, params[0]['contextless_slices_wrt_block'][0].stop)
+                                            ], scaled_data[0].dtype),
+                                        params[0]['contextless_slices_wrt_range']
+                                    ),
+                                block_shape=[4]*2, slice_range=slice_range, context_size=1, n_jobs=1
+                            ),
+                            expected_output,
+                            'slice_range={}'.format(slice_range)
+                        )
 
 
 if __name__ == '__main__':

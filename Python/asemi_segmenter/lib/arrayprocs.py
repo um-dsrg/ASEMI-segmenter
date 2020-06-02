@@ -656,6 +656,8 @@ def process_array_in_blocks_single_slice(
             for scale in in_array_scales
         ):
         raise ValueError('Input array shapes must be according to their scale.')
+    if len(block_shape) != 2:
+        raise ValueError('block_shape must be 2 values only.')
     if any(l <= 2*context_size for l in block_shape):
         raise ValueError(
             'One or more sides of the block shape is too small to contain even one voxel in '
@@ -763,6 +765,8 @@ def process_array_in_blocks_slice_range(
             for scale in in_array_scales
         ):
         raise ValueError('Input array shapes must be according to their scale.')
+    if len(block_shape) != 2:
+        raise ValueError('block_shape must be 2 values only.')
     if any(l <= 2*context_size for l in block_shape):
         raise ValueError(
             'One or more sides of the block shape is too small to contain even one voxel in '
