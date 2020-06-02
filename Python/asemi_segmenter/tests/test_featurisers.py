@@ -12,6 +12,68 @@ from asemi_segmenter.lib import histograms
 class Featurisers(unittest.TestCase):
 
     #########################################
+    def test_voxel_featuriser_voxels(self):
+        indexes = [(0,0,0), (2,7,7), (4,14,14)]
+        rand = np.random.RandomState(0)
+        scaled_data = { 0: rand.randint(0, 2**16-1, (5,15,15), np.uint16) }
+
+        featuriser = featurisers.VoxelFeaturiser()
+        true_features = []
+        for index in indexes:
+            true_features.append([scaled_data[0][index]])
+        true_features = np.array(true_features, np.float32)
+
+        features = featuriser.featurise_voxels(scaled_data, indexes)
+        np.testing.assert_equal(true_features, features)
+
+    #########################################
+    def test_voxel_featuriser_slice(self):
+        rand = np.random.RandomState(0)
+        scaled_data = { 0: rand.randint(0, 2**16-1, (5,15,15), np.uint16) }
+        batch_size = None
+        featuriser = featurisers.VoxelFeaturiser()
+        for slice_index in range(scaled_data[0].shape[0]):
+            true_slice_features = [
+                    [
+                        []
+                        for col in range(scaled_data[0].shape[2])
+                    ] for row in range(scaled_data[0].shape[1])
+                ]
+            for row in range(scaled_data[0].shape[1]):
+                for col in range(scaled_data[0].shape[2]):
+                    true_slice_features[row][col].append(scaled_data[0][slice_index, row, col])
+            true_slice_features = np.array(true_slice_features, np.float32).reshape([-1, len(true_slice_features[0][0])])
+
+            slice_features = featuriser.featurise_slice(scaled_data, slice_index, block_rows=batch_size, block_cols=batch_size)
+            np.testing.assert_equal(true_slice_features, slice_features, 'slice_index={}'.format(slice_index))
+
+            output = np.zeros([ slice_features.shape[0]+4, slice_features.shape[1] ], np.float32)
+            expected_output = np.zeros_like(output)
+            expected_output[2:-2, :] = slice_features
+            slice_features = featuriser.featurise_slice(scaled_data, slice_index, block_rows=batch_size, block_cols=batch_size, output=output, output_start_row_index=2)
+            np.testing.assert_equal(expected_output, slice_features, 'slice_index={}'.format(slice_index))
+
+            true_slice_features = [
+                    [
+                        [
+                            []
+                            for col in range(scaled_data[0].shape[2])
+                        ] for row in range(scaled_data[0].shape[1])
+                    ] for slc in range(scaled_data[0].shape[0])
+                ]
+            for slc in range(scaled_data[0].shape[0]):
+                for row in range(scaled_data[0].shape[1]):
+                    for col in range(scaled_data[0].shape[2]):
+                        true_slice_features[slc][row][col].append(scaled_data[0][slc,row,col])
+            true_slice_features = np.array(true_slice_features, np.float32)
+            for slice_range in [
+                    slice(0, 1),
+                    slice(0, 2),
+                ]:
+                slice_features = featuriser.featurise_slice(scaled_data, slice_range, block_rows=batch_size, block_cols=batch_size)
+                np.testing.assert_equal(true_slice_features[slice_range].reshape([-1, len(true_slice_features[0][0][0])]), slice_features, 'slice_range={}'.format(slice_range))
+
+    #########################################
     def test_histogram_featuriser_voxels(self):
         indexes = [(0,0,0), (2,7,7), (4,14,14)]
         for downsample_kernel in [
@@ -200,68 +262,6 @@ class Featurisers(unittest.TestCase):
                         ]:
                         slice_features = featuriser.featurise_slice(scaled_data, slice_range, block_rows=batch_size, block_cols=batch_size, n_jobs=n_jobs)
                         np.testing.assert_equal(true_slice_features[slice_range].reshape([-1, len(true_slice_features[0][0][0])]), slice_features, 'downsample_kernel={}, featuriser_params={}, batch_size={}, n_jobs={}, slice_range={}'.format(downsample_kernel.name, (radius, scale), batch_size, n_jobs, slice_range))
-
-    #########################################
-    def test_voxel_featuriser_voxels(self):
-        indexes = [(0,0,0), (2,7,7), (4,14,14)]
-        rand = np.random.RandomState(0)
-        scaled_data = { 0: rand.randint(0, 2**16-1, (5,15,15), np.uint16) }
-
-        featuriser = featurisers.VoxelFeaturiser()
-        true_features = []
-        for index in indexes:
-            true_features.append([scaled_data[0][index]])
-        true_features = np.array(true_features, np.float32)
-
-        features = featuriser.featurise_voxels(scaled_data, indexes)
-        np.testing.assert_equal(true_features, features)
-
-    #########################################
-    def test_voxel_featuriser_slice(self):
-        rand = np.random.RandomState(0)
-        scaled_data = { 0: rand.randint(0, 2**16-1, (5,15,15), np.uint16) }
-        batch_size = None
-        featuriser = featurisers.VoxelFeaturiser()
-        for slice_index in range(scaled_data[0].shape[0]):
-            true_slice_features = [
-                    [
-                        []
-                        for col in range(scaled_data[0].shape[2])
-                    ] for row in range(scaled_data[0].shape[1])
-                ]
-            for row in range(scaled_data[0].shape[1]):
-                for col in range(scaled_data[0].shape[2]):
-                    true_slice_features[row][col].append(scaled_data[0][slice_index, row, col])
-            true_slice_features = np.array(true_slice_features, np.float32).reshape([-1, len(true_slice_features[0][0])])
-
-            slice_features = featuriser.featurise_slice(scaled_data, slice_index, block_rows=batch_size, block_cols=batch_size)
-            np.testing.assert_equal(true_slice_features, slice_features, 'slice_index={}'.format(slice_index))
-
-            output = np.zeros([ slice_features.shape[0]+4, slice_features.shape[1] ], np.float32)
-            expected_output = np.zeros_like(output)
-            expected_output[2:-2, :] = slice_features
-            slice_features = featuriser.featurise_slice(scaled_data, slice_index, block_rows=batch_size, block_cols=batch_size, output=output, output_start_row_index=2)
-            np.testing.assert_equal(expected_output, slice_features, 'slice_index={}'.format(slice_index))
-
-            true_slice_features = [
-                    [
-                        [
-                            []
-                            for col in range(scaled_data[0].shape[2])
-                        ] for row in range(scaled_data[0].shape[1])
-                    ] for slc in range(scaled_data[0].shape[0])
-                ]
-            for slc in range(scaled_data[0].shape[0]):
-                for row in range(scaled_data[0].shape[1]):
-                    for col in range(scaled_data[0].shape[2]):
-                        true_slice_features[slc][row][col].append(scaled_data[0][slc,row,col])
-            true_slice_features = np.array(true_slice_features, np.float32)
-            for slice_range in [
-                    slice(0, 1),
-                    slice(0, 2),
-                ]:
-                slice_features = featuriser.featurise_slice(scaled_data, slice_range, block_rows=batch_size, block_cols=batch_size)
-                np.testing.assert_equal(true_slice_features[slice_range].reshape([-1, len(true_slice_features[0][0][0])]), slice_features, 'slice_range={}'.format(slice_range))
 
     #########################################
     def test_composite_featuriser_voxels(self):
