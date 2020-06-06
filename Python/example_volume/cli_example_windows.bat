@@ -89,7 +89,6 @@ python ..\bin\segment.py ^
     --config_fullfname "configs\segment_config.json" ^
     --results_dir "output\segment" ^
     --checkpoint_fullfname "output\checkpoint.json" ^
-    --reset_checkpoint "yes" ^
     --log_file_fullfname "output\log.txt" ^
     --max_processes 4 ^
     --max_batch_memory 1.0 ^

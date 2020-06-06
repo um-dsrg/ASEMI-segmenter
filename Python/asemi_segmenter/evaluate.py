@@ -150,7 +150,7 @@ def _evaluating(
         segmenter.featuriser.get_context_needed(),
         max_processes,
         max_batch_memory,
-        implicit_depth=True
+        num_implicit_slices=1
         )
 
     labels_palette = colours.LabelPalette(['unlabelled'] + segmenter.classifier.labels)

@@ -143,7 +143,7 @@ def get_num_blocks_in_data(data_shape, block_shape, context_needed):
 #########################################
 def get_optimal_block_size(
         data_shape, data_dtype, context_needed, num_processes, max_batch_memory_gb,
-        implicit_depth=False
+        num_implicit_slices=None
     ):
     '''
     Get the block shape that fits in a given memory size and results in fast processing.
@@ -165,9 +165,11 @@ def get_optimal_block_size(
     :param int num_processes: The number of processes to run in parallel.
     :param float max_batch_memory_gb: The maximum number of gigabytes (1024^3) to allow a block to
         use.
-    :param bool implicit_depth: Whether the given data is 2D by needs to have its context be in 3D.
-        This is for when a volume is processed slice by slice and so the pay load of interest is a
-        single slice but the adjacent slices should be used for context.
+    :param int num_implicit_slices: If the given data is 2D but needs to have its context be in 3D,
+        the number of slices to process in each block (without the context) is entered here.
+        This is for when a volume is processed slice by slice and so the payload of interest is a
+        single slice (or number of slices) but the adjacent slices should be used for context.
+        If None then no context is added if data is 2D.
     :return: The block shape (with context included).
     :rtype: tuple
     '''
@@ -229,8 +231,8 @@ def get_optimal_block_size(
     def space_needed(contextless_block_shape):
         '''The amount of space needed for a given block shape.'''
         block_size = np.prod([(2*context_needed + side) for side in contextless_block_shape])
-        if implicit_depth:
-            block_size *= 2*context_needed + 1
+        if num_implicit_slices is not None:
+            block_size *= 2*context_needed + num_implicit_slices
         return block_size*num_processes
 
     def num_blocks(contextless_block_shape):

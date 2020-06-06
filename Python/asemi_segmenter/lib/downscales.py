@@ -242,8 +242,8 @@ def downscale_slice(slice_, scale):
     '''
     scale_factor = 2**scale
     return slice(
-            slice_.start//scale_factor if slice_.start is not None else None,
-            (slice_.stop-1)//scale_factor+1 if slice_.stop is not None else None
+            slice_.start//scale_factor,
+            (slice_.stop-1)//scale_factor+1
         )
 
 

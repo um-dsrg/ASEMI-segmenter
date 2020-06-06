@@ -22,12 +22,12 @@ def extract_features(preproc_volume_fullfname, featuriser_config, volume_slice_i
     featuriser = featurisers.load_featuriser_from_config(featuriser_config, use_gpu=use_gpu)
 
     best_block_shape = arrayprocs.get_optimal_block_size(
-        full_volume.get_shape(),
+        full_volume.get_shape()[1:],
         full_volume.get_dtype(),
         featuriser.get_context_needed(),
         max_processes,
         max_batch_memory,
-        implicit_depth=True
+        num_implicit_slices=1
         )
 
     result = []
@@ -35,7 +35,7 @@ def extract_features(preproc_volume_fullfname, featuriser_config, volume_slice_i
         result.append(
             featuriser.featurise_slice(
                 full_volume.get_scale_arrays(featuriser.get_scales_needed()),
-                slice_index=volume_slice_index,
+                slice_index=slice(volume_slice_index, volume_slice_index+1),
                 block_rows=best_block_shape[0],
                 block_cols=best_block_shape[1],
                 n_jobs=max_processes

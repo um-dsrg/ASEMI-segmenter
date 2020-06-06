@@ -198,7 +198,7 @@ def _constructing_trainingset(
             segmenter.featuriser.get_context_needed(),
             max_processes,
             max_batch_memory,
-            implicit_depth=True
+            num_implicit_slices=1
             )
         with checkpoint.apply('constructing_features') as skip:
             if skip is not None:

@@ -476,6 +476,7 @@ class Featuriser(object):
 
         rows_needed = (slc_range.stop-slc_range.start)*(row_range.stop - row_range.start)*(col_range.stop - col_range.start)
         last_output_row_index = output_start_row_index + rows_needed - 1
+
         if last_output_row_index >= output.shape[0]:
             raise ValueError('Provided output array does not have enough rows to hold result in expected range (array rows = {}, rows needed = {}, last output row index = {}).'.format(output.shape[0], rows_needed, last_output_row_index))
 
@@ -937,9 +938,10 @@ class HistogramFeaturiser(Featuriser):
 
                 features = np.reshape(downscales.grow_array(hists, scale, [0, 1], params[0]['contextless_shape']), (-1, num_bins)).astype(np.float32)
 
+                num_in_cols = full_input_ranges[1].stop - full_input_ranges[1].start
                 out_indexes = (
                         [
-                            output_start_row_index + row*(full_input_ranges[1].stop - full_input_ranges[1].start) + col
+                            output_start_row_index + row*num_in_cols + col
                             for row in range(params[0]['contextless_slices_wrt_range'][1].start, params[0]['contextless_slices_wrt_range'][1].stop)
                             for col in range(params[0]['contextless_slices_wrt_range'][2].start, params[0]['contextless_slices_wrt_range'][2].stop)
                         ],
@@ -989,11 +991,16 @@ class HistogramFeaturiser(Featuriser):
                         row_slice=params[scale]['contextless_slices_wrt_block'][1], col_slice=params[scale]['contextless_slices_wrt_block'][2]
                         )
 
-                features = np.reshape(downscales.grow_array(hists, scale, [0, 1, 2], params[0]['contextless_shape']), (-1, num_bins)).astype(np.float32)
+                grown = downscales.grow_array(hists, scale, [0, 1, 2], params[0]['contextless_shape'])
 
+                features = np.reshape(grown, (-1, num_bins)).astype(np.float32)
+
+                num_in_rows = full_input_ranges[0].stop - full_input_ranges[0].start
+                num_in_cols = full_input_ranges[1].stop - full_input_ranges[1].start
+                slice_size = num_in_rows * num_in_cols
                 out_indexes = (
                         [
-                            output_start_row_index + slc*(full_input_ranges[0].stop - full_input_ranges[0].start)*(full_input_ranges[1].stop - full_input_ranges[1].start) + row*(full_input_ranges[0].stop - full_input_ranges[0].start) + col
+                            output_start_row_index + slc*slice_size + row*num_in_cols + col
                             for slc in range(params[0]['contextless_slices_wrt_range'][0].start, params[0]['contextless_slices_wrt_range'][0].stop)
                             for row in range(params[0]['contextless_slices_wrt_range'][1].start, params[0]['contextless_slices_wrt_range'][1].stop)
                             for col in range(params[0]['contextless_slices_wrt_range'][2].start, params[0]['contextless_slices_wrt_range'][2].stop)
@@ -1294,9 +1301,12 @@ class LocalBinaryPatternFeaturiser(Featuriser):
                     )
                 features = np.reshape(downscales.grow_array(hists, scale, [0, 1, 2], params[0]['contextless_shape']), (-1, 10)).astype(np.float32)
 
+                num_in_rows = full_input_ranges[0].stop - full_input_ranges[0].start
+                num_in_cols = full_input_ranges[1].stop - full_input_ranges[1].start
+                slice_size = num_in_rows * num_in_cols
                 out_indexes = (
                         [
-                            output_start_row_index + slc*(full_input_ranges[0].stop - full_input_ranges[0].start)*(full_input_ranges[1].stop - full_input_ranges[1].start) + row*(full_input_ranges[0].stop - full_input_ranges[0].start) + col
+                            output_start_row_index + slc*slice_size + row*num_in_cols + col
                             for slc in range(params[0]['contextless_slices_wrt_range'][0].start, params[0]['contextless_slices_wrt_range'][0].stop)
                             for row in range(params[0]['contextless_slices_wrt_range'][1].start, params[0]['contextless_slices_wrt_range'][1].stop)
                             for col in range(params[0]['contextless_slices_wrt_range'][2].start, params[0]['contextless_slices_wrt_range'][2].stop)

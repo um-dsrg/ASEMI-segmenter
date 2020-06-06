@@ -111,7 +111,7 @@ def _segmenting(
         segmenter.featuriser.get_context_needed(),
         max_processes,
         max_batch_memory,
-        implicit_depth=True
+        num_implicit_slices=num_simultaneous_slices
         )
 
     def save_slice(volume_slice_index, segmentation, label=None):

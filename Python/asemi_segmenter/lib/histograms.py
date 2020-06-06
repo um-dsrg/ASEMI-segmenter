@@ -96,13 +96,13 @@ def apply_histogram_to_all_neighbourhoods_in_slice_3d(array_3d, slice_index, rad
         and the last dimension is the number of bins.
     :rtype: numpy.ndarray
     '''
-    [ num_slcs, num_rows_in, num_cols_in ] = array_3d.shape
+    [ num_slcs_in, num_rows_in, num_cols_in ] = array_3d.shape
     if isinstance(slice_index, int):
         slc_slice = slice(slice_index, slice_index + 1)
     else:
         slc_slice = slice(
                 slice_index.start if slice_index.start is not None else 0,
-                slice_index.stop  if slice_index.stop is not None else num_rows_in
+                slice_index.stop  if slice_index.stop is not None else num_slcs_in
             )
     row_slice = slice(
             row_slice.start if row_slice.start is not None else 0,

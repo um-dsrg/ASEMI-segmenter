@@ -133,7 +133,7 @@ def _downscaling_volume(
                 context_needed,
                 max_processes,
                 max_batch_memory,
-                implicit_depth=False
+                num_implicit_slices=None
                 )
             listener.current_progress_start(
                 0, arrayprocs.get_num_blocks_in_data(

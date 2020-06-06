@@ -331,7 +331,7 @@ def _tuning(
                             segmenter.featuriser.get_context_needed(),
                             max_processes,
                             max_batch_memory,
-                            implicit_depth=True
+                            num_implicit_slices=1
                             )
 
                         if train_sample_size_per_label != -1:
@@ -447,7 +447,7 @@ def _tuning(
                             segmenter.featuriser.get_context_needed(),
                             max_processes,
                             max_batch_memory,
-                            implicit_depth=True
+                            num_implicit_slices=1
                             )
 
                         if train_sample_size_per_label != -1:
