@@ -362,7 +362,7 @@ def downscale_in_blocks(in_array, out_array, block_shape, downsample_kernel, sca
 
 
 #########################################
-def grow_array(array, scale, axises=None, orig_shape=None):
+def grow_array(array, scale, axises=None, orig_shape=None, trim_front=None):
     '''
     Grow an array to be back to the size it was before downscaling by repeating its values.
 
@@ -376,33 +376,81 @@ def grow_array(array, scale, axises=None, orig_shape=None):
     Note how when the grown array is compared to the original array we can see that 'a' is standing
     in for 'a' and 'b', 'c' is standing in for 'c' and 'd', etc.
 
+    If the original array had an odd number of elements, then the grown array will be larger than
+    the original:
+
+    Original array:   abcdefghijklmno
+    Downscaled array: acegikmo
+    Grown array:      aacceeggiikkmmoo
+
+    If this case we need to trim the ends of the grown array to be of the original size by passing in
+    the shape of the original array, i.e. 15, and keeping only the first 15 elements of the grown array.
+
+    Another problem arises when only a part of the downscaled array is being regrown, as happens when
+    featurising a volume block by block. For example:
+
+    Expected processing if whole downscaled array can be grown at once -
+    Original array:   abcdefghijklmn
+    Segment range:         ^--^      slice(5, 9)
+    Downscaled array: acegikm
+    Grown array:      aacceeggiikkmm
+    Segment range:         ^--^
+    Result:           eggi
+
+    Actual processing when whole downscaled array cannot be grown at once -
+    Downscaled array: acegikm
+    Downscaled range:   ^-^   slice(2, 5)
+    Segment to grow:  egi
+    Grown segment:    eeggii
+    Trim to shape:    eegg
+    Result:           eegg
+
+    The problem with the above is that, when growing a segment of a downscales array instead of growing
+    the whole and then extracting the segment, the front of the segment might not start at the beginning
+    of a repetition but in the middle of it. In this case we need to trim off the front of the segment
+    (after growing it) so that it starts where it is supposed to start. This is what trim_front is for.
+    To calculate how much to trim we just need to get the modulo of the actual range start (not the
+    downscaled one) when dividing it by the scale factor (2^scale). In the above example that would be
+    5%(2^1) = 1, which would result in the following change:
+
+    Grown segment:    eeggii
+    Front trimming:   eggii
+    Trim to shape:    eggi
+    Result:           eggi
+
     :param numpy.ndarray array: The downscaled array.
     :param int scale: The scale at which it was downscaled.
     :param list axises: The list of dimensions to grow (to leave some dimensions as-is).
     :param tuple orig_shape: The original array's shape in order to be able to trim any excess
-        growth.
+        growth. See explanation above for more information.
+    :param list trim_front: The amount to trim from the front of each dimension in the array after
+        it is grown. See explanation above for more information.
     :return: The grown array.
     :rtype: numpy.ndarray
     '''
-    scale_factor = 2**scale
+    if scale == 0:
+        return array
 
+    scale_factor = 2**scale
     if axises is None:
         axises = range(len(array.shape))
+
+    slices = [ slice(None) for _ in array.shape ]
     for axis in axises:
-        if orig_shape is None:
-            array = np.repeat(array, scale_factor, axis=axis)
-        else:
-            pre_slices = [ slice(None) for _ in array.shape ]
-            pre_slices[axis] = slice(0, int(np.ceil(orig_shape[axis]/scale_factor)))
-            pre_slices = tuple(pre_slices)
+        if orig_shape is not None:
+            slices[axis] = slice(0, int(np.ceil(orig_shape[axis]/scale_factor)) + 1)
+            array = array[tuple(slices)]
 
-            post_slices = [ slice(None) for _ in array.shape ]
-            post_slices[axis] = slice(0, orig_shape[axis])
-            post_slices = tuple(post_slices)
+        array = np.repeat(array, scale_factor, axis=axis)
 
-            array = np.repeat(
-                    array[pre_slices],
-                    scale_factor,
-                    axis=axis
-                )[post_slices]
+        if trim_front is not None:
+            slices[axis] = slice(trim_front[axis], None)
+            array = array[tuple(slices)]
+
+        if orig_shape is not None:
+            slices[axis] = slice(0, orig_shape[axis])
+            array = array[tuple(slices)]
+
+        slices[axis] = slice(None)
+
     return array

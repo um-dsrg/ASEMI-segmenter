@@ -117,17 +117,18 @@ class Featurisers(unittest.TestCase):
                         [
                             [
                                 []
-                                for col in range(scaled_data[0].shape[2])
-                            ] for row in range(scaled_data[0].shape[1])
-                        ] for slc in range(scaled_data[0].shape[0])
+                                for col in range(scaled_data[scale].shape[2])
+                            ] for row in range(scaled_data[scale].shape[1])
+                        ] for slc in range(scaled_data[scale].shape[0])
                     ]
-                for slc in range(scaled_data[0].shape[0]):
-                    for row in range(scaled_data[0].shape[1]):
-                        for col in range(scaled_data[0].shape[2]):
-                            neighbourhood = regions.get_neighbourhood_array_3d(scaled_data[scale], (slc, row, col), radius, {0,1,2}, scale=scale)
+                for slc in range(scaled_data[scale].shape[0]):
+                    for row in range(scaled_data[scale].shape[1]):
+                        for col in range(scaled_data[scale].shape[2]):
+                            neighbourhood = regions.get_neighbourhood_array_3d(scaled_data[scale], (slc, row, col), radius, {0,1,2})
                             hist = histograms.histogram(neighbourhood, num_bins, (0, 2**16))
                             true_features[slc][row][col].extend(hist)
                 true_features = np.array(true_features, np.float32)
+                true_features = downscales.grow_array(true_features, scale, [0,1,2], scaled_data[0].shape)
 
                 featuriser = featurisers.HistogramFeaturiser(radius, scale, num_bins)
 
@@ -216,18 +217,19 @@ class Featurisers(unittest.TestCase):
                         [
                             [
                                 []
-                                for col in range(scaled_data[0].shape[2])
-                            ] for row in range(scaled_data[0].shape[1])
-                        ] for slc in range(scaled_data[0].shape[0])
+                                for col in range(scaled_data[scale].shape[2])
+                            ] for row in range(scaled_data[scale].shape[1])
+                        ] for slc in range(scaled_data[scale].shape[0])
                     ]
-                for slc in range(scaled_data[0].shape[0]):
-                    for row in range(scaled_data[0].shape[1]):
-                        for col in range(scaled_data[0].shape[2]):
-                            neighbourhood = regions.get_neighbourhood_array_3d(scaled_data[scale], (slc, row, col), radius+1, neighbouring_dims, scale=scale)
+                for slc in range(scaled_data[scale].shape[0]):
+                    for row in range(scaled_data[scale].shape[1]):
+                        for col in range(scaled_data[scale].shape[2]):
+                            neighbourhood = regions.get_neighbourhood_array_3d(scaled_data[scale], (slc, row, col), radius+1, neighbouring_dims)
                             lbp = skimage.feature.local_binary_pattern(neighbourhood, 8, 1, 'uniform')[1:-1,1:-1]
                             hist = histograms.histogram(lbp, 10, (0, 10))
                             true_features[slc][row][col].extend(hist)
                 true_features = np.array(true_features, np.float32)
+                true_features = downscales.grow_array(true_features, scale, [0,1,2], scaled_data[0].shape)
 
                 featuriser = featurisers.LocalBinaryPatternFeaturiser(neighbouring_dims, radius, scale)
                 for slice_index in range(scaled_data[0].shape[0]):

@@ -933,10 +933,19 @@ class HistogramFeaturiser(Featuriser):
                         {0,1,2},
                         0, 2**16,
                         num_bins,
-                        row_slice=params[scale]['contextless_slices_wrt_block'][1], col_slice=params[scale]['contextless_slices_wrt_block'][2]
+                        row_slice=params[scale]['contextless_slices_wrt_block'][1],
+                        col_slice=params[scale]['contextless_slices_wrt_block'][2]
                         )
 
-                features = np.reshape(downscales.grow_array(hists, scale, [0, 1], params[0]['contextless_shape']), (-1, num_bins)).astype(np.float32)
+                grown = downscales.grow_array(
+                    hists,
+                    scale,
+                    [0, 1],
+                    params[0]['contextless_shape'],
+                    [s.start%(2**scale) for s in params[0]['contextless_slices_wrt_whole'][1:]]
+                    )
+
+                features = np.reshape(grown, (-1, num_bins)).astype(np.float32)
 
                 num_in_cols = full_input_ranges[1].stop - full_input_ranges[1].start
                 out_indexes = (
@@ -991,7 +1000,13 @@ class HistogramFeaturiser(Featuriser):
                         row_slice=params[scale]['contextless_slices_wrt_block'][1], col_slice=params[scale]['contextless_slices_wrt_block'][2]
                         )
 
-                grown = downscales.grow_array(hists, scale, [0, 1, 2], params[0]['contextless_shape'])
+                grown = downscales.grow_array(
+                    hists,
+                    scale,
+                    [0, 1, 2],
+                    params[0]['contextless_shape'],
+                    [s.start%(2**scale) for s in params[0]['contextless_slices_wrt_whole']]
+                    )
 
                 features = np.reshape(grown, (-1, num_bins)).astype(np.float32)
 
@@ -1243,11 +1258,21 @@ class LocalBinaryPatternFeaturiser(Featuriser):
                     10,
                     row_slice=params[scale]['contextless_slices_wrt_block'][1], col_slice=params[scale]['contextless_slices_wrt_block'][2]
                     )
-                features = np.reshape(downscales.grow_array(hists, scale, [0, 1], params[0]['contextless_shape']), (-1, 10)).astype(np.float32)
 
+                grown = downscales.grow_array(
+                    hists,
+                    scale,
+                    [0, 1],
+                    params[0]['contextless_shape'],
+                    [s.start%(2**scale) for s in params[0]['contextless_slices_wrt_whole'][1:]]
+                    )
+
+                features = np.reshape(grown, (-1, 10)).astype(np.float32)
+
+                num_in_cols = full_input_ranges[1].stop - full_input_ranges[1].start
                 out_indexes = (
                         [
-                            output_start_row_index + row*(full_input_ranges[1].stop - full_input_ranges[1].start) + col
+                            output_start_row_index + row*num_in_cols + col
                             for row in range(params[0]['contextless_slices_wrt_range'][1].start, params[0]['contextless_slices_wrt_range'][1].stop)
                             for col in range(params[0]['contextless_slices_wrt_range'][2].start, params[0]['contextless_slices_wrt_range'][2].stop)
                         ],
@@ -1299,7 +1324,16 @@ class LocalBinaryPatternFeaturiser(Featuriser):
                     10,
                     row_slice=params[scale]['contextless_slices_wrt_block'][1], col_slice=params[scale]['contextless_slices_wrt_block'][2]
                     )
-                features = np.reshape(downscales.grow_array(hists, scale, [0, 1, 2], params[0]['contextless_shape']), (-1, 10)).astype(np.float32)
+
+                grown = downscales.grow_array(
+                    hists,
+                    scale,
+                    [0, 1, 2],
+                    params[0]['contextless_shape'],
+                    [s.start%(2**scale) for s in params[0]['contextless_slices_wrt_whole']]
+                    )
+
+                features = np.reshape(grown, (-1, 10)).astype(np.float32)
 
                 num_in_rows = full_input_ranges[0].stop - full_input_ranges[0].start
                 num_in_cols = full_input_ranges[1].stop - full_input_ranges[1].start

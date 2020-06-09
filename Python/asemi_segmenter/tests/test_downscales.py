@@ -56,6 +56,29 @@ class Downscales(unittest.TestCase):
             )
 
     #########################################
+    def test_partial_growing(self):
+        orig_array = np.arange(2**4)
+        for scale in range(3):
+            reduced = downscales.downscale(orig_array, downscales.NullDownsampleKernel(), scale)
+            grown = downscales.grow_array(reduced, scale, [0], orig_array.shape)
+            for index1 in range(0, orig_array.shape[0]-1):
+                for index2 in range(index1+1, orig_array.shape[0]):
+                    part_range = slice(index1, index2)
+                    part_size = part_range.stop - part_range.start
+
+                    true_part = grown[part_range]
+
+                    reduced_range = downscales.downscale_slice(part_range, scale)
+                    reduced_part = reduced[reduced_range]
+                    grown_part = downscales.grow_array(reduced_part, scale, [0], [part_size], [index1%(2**scale)])
+
+                    np.testing.assert_equal(
+                        grown_part,
+                        true_part,
+                        'scale={}, part_range={}'.format(scale, part_range)
+                        )
+
+    #########################################
     def test_downscale(self):
         for downsample_kernel in [
                 downscales.NullDownsampleKernel(),
