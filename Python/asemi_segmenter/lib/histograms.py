@@ -232,10 +232,12 @@ def gpu_apply_histogram_to_all_neighbourhoods_in_slice_3d(array_3d, slice_index,
     ## Index ordering convention
     # outer to inner: slice, row, col = z, y, x
 
+    assert isinstance(slice_index, slice)
     # output histogram
     rows = row_slice.stop - row_slice.start
     cols = col_slice.stop - col_slice.start
-    result = np.zeros((rows, cols, num_bins), dtype=np.float32)
+    slices = slice_index.stop - slice_index.start
+    result = np.zeros((slices, rows, cols, num_bins), dtype=np.float32)
 
     # input volume
     assert array_3d.dtype == np.uint16
@@ -261,7 +263,7 @@ def gpu_apply_histogram_to_all_neighbourhoods_in_slice_3d(array_3d, slice_index,
                 np.int32(NX), np.int32(NY), np.int32(NZ),
                 np.int32(col_slice.start), np.int32(col_slice.stop),
                 np.int32(row_slice.start), np.int32(row_slice.stop),
-                np.int32(slice_index), np.int32(slice_index + 1),
+                np.int32(slice_index.start), np.int32(slice_index.stop),
                 np.int32(radius),
 
                 block=blocksize,
