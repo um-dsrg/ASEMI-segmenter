@@ -4,6 +4,7 @@ import random
 import h5py
 import numpy as np
 from asemi_segmenter.lib import volumes
+from asemi_segmenter.lib import featurisers
 
 
 #########################################
@@ -37,13 +38,13 @@ class DataSet(object):
                 data_f.create_dataset(
                     'features',
                     [num_items, feature_size],
-                    dtype=np.float32,
+                    dtype=featurisers.feature_dtype,
                     chunks=None
                     )
         else:
             self.data = {
                 'labels': np.empty([num_items], dtype=np.uint8),
-                'features': np.empty([num_items, feature_size], dtype=np.float32)
+                'features': np.empty([num_items, feature_size], dtype=featurisers.feature_dtype)
                 }
 
     #########################################
@@ -78,7 +79,7 @@ class DataSet(object):
         Get a copy of this data set without any items where the labels are control labels.
         '''
         valid_items_mask = self.data['labels'][:] < volumes.FIRST_CONTROL_LABEL
-        
+
         new_dataset = DataSet(None)
         new_dataset.create(np.sum(valid_items_mask), self.data['features'].shape[1])
         new_dataset.get_labels_array()[:] = self.data['labels'][valid_items_mask]
@@ -92,7 +93,7 @@ class DataSet(object):
         if self.data is not None:
             self.data.close()
             self.data = None
-            
+
 
 #########################################
 def sample_voxels(loaded_labels, max_sample_size_per_label, num_labels, volume_slice_indexes_in_subvolume, slice_shape, skip=0, seed=None):
@@ -127,7 +128,7 @@ def sample_voxels(loaded_labels, max_sample_size_per_label, num_labels, volume_s
     (num_rows, num_cols) = slice_shape
     slice_size = num_rows*num_cols
     num_slcs = loaded_labels.size//slice_size
-    
+
     all_positions = np.arange(loaded_labels.size)
     r = random.Random(seed)
     positions_result = list()

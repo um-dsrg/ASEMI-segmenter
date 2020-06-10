@@ -333,7 +333,7 @@ def _tuning(
                             max_batch_memory,
                             num_implicit_slices=1,
                             feature_size=segmenter.featuriser.get_feature_size(),
-                            feature_dtype=np.float32
+                            feature_dtype=featurisers.feature_dtype
                             )
 
                         if train_sample_size_per_label != -1:
@@ -451,7 +451,7 @@ def _tuning(
                             max_batch_memory,
                             num_implicit_slices=1,
                             feature_size=segmenter.featuriser.get_feature_size(),
-                            feature_dtype=np.float32
+                            feature_dtype=featurisers.feature_dtype
                             )
 
                         if train_sample_size_per_label != -1:

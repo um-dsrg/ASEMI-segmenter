@@ -14,6 +14,7 @@ from asemi_segmenter.lib import segmenters
 from asemi_segmenter.lib import times
 from asemi_segmenter.lib import validations
 from asemi_segmenter.lib import volumes
+from asemi_segmenter.lib import featurisers
 
 
 #########################################
@@ -113,7 +114,7 @@ def _segmenting(
         max_batch_memory,
         num_implicit_slices=num_simultaneous_slices,
         feature_size=segmenter.featuriser.get_feature_size(),
-        feature_dtype=np.float32
+        feature_dtype=featurisers.feature_dtype
         )
 
     def save_slice(volume_slice_index, segmentation, label=None):

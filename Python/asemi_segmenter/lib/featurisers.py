@@ -13,6 +13,9 @@ from asemi_segmenter.lib import samplers
 
 
 #########################################
+feature_dtype = np.float32
+
+#########################################
 def load_featuriser_from_config(config, sampler_factory=None, use_gpu=False):
     '''
     Load a featuriser from a configuration dictionary.
@@ -221,8 +224,8 @@ class FeaturesTable(object):
         '''
         if len(features.shape) != 2:
             raise ValueError('Features must be 2 dimensional.')
-        if features.dtype != np.float32:
-            raise ValueError('Features must be type float32.')
+        if features.dtype != feature_dtype:
+            raise ValueError('Features must be type {}.'.format(feature_dtype))
 
         params = json.dumps(featuriser_params)
         if self.data_fullfname is not None:
@@ -384,9 +387,9 @@ class Featuriser(object):
         feature_size = self.get_feature_size()
 
         if output is None:
-            output = np.empty((len(indexes), feature_size), np.float32)
-        if len(output.shape) != 2 or output.dtype != np.float32:
-            raise ValueError('Output array must be a float32 matrix.')
+            output = np.empty((len(indexes), feature_size), feature_dtype)
+        if len(output.shape) != 2 or output.dtype != feature_dtype:
+            raise ValueError('Output array must be a {} matrix.'.format(feature_dtype))
 
         rows_needed = len(indexes)
         last_output_row_index = output_start_row_index + rows_needed - 1
@@ -428,9 +431,9 @@ class Featuriser(object):
         col_range = self._fix_range(data_scales, 2, col_range)
 
         if output is None:
-            output = np.empty(((slc_range.stop-slc_range.start)*(row_range.stop-row_range.start)*(col_range.stop-col_range.start), feature_size), np.float32)
-        if len(output.shape) != 2 or output.dtype != np.float32:
-            raise ValueError('Output array must be a float32 matrix.')
+            output = np.empty(((slc_range.stop-slc_range.start)*(row_range.stop-row_range.start)*(col_range.stop-col_range.start), feature_size), feature_dtype)
+        if len(output.shape) != 2 or output.dtype != feature_dtype:
+            raise ValueError('Output array must be a {} matrix.'.format(feature_dtype))
 
         rows_needed = (slc_range.stop-slc_range.start)*(row_range.stop - row_range.start)*(col_range.stop - col_range.start)
         last_output_row_index = output_start_row_index + rows_needed - 1
@@ -887,7 +890,7 @@ class HistogramFeaturiser(Featuriser):
                 [s.start%(2**scale) for s in params[0]['contextless_slices_wrt_whole']]
                 )
 
-            features = np.reshape(grown, (-1, num_bins)).astype(np.float32)
+            features = np.reshape(grown, (-1, num_bins)).astype(feature_dtype)
 
             num_in_rows = full_input_ranges[0].stop - full_input_ranges[0].start
             num_in_cols = full_input_ranges[1].stop - full_input_ranges[1].start
@@ -1147,7 +1150,7 @@ class LocalBinaryPatternFeaturiser(Featuriser):
                 [s.start%(2**scale) for s in params[0]['contextless_slices_wrt_whole']]
                 )
 
-            features = np.reshape(grown, (-1, 10)).astype(np.float32)
+            features = np.reshape(grown, (-1, 10)).astype(feature_dtype)
 
             num_in_rows = full_input_ranges[0].stop - full_input_ranges[0].start
             num_in_cols = full_input_ranges[1].stop - full_input_ranges[1].start

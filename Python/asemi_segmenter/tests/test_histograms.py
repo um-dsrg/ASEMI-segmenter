@@ -5,6 +5,7 @@ import sys
 from asemi_segmenter.lib import histograms
 from asemi_segmenter.lib import downscales
 from asemi_segmenter.lib import regions
+from asemi_segmenter.lib import featurisers
 
 #########################################
 def histogram(array, min_range, max_range, num_bins):
@@ -45,7 +46,7 @@ class Histograms(unittest.TestCase):
                                                     ] for row in range(row_slice.start or 0, row_slice.stop or scaled_data[scale].shape[1])
                                                 ]
                                                 for slc in range(slice_index, slice_index+num_slices)
-                                            ], np.float32),
+                                            ], featurisers.feature_dtype),
                                         'data_type={}, scale={}, radius={}, min_range={}, max_range={}, num_bins={}, row_slice={}, col_slice={}, neighbouring_dims={}, slice_index={}, num_slices={}'.format(data_type, scale, radius, min_range, max_range, num_bins, row_slice, col_slice, neighbouring_dims, slice_index, num_slices)
                                     )
 

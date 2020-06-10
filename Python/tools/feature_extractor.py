@@ -27,10 +27,11 @@ def extract_features(preproc_volume_fullfname, featuriser_config, volume_slice_i
         featuriser.get_context_needed(),
         max_processes,
         max_batch_memory,
-        num_implicit_slices=1
+        num_implicit_slices=volume_slice_count,
+        feature_size=featuriser.get_feature_size(),
+        feature_dtype=featurisers.feature_dtype
         )
 
-    assert volume_slice_count >= 1
     result = []
     def f(result):
         result.append(

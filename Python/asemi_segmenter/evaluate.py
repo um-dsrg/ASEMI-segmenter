@@ -17,6 +17,7 @@ from asemi_segmenter.lib import downscales
 from asemi_segmenter.lib import files
 from asemi_segmenter.lib import validations
 from asemi_segmenter.lib import volumes
+from asemi_segmenter.lib import featurisers
 
 
 #########################################
@@ -152,7 +153,7 @@ def _evaluating(
         max_batch_memory,
         num_implicit_slices=1,
         feature_size=segmenter.featuriser.get_feature_size(),
-        feature_dtype=np.float32
+        feature_dtype=featurisers.feature_dtype
         )
 
     labels_palette = colours.LabelPalette(['unlabelled'] + segmenter.classifier.labels)

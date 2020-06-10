@@ -6,6 +6,7 @@ import fast_histogram
 import sys
 import math
 from asemi_segmenter.lib import regions
+from asemi_segmenter.lib import featurisers
 from asemi_segmenter.lib import cuda
 
 #########################################
@@ -102,7 +103,7 @@ def apply_histogram_to_all_neighbourhoods_in_slice_3d(array_3d, slice_range, rad
     num_rows_out = row_slice.stop - row_slice.start
     num_cols_out = col_slice.stop - col_slice.start
 
-    result = np.empty([ num_slcs_out, num_rows_out, num_cols_out, num_bins ], np.float32)
+    result = np.empty([ num_slcs_out, num_rows_out, num_cols_out, num_bins ], featurisers.feature_dtype)
     if neighbouring_dims == {0,1,2}:
         for (slc_out, slc_in) in enumerate(range(slc_slice.start, slc_slice.stop)):
             for (row_out, row_in) in enumerate(range(row_slice.start, row_slice.stop)):
@@ -228,7 +229,7 @@ def gpu_apply_histogram_to_all_neighbourhoods_in_slice_3d(array_3d, slice_range,
     rows = row_slice.stop - row_slice.start
     cols = col_slice.stop - col_slice.start
     slices = slice_range.stop - slice_range.start
-    result = np.zeros((slices, rows, cols, num_bins), dtype=np.float32)
+    result = np.zeros((slices, rows, cols, num_bins), dtype=featurisers.feature_dtype)
 
     # input volume
     assert array_3d.dtype == np.uint16
