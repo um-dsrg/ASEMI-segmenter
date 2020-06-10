@@ -15,7 +15,7 @@ from asemi_segmenter.lib import arrayprocs
 
 
 #########################################
-def extract_features(preproc_volume_fullfname, featuriser_config, volume_slice_index, max_processes, max_batch_memory, save_as=None, use_gpu=False):
+def extract_features(preproc_volume_fullfname, featuriser_config, volume_slice_index, volume_slice_count, max_processes, max_batch_memory, save_as=None, use_gpu=False):
     full_volume = volumes.FullVolume(preproc_volume_fullfname)
     full_volume.load()
 
@@ -30,12 +30,13 @@ def extract_features(preproc_volume_fullfname, featuriser_config, volume_slice_i
         num_implicit_slices=1
         )
 
+    assert volume_slice_count >= 1
     result = []
     def f(result):
         result.append(
             featuriser.featurise_slice(
                 full_volume.get_scale_arrays(featuriser.get_scales_needed()),
-                slice_index=slice(volume_slice_index, volume_slice_index+1),
+                slice_index=slice(volume_slice_index, volume_slice_index+volume_slice_count),
                 block_rows=best_block_shape[0],
                 block_cols=best_block_shape[1],
                 n_jobs=max_processes
@@ -67,7 +68,9 @@ def main():
     parser.add_argument('--feature_config_fullfname', required=True,
         help='JSON file containing the featuriser configuration.')
     parser.add_argument('--volume_slice_index', required=True, type=int,
-        help='The slice index to featurise in the volume.')
+        help='The first slice index to featurise in the volume.')
+    parser.add_argument('--volume_slice_count', required=True, type=int,
+        help='The number of slices to featurise in the volume.')
     parser.add_argument('--save_as', required=False, default=None,
         help='Full file name (with path) of file to contain the features '
             '(can be .txt, .npy, or left out to not save anything).')
@@ -88,6 +91,7 @@ def main():
         args.volume_fullfname,
         featuriser_config,
         volume_slice_index=args.volume_slice_index,
+        volume_slice_count=args.volume_slice_count,
         save_as=args.save_as,
         max_processes=2,
         max_batch_memory=0.1,
