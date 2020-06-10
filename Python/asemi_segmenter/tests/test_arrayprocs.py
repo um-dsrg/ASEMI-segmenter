@@ -10,6 +10,50 @@ from asemi_segmenter.lib import regions
 class ArrayProcs(unittest.TestCase):
 
     #########################################
+    def test_get_optimal_block_size(self):
+        #Check that tiny max memory results in error.
+        '''
+        with self.assertRaises(ValueError):
+            arrayprocs.get_optimal_block_size(data_shape=(1000,2000,3000), data_dtype=np.uint16, context_needed=1, num_processes=1, max_batch_memory_gb=(1*2)/(1024**3), num_implicit_slices=None, feature_size=None, feature_dtype=None)
+        with self.assertRaises(ValueError):
+            arrayprocs.get_optimal_block_size(data_shape=(1000,2000,3000), data_dtype=np.uint16, context_needed=1, num_processes=1, max_batch_memory_gb=(1*11*4)/(1024**3), num_implicit_slices=1, feature_size=11, feature_dtype=np.float32)
+        '''
+        for params in [
+            dict(data_shape=(1000,2000,3000), data_dtype=np.uint16, context_needed=10, num_processes=1, max_elements=500000, num_implicit_slices=None, feature_size=None, feature_dtype=None),
+            dict(data_shape=(1000,2000,3000), data_dtype=np.uint16, context_needed=10, num_processes=5, max_elements=5*500000, num_implicit_slices=None, feature_size=None, feature_dtype=None),
+            dict(data_shape=(101,201), data_dtype=np.uint16, context_needed=1, num_processes=1, max_elements=1000000, num_implicit_slices=1, feature_size=1, feature_dtype=np.float32),
+            dict(data_shape=(1000,2000), data_dtype=np.uint16, context_needed=10, num_processes=1, max_elements=10000000, num_implicit_slices=2, feature_size=11, feature_dtype=np.float32),
+            dict(data_shape=(1000,2000), data_dtype=np.uint16, context_needed=10, num_processes=5, max_elements=5*10000000, num_implicit_slices=2, feature_size=11, feature_dtype=np.float32),
+            ]:
+            (data_shape, data_dtype, context_needed, num_processes, max_elements, num_implicit_slices, feature_size, feature_dtype) = (params['data_shape'], params['data_dtype'], params['context_needed'], params['num_processes'], params['max_elements'], params['num_implicit_slices'], params['feature_size'], params['feature_dtype'])
+
+            max_batch_memory_gb = max_elements*np.dtype(data_dtype).itemsize/(1024**3)
+
+            params_str = 'data_shape={}, data_dtype={}, context_needed={}, num_processes={}, max_elements={}, num_implicit_slices={}, feature_size={}, feature_dtype={}'.format(data_shape, data_dtype, context_needed, num_processes, max_elements, num_implicit_slices, feature_size, feature_dtype)
+
+            block_shape = arrayprocs.get_optimal_block_size(data_shape, data_dtype, context_needed, num_processes, max_batch_memory_gb, num_implicit_slices, feature_size, feature_dtype)
+
+            if num_implicit_slices is None:
+                self.assertEqual(len(block_shape), 3, params_str)
+            else:
+                self.assertEqual(len(block_shape), 2, params_str)
+
+            data_space = np.prod(block_shape).tolist()*np.dtype(data_dtype).itemsize/(1024**3)
+            if num_implicit_slices is not None:
+                data_space *= 2*context_needed + num_implicit_slices
+            self.assertLessEqual(data_space, max_batch_memory_gb, params_str)
+
+            if feature_size is not None:
+                features_space = np.prod([l-2*context_needed for l in block_shape]).tolist()*feature_size*np.dtype(feature_dtype).itemsize/(1024**3)
+                if num_implicit_slices is not None:
+                    features_space *= num_implicit_slices
+                self.assertLessEqual(features_space, max_batch_memory_gb, params_str)
+
+            for i in range(len(block_shape)):
+                if block_shape[i] - 2*context_needed != data_shape[i]:
+                    self.assertEqual((block_shape[i] - 2*context_needed)%32, 0, params_str)
+
+    #########################################
     def test_process_array_in_blocks(self):
         for downsample_kernel in [
                 downscales.NullDownsampleKernel(),
@@ -307,7 +351,7 @@ class ArrayProcs(unittest.TestCase):
                 actual_num_slices = min(scaled_data[0].shape[0] - slice_index, num_slices)
                 out = np.zeros([actual_num_slices, 5, 5], scaled_data[0].dtype)
                 slice_range = slice(slice_index, slice_index+num_slices)
-                '''
+
                 def processor(params):
                     return (
                         params[0]['block'][params[0]['contextless_slices_wrt_block']] + 1,
@@ -369,7 +413,7 @@ class ArrayProcs(unittest.TestCase):
                         expected_output,
                         'slice_range={}'.format(slice_range)
                     )
-                '''
+
                 out = np.zeros([actual_num_slices,5,5,3,3,3], scaled_data[0].dtype)
                 expected_output = np.array([
                         [

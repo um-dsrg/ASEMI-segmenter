@@ -143,7 +143,7 @@ def get_num_blocks_in_data(data_shape, block_shape, context_needed):
 #########################################
 def get_optimal_block_size(
         data_shape, data_dtype, context_needed, num_processes, max_batch_memory_gb,
-        num_implicit_slices=None
+        num_implicit_slices=None, feature_size=None, feature_dtype=None
     ):
     '''
     Get the block shape that fits in a given memory size and results in fast processing.
@@ -159,6 +159,8 @@ def get_optimal_block_size(
     largest remainder should be chosen in order to keep the blocks as equally sized as possible.
     The other dimensions are divided only to make each block fit within the given maximum memory.
 
+    Blocks should also be multiples of 32 in order to optimise performance on GPUs.
+
     :param tuple data_shape: The shape of the data to break down.
     :param numpy_datatype data_dtype: The numpy data type of the data to break down.
     :param int context_needed: The thickness of the context on the edges of the block.
@@ -170,96 +172,145 @@ def get_optimal_block_size(
         This is for when a volume is processed slice by slice and so the payload of interest is a
         single slice (or number of slices) but the adjacent slices should be used for context.
         If None then no context is added if data is 2D.
+    :param int feature_size: The number of features that each voxel in the block will transform to.
+        If the block is not being used for featurisation, leave as None.
+    :param numpy_datatype feature_dtype: The data type of the feature vector that will come out.
+        If the block is not being used for featurisation, leave as None.
     :return: The block shape (with context included).
     :rtype: tuple
     '''
-    space_available = math.floor(
+    #Get the number of data elements that can fit in memory.
+    in_space_available = math.floor(
         max_batch_memory_gb*(1024**3)/np.dtype(data_dtype).itemsize
-        ) #Number of data elements.
-
-    def fairest_divisor(numerator, parts_needed):
-        '''
-        The smallest divisor such that ceil(numerator/divisor) == parts_needed will either not
-        leave any remainder or leave the largest remainder.
-
-        When numerator = 10, different divisors give the following parts_needed:
-
-        >>> for d in range(1,10+1):
-        >>>    print(d, math.ceil(10/d), 10%d)
-
-        divisor parts remainder
-        1       10    0
-        2       5     0
-        3       4     1
-        4       3     2
-        5       2     0
-        6       2     4
-        7       2     3
-        8       2     2
-        9       2     1
-        10      1     0
-
-        We need to find the smallest divisor that gives the desired number of parts as that will
-        have a remainder of 0 or maximum.
-
-        Notice that not all parts are obtainable, in which case we will use the first divisor that
-        gives less than or equal to parts as desired.
-
-        Implementation is very naive. Will be replaced with a more mathematically informative
-        implementation later.
-        '''
-        for divisor in range(1, numerator+1):
-            parts_found = math.ceil(numerator/divisor)
-            if parts_found <= parts_needed:
-                return divisor
-        raise ValueError(
-            'Invalid numerator/parts_found combination ({}, {}).'.format(numerator, parts_found)
+        )
+    if feature_dtype is not None:
+        out_space_available = math.floor(
+            math.floor(max_batch_memory_gb*(1024**3)/np.dtype(feature_dtype).itemsize)/feature_size
             )
+    else:
+        out_space_available = in_space_available
 
-    #Initialise to a single block the size of the data.
-    parts_in_each_side = [1 for _ in range(len(data_shape))]
-    contextless_block_shape = list(data_shape)
+    def get_next_block_size(data_size, start_block_size, blocks_needed):
+        '''
+        Break the data into a number of blocks by finding a good block size to break with.
+        We need to find a block size such that ceil(data_size/block_size) >= blocks_needed
+        and is a multiple of 32.
 
-    #Divide the first dimension of the data into as many parts as there are processes,
-    #if available.
-    parts_in_each_side[0] = min(num_processes, data_shape[0])
-    contextless_block_shape = [
-        fairest_divisor(s, p)
-        for (s, p) in zip(data_shape, parts_in_each_side)
-        ]
+        Different block sizes can give the same required number of blocks. The ideal one
+        will either not leave any remainder or will leave the largest remainder. The
+        largest remainder is good if none of the remainders are 0 because that will make
+        the blocks as balanced as possible.
 
-    def space_needed(contextless_block_shape):
-        '''The amount of space needed for a given block shape.'''
-        block_size = np.prod([(2*context_needed + side) for side in contextless_block_shape])
+        Example:
+
+        When data_size = 11, different block sizes give the following number of blocks:
+
+        >>> for block_size in range(1, 11+1):
+        >>>    print(block_size, math.ceil(11/block_size), 11%block_size)
+
+        block_size blocks remainder
+        11          1     0
+        10          2     1
+         9          2     2
+         8          2     3
+         7          2     4
+         6          2     5
+         5          3     1
+         4          3     3
+         3          4     2
+         2          6     1
+         1         11     0
+
+        Notice how there are several block sizes that give a number of blocks equal to 2, but the
+        block size 6 gives the largest remainder which should be chosen. The smaller the block
+        size, the better the remainder (eventually becoming zero, if available).
+
+        Notice also that not all block numbers are obtainable, in which case we will use the first
+        block size that gives the next larger number of blocks. This is because we need the number
+        of blocks to increase with every step of the algorithm, so we cannot return less blocks
+        than requested.
+
+        start_block_size is the largest block size to start searching from and will be decreased
+        in order for the number of blocks to grow.
+        '''
+        #Make start_block_size a multiple of 32.
+        if start_block_size%32 > 0:
+            start_block_size -= start_block_size%32
+
+        for block_size in range(start_block_size, 32-1, -32):
+            blocks_found = math.ceil(data_size/block_size)
+            if blocks_found > blocks_needed:
+                block_size += 32 #Go back one step.
+                if math.ceil(data_size/block_size) == blocks_needed:
+                    return block_size
+                else:
+                    #If we're here then the number of blocks obtained is worse than what
+                    #we need and we should return to the step we got back from.
+                    return block_size - 32
+
+        return 32
+
+    def in_space_needed(contextless_block_shape):
+        '''The amount of space needed for a given block shape in input memory.'''
+        block_size = np.prod([(2*context_needed + side) for side in contextless_block_shape]).tolist()
         if num_implicit_slices is not None:
             block_size *= 2*context_needed + num_implicit_slices
         return block_size*num_processes
 
-    def num_blocks(contextless_block_shape):
-        '''The number of blocks in the data resulting from a given block shape.'''
-        return np.prod([math.ceil(d/b) for (d, b) in zip(data_shape, contextless_block_shape)])
+    def out_space_needed(contextless_block_shape):
+        '''The amount of space needed for a given block shape in output memory.'''
+        if in_space_available == out_space_available:
+            return in_space_available
+        block_size = np.prod(contextless_block_shape).tolist()*feature_size
+        if num_implicit_slices is not None:
+            block_size *= num_implicit_slices
+        return block_size*num_processes
 
-    #Continue reducing block size until a feasible size is reached. Reduction is obtained by
-    #putting more parts in a side of the data shape.
+    def side_num_blocks(axis, contextless_block_shape):
+        '''The number of blocks in a side of the data resulting from a given block shape.'''
+        return math.ceil(data_shape[axis]/contextless_block_shape[axis])
+
+    def total_num_blocks(contextless_block_shape):
+        '''The total number of blocks in the data resulting from a given block shape.'''
+        return np.prod([math.ceil(d/b) for (d, b) in zip(data_shape, contextless_block_shape)]).tolist()
+
+    #Decrease the sides of the block in multiples of 32 until a feasible size is reached.
+    contextless_block_shape = list(data_shape)
     while (
-            space_needed(contextless_block_shape) > space_available or
-            num_blocks(contextless_block_shape) < num_processes
+            in_space_needed(contextless_block_shape) > in_space_available or
+            out_space_needed(contextless_block_shape) > out_space_available or
+            total_num_blocks(contextless_block_shape) < num_processes
         ):
-        #Greedily pick the largest side of the block to reduce.
-        argmax_side = np.argmax(contextless_block_shape)
+        #Pick a side of the block to reduce.
+        #Pick greedily such that the data shape is broken into a balanced number of
+        #blocks per side and is reducable (must be at least 32 elements).
+        #Preference is given to the first axis of the block.
+        axis = 0
+        for i in range(1, len(data_shape)):
+            if (
+                    side_num_blocks(i, contextless_block_shape) < side_num_blocks(axis, contextless_block_shape)
+                    and contextless_block_shape[i] > 32
+                ):
+                axis = i
 
-        if contextless_block_shape[argmax_side] > 1:
-            parts_in_each_side[argmax_side] += 1
-        else:
-            raise ValueError(
-                'Maximum batch memory is too small or there are too many processes to even '
-                'process a piece of the volume.'
-                )
+        #If no decreasable side is found then ignore number of side blocks.
+        if contextless_block_shape[axis] <= 32:
+            axis = np.argmax(contextless_block_shape)
 
-        contextless_block_shape = [
-            fairest_divisor(s, p)
-            for (s, p) in zip(data_shape, parts_in_each_side)
-            ]
+        #If no decreasable side is found then stop optimisation.
+        if contextless_block_shape[axis] <= 32:
+            break
+
+        contextless_block_shape[axis] = get_next_block_size(
+            data_shape[axis],
+            contextless_block_shape[axis],
+            side_num_blocks(axis, contextless_block_shape) + 1
+            )
+
+    if in_space_needed(contextless_block_shape) > in_space_available:
+        raise ValueError('Not enough memory to even store the smallest possible block size.')
+    if out_space_needed(contextless_block_shape) > out_space_available:
+        raise ValueError('Not enough memory to even store the smallest possible block size when featurised.')
 
     block_shape = tuple((2*context_needed + side) for side in contextless_block_shape)
     return block_shape
