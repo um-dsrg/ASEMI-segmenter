@@ -34,17 +34,6 @@ class Histograms(unittest.TestCase):
                     ]:
                     for neighbouring_dims in [ {0,1,2}, {0,1}, {0,2}, {1,2} ]:
                         for slice_index in range(scaled_data[scale].shape[0]):
-                            np.testing.assert_equal(
-                                    histograms.apply_histogram_to_all_neighbourhoods_in_slice_3d(scaled_data[scale], slice_index, radius, neighbouring_dims, min_range, max_range, num_bins, pad=0, row_slice=row_slice, col_slice=col_slice),
-                                    np.array([
-                                            [
-                                                histogram(regions.get_neighbourhood_array_3d(scaled_data[scale], (slice_index,row,col), radius, neighbouring_dims, pad=0), min_range, max_range, num_bins)
-                                                for col in range(col_slice.start or 0, col_slice.stop or scaled_data[scale].shape[2])
-                                            ] for row in range(row_slice.start or 0, row_slice.stop or scaled_data[scale].shape[1])
-                                        ], np.float32),
-                                    'data_type={}, scale={}, radius={}, min_range={}, max_range={}, num_bins={}, row_slice={}, col_slice={}, neighbouring_dims={}, slice_index={}'.format(data_type, scale, radius, min_range, max_range, num_bins, row_slice, col_slice, neighbouring_dims, slice_index)
-                                )
-
                             for num_slices in range(1, 3+1):
                                 np.testing.assert_equal(
                                         histograms.apply_histogram_to_all_neighbourhoods_in_slice_3d(scaled_data[scale], slice(slice_index, slice_index+num_slices), radius, neighbouring_dims, min_range, max_range, num_bins, pad=0, row_slice=row_slice, col_slice=col_slice),

@@ -359,7 +359,7 @@ def _tuning(
                             for (i, volume_slice_index) in enumerate(volume_slice_indexes_in_train_subvolume):
                                 segmenter.featuriser.featurise_slice(
                                     full_volume.get_scale_arrays(segmenter.featuriser.get_scales_needed()),
-                                    slice_index=volume_slice_index,
+                                    slice_range=slice(volume_slice_index, volume_slice_index+1),
                                     block_rows=best_block_shape[0],
                                     block_cols=best_block_shape[1],
                                     output=training_set.get_features_array(),
@@ -395,7 +395,7 @@ def _tuning(
                             for (i, volume_slice_index) in enumerate(volume_slice_indexes_in_eval_subvolume):
                                 slice_features = segmenter.featuriser.featurise_slice(
                                     full_volume.get_scale_arrays(segmenter.featuriser.get_scales_needed()),
-                                    slice_index=volume_slice_index,
+                                    slice_range=slice(volume_slice_index, volume_slice_index+1),
                                     block_rows=best_block_shape[0],
                                     block_cols=best_block_shape[1],
                                     n_jobs=max_processes
@@ -477,7 +477,7 @@ def _tuning(
                             for (i, volume_slice_index) in enumerate(volume_slice_indexes_in_train_subvolume):
                                 segmenter.featuriser.featurise_slice(
                                     full_volume.get_scale_arrays(segmenter.featuriser.get_scales_needed()),
-                                    slice_index=volume_slice_index,
+                                    slice_range=slice(volume_slice_index, volume_slice_index+1),
                                     block_rows=best_block_shape[0],
                                     block_cols=best_block_shape[1],
                                     output=training_set.get_features_array(),
@@ -513,7 +513,7 @@ def _tuning(
                             for (i, volume_slice_index) in enumerate(volume_slice_indexes_in_eval_subvolume):
                                 slice_features = segmenter.featuriser.featurise_slice(
                                     full_volume.get_scale_arrays(segmenter.featuriser.get_scales_needed()),
-                                    slice_index=volume_slice_index,
+                                    slice_range=slice(volume_slice_index, volume_slice_index+1),
                                     block_rows=best_block_shape[0],
                                     block_cols=best_block_shape[1],
                                     n_jobs=max_processes

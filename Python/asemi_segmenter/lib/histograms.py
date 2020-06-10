@@ -25,7 +25,7 @@ def histogram(array, num_bins, value_range):
     # return np.histogram(array, num_bins, value_range)[0]
 
 #########################################
-def apply_histogram_to_all_neighbourhoods_in_slice_3d(array_3d, slice_index, radius, neighbouring_dims, min_range, max_range, num_bins, pad=0, row_slice=slice(None), col_slice=slice(None)):
+def apply_histogram_to_all_neighbourhoods_in_slice_3d(array_3d, slice_range, radius, neighbouring_dims, min_range, max_range, num_bins, pad=0, row_slice=slice(None), col_slice=slice(None)):
     '''
     Find a histograms of the values in the neighbourhood around every element
     in a volume slice.
@@ -72,9 +72,7 @@ def apply_histogram_to_all_neighbourhoods_in_slice_3d(array_3d, slice_index, rad
                                     + hist(A[r,c+R], R, {0,1})
 
     :param numpy.ndarray array_3d: The volume from which to extract the histograms.
-    :param slice_index: The index of the slice to use within the volume or the range
-        of indices of slices to use.
-    :type slice_index: int or slice
+    :param slice slice_range: The range of slices to use within the volume.
     :param int radius: The radius of the neighbourhood around each voxel.
     :param set neighbouring_dims: The set of dimensions to apply the neighbourhoods on.
     :param int min_range: The minimum range of the values to consider.
@@ -88,20 +86,17 @@ def apply_histogram_to_all_neighbourhoods_in_slice_3d(array_3d, slice_index, rad
     :rtype: numpy.ndarray
     '''
     [ num_slcs_in, num_rows_in, num_cols_in ] = array_3d.shape
-    if isinstance(slice_index, int):
-        slc_slice = slice(slice_index, slice_index + 1)
-    else:
-        slc_slice = slice(
-                slice_index.start if slice_index.start is not None else 0,
-                slice_index.stop  if slice_index.stop is not None else num_slcs_in
-            )
+    slc_slice = slice(
+        slice_range.start if slice_range.start is not None else 0,
+        slice_range.stop  if slice_range.stop is not None else num_slcs_in
+        )
     row_slice = slice(
-            row_slice.start if row_slice.start is not None else 0,
-            row_slice.stop  if row_slice.stop is not None else num_rows_in
+        row_slice.start if row_slice.start is not None else 0,
+        row_slice.stop  if row_slice.stop is not None else num_rows_in
         )
     col_slice = slice(
-            col_slice.start if col_slice.start is not None else 0,
-            col_slice.stop  if col_slice.stop is not None else num_cols_in
+        col_slice.start if col_slice.start is not None else 0,
+        col_slice.stop  if col_slice.stop is not None else num_cols_in
         )
     num_slcs_out = slc_slice.stop - slc_slice.start
     num_rows_out = row_slice.stop - row_slice.start
@@ -187,20 +182,17 @@ def apply_histogram_to_all_neighbourhoods_in_slice_3d(array_3d, slice_index, rad
     else:
         raise NotImplementedError('Only neighbouring dimensions of {0,1}, {0,2}, {1,2}, and {0,1,2} implemented.')
 
-    if isinstance(slice_index, int):
-        return result[0,:,:,:]
-    else:
-        return result
+    return result
 
 #########################################
-def gpu_apply_histogram_to_all_neighbourhoods_in_slice_3d(array_3d, slice_index, radius, neighbouring_dims, min_range, max_range, num_bins, pad=0, row_slice=slice(None), col_slice=slice(None)):
+def gpu_apply_histogram_to_all_neighbourhoods_in_slice_3d(array_3d, slice_range, radius, neighbouring_dims, min_range, max_range, num_bins, pad=0, row_slice=slice(None), col_slice=slice(None)):
     '''
     GPU implementation of apply_histogram_to_all_neighbourhoods_in_slice_3d.
 
     See apply_histogram_to_all_neighbourhoods_in_slice_3d for more information.
 
     :param numpy.ndarray array_3d: The volume from which to extract the histograms, expected to be of type uint16.
-    :param int slice_index: The index of the slice to use within the volume.
+    :param slice slice_range: The range of slices to use within the volume.
     :param int radius: The radius of the neighbourhood around each voxel.
     :param set neighbouring_dims: The set of dimensions to apply the neighbourhoods on.
     :param int min_range: The minimum range of the values to consider.
@@ -219,7 +211,7 @@ def gpu_apply_histogram_to_all_neighbourhoods_in_slice_3d(array_3d, slice_index,
 
     ## Example parameters
     # array_3d.shape = (23, 172, 202)
-    # slice_index = 11
+    # slice_range = 11
     # radius = 11
     # neighbouring_dims = {0, 1, 2}
     # min_range, max_range, num_bins = 0, 65536, 32
@@ -232,11 +224,10 @@ def gpu_apply_histogram_to_all_neighbourhoods_in_slice_3d(array_3d, slice_index,
     ## Index ordering convention
     # outer to inner: slice, row, col = z, y, x
 
-    assert isinstance(slice_index, slice)
     # output histogram
     rows = row_slice.stop - row_slice.start
     cols = col_slice.stop - col_slice.start
-    slices = slice_index.stop - slice_index.start
+    slices = slice_range.stop - slice_range.start
     result = np.zeros((slices, rows, cols, num_bins), dtype=np.float32)
 
     # input volume
@@ -263,7 +254,7 @@ def gpu_apply_histogram_to_all_neighbourhoods_in_slice_3d(array_3d, slice_index,
                 np.int32(NX), np.int32(NY), np.int32(NZ),
                 np.int32(col_slice.start), np.int32(col_slice.stop),
                 np.int32(row_slice.start), np.int32(row_slice.stop),
-                np.int32(slice_index.start), np.int32(slice_index.stop),
+                np.int32(slice_range.start), np.int32(slice_range.stop),
                 np.int32(radius),
 
                 block=blocksize,

@@ -49,26 +49,18 @@ class Featurisers(unittest.TestCase):
 
         featuriser = featurisers.VoxelFeaturiser()
         for slice_index in range(scaled_data[0].shape[0]):
-            true_slice_features = true_features[slice_index,:,:].reshape([-1, true_features.shape[-1]])
-
-            slice_features = featuriser.featurise_slice(scaled_data, slice_index, block_rows=batch_size, block_cols=batch_size)
-
-            np.testing.assert_equal(true_slice_features, slice_features, 'slice_index={}'.format(slice_index))
-
-            output = np.zeros([ slice_features.shape[0]+4, slice_features.shape[1] ], np.float32)
-            expected_output = np.zeros_like(output)
-            expected_output[2:-2, :] = slice_features
-            slice_features = featuriser.featurise_slice(scaled_data, slice_index, block_rows=batch_size, block_cols=batch_size, output=output, output_start_row_index=2)
-            np.testing.assert_equal(expected_output, slice_features, 'slice_index={}'.format(slice_index))
-
             for num_slices in range(1, 3+1):
                 slice_range = slice(slice_index, slice_index+num_slices)
 
                 true_slice_features = true_features[slice_range,:,:].reshape([-1, true_features.shape[-1]])
-
                 slice_features = featuriser.featurise_slice(scaled_data, slice_range, block_rows=batch_size, block_cols=batch_size)
-
                 np.testing.assert_equal(true_slice_features, slice_features, 'slice_range={}'.format(slice_range))
+
+                output = np.zeros([ slice_features.shape[0]+4, slice_features.shape[1]+4 ], np.float32)
+                expected_output = np.zeros_like(output)
+                expected_output[2:-2, 2:-2] = slice_features
+                slice_features = featuriser.featurise_slice(scaled_data, slice_range, block_rows=batch_size, block_cols=batch_size, output=output, output_start_row_index=2, output_start_col_index=2)
+                np.testing.assert_equal(expected_output, slice_features, 'slice_range={}'.format(slice_range))
 
     #########################################
     def test_histogram_featuriser_voxels(self):
@@ -133,26 +125,18 @@ class Featurisers(unittest.TestCase):
                 featuriser = featurisers.HistogramFeaturiser(radius, scale, num_bins)
 
                 for slice_index in range(scaled_data[0].shape[0]):
-                    true_slice_features = true_features[slice_index,:,:].reshape([-1, true_features.shape[-1]])
-
-                    slice_features = featuriser.featurise_slice(scaled_data, slice_index, block_rows=batch_size, block_cols=batch_size, n_jobs=n_jobs)
-
-                    np.testing.assert_equal(true_slice_features, slice_features, 'downsample_kernel={}, featuriser_params={}, batch_size={}, n_jobs={}, slice_index={}'.format(downsample_kernel.name, (radius, scale, num_bins), batch_size, n_jobs, slice_index))
-
-                    output = np.zeros([ slice_features.shape[0]+4, slice_features.shape[1] ], np.float32)
-                    expected_output = np.zeros_like(output)
-                    expected_output[2:-2, :] = slice_features
-                    slice_features = featuriser.featurise_slice(scaled_data, slice_index, block_rows=batch_size, block_cols=batch_size, output=output, output_start_row_index=2, n_jobs=n_jobs)
-                    np.testing.assert_equal(expected_output, slice_features, 'downsample_kernel={}, featuriser_params={}, batch_size={}, n_jobs={}, slice_index={}'.format(downsample_kernel.name, (radius, scale, num_bins), batch_size, n_jobs, slice_index))
-
                     for num_slices in range(1, 3):
                         slice_range = slice(slice_index, slice_index+num_slices)
 
                         true_slice_features = true_features[slice_range,:,:].reshape([-1, true_features.shape[-1]])
-
                         slice_features = featuriser.featurise_slice(scaled_data, slice_range, block_rows=batch_size, block_cols=batch_size, n_jobs=n_jobs)
-
                         np.testing.assert_equal(true_slice_features, slice_features, 'downsample_kernel={}, featuriser_params={}, batch_size={}, n_jobs={}, slice_range={}'.format(downsample_kernel.name, (radius, scale, num_bins), batch_size, n_jobs, slice_range))
+
+                        output = np.zeros([ slice_features.shape[0]+4, slice_features.shape[1]+4 ], np.float32)
+                        expected_output = np.zeros_like(output)
+                        expected_output[2:-2, 2:-2] = slice_features
+                        slice_features = featuriser.featurise_slice(scaled_data, slice_range, block_rows=batch_size, block_cols=batch_size, output=output, output_start_row_index=2, output_start_col_index=2)
+                        np.testing.assert_equal(expected_output, slice_features, 'slice_range={}'.format(slice_range))
 
     #########################################
     def test_lbp_featuriser_voxels(self):
@@ -233,26 +217,18 @@ class Featurisers(unittest.TestCase):
 
                 featuriser = featurisers.LocalBinaryPatternFeaturiser(neighbouring_dims, radius, scale)
                 for slice_index in range(scaled_data[0].shape[0]):
-                    true_slice_features = true_features[slice_index,:,:].reshape([-1, true_features.shape[-1]])
-
-                    slice_features = featuriser.featurise_slice(scaled_data, slice_index, block_rows=batch_size, block_cols=batch_size, n_jobs=n_jobs)
-
-                    np.testing.assert_equal(true_slice_features, slice_features, 'downsample_kernel={}, featuriser_params={}, batch_size={}, n_jobs={}, slice_index={}'.format(downsample_kernel.name, (neighbouring_dims, radius, scale), batch_size, n_jobs, slice_index))
-
-                    output = np.zeros([ slice_features.shape[0]+4, slice_features.shape[1] ], np.float32)
-                    expected_output = np.zeros_like(output)
-                    expected_output[2:-2, :] = slice_features
-                    slice_features = featuriser.featurise_slice(scaled_data, slice_index, block_rows=batch_size, block_cols=batch_size, output=output, output_start_row_index=2, n_jobs=n_jobs)
-                    np.testing.assert_equal(expected_output, slice_features, 'downsample_kernel={}, featuriser_params={}, batch_size={}, n_jobs={}, slice_index={}'.format(downsample_kernel.name, (neighbouring_dims, radius, scale), batch_size, n_jobs, slice_index))
-
                     for num_slices in range(1, 3):
                         slice_range = slice(slice_index, slice_index+num_slices)
 
                         true_slice_features = true_features[slice_range,:,:].reshape([-1, true_features.shape[-1]])
-
                         slice_features = featuriser.featurise_slice(scaled_data, slice_range, block_rows=batch_size, block_cols=batch_size, n_jobs=n_jobs)
-
                         np.testing.assert_equal(true_slice_features, slice_features, 'downsample_kernel={}, featuriser_params={}, batch_size={}, n_jobs={}, slice_range={}'.format(downsample_kernel.name, (radius, scale), batch_size, n_jobs, slice_range))
+
+                        output = np.zeros([ slice_features.shape[0]+4, slice_features.shape[1]+4 ], np.float32)
+                        expected_output = np.zeros_like(output)
+                        expected_output[2:-2, 2:-2] = slice_features
+                        slice_features = featuriser.featurise_slice(scaled_data, slice_range, block_rows=batch_size, block_cols=batch_size, output=output, output_start_row_index=2, output_start_col_index=2)
+                        np.testing.assert_equal(expected_output, slice_features, 'slice_range={}'.format(slice_range))
 
     #########################################
     def test_composite_featuriser_voxels(self):
@@ -317,26 +293,18 @@ class Featurisers(unittest.TestCase):
 
                 featuriser = featurisers.CompositeFeaturiser(featuriser_list)
                 for slice_index in range(scaled_data[0].shape[0]):
-                    true_slice_features = true_features[slice_index,:,:].reshape([-1, true_features.shape[-1]])
-
-                    slice_features = featuriser.featurise_slice(scaled_data, slice_index, block_rows=batch_size, block_cols=batch_size, n_jobs=n_jobs)
-
-                    np.testing.assert_equal(true_slice_features, slice_features, 'downsample_kernel={}, name={}, batch_size={}, n_jobs={}, slice_index={}'.format(downsample_kernel.name, name, batch_size, n_jobs, slice_index))
-
-                    output = np.zeros([ slice_features.shape[0]+4, slice_features.shape[1] ], np.float32)
-                    expected_output = np.zeros_like(output)
-                    expected_output[2:-2, :] = slice_features
-                    slice_features = featuriser.featurise_slice(scaled_data, slice_index, block_rows=batch_size, block_cols=batch_size, output=output, output_start_row_index=2, n_jobs=n_jobs)
-                    np.testing.assert_equal(expected_output, slice_features, 'downsample_kernel={}, name={}, batch_size={}, n_jobs={}, slice_index={}'.format(downsample_kernel.name, name, batch_size, n_jobs, slice_index))
-
                     for num_slices in range(1, 3):
                         slice_range = slice(slice_index, slice_index+num_slices)
 
                         true_slice_features = true_features[slice_range,:,:].reshape([-1, true_features.shape[-1]])
-
                         slice_features = featuriser.featurise_slice(scaled_data, slice_range, block_rows=batch_size, block_cols=batch_size)
-
                         np.testing.assert_equal(true_slice_features, slice_features, 'downsample_kernel={}, name={}, batch_size={}, n_jobs={}, slice_range={}'.format(downsample_kernel.name, name, batch_size, n_jobs, slice_range))
+
+                        output = np.zeros([ slice_features.shape[0]+4, slice_features.shape[1]+4 ], np.float32)
+                        expected_output = np.zeros_like(output)
+                        expected_output[2:-2, 2:-2] = slice_features
+                        slice_features = featuriser.featurise_slice(scaled_data, slice_range, block_rows=batch_size, block_cols=batch_size, output=output, output_start_row_index=2, output_start_col_index=2)
+                        np.testing.assert_equal(expected_output, slice_features, 'slice_range={}'.format(slice_range))
 
 
 if __name__ == '__main__':

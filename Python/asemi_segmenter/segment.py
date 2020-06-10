@@ -156,7 +156,7 @@ def _segmenting(
             if i%num_simultaneous_slices == 0:
                 slice_features = segmenter.featuriser.featurise_slice(
                     full_volume.get_scale_arrays(segmenter.featuriser.get_scales_needed()),
-                    slice_index=slice(first_volume_slice_index, first_volume_slice_index+num_simultaneous_slices),
+                    slice_range=slice(first_volume_slice_index, first_volume_slice_index+num_simultaneous_slices),
                     block_rows=best_block_shape[0],
                     block_cols=best_block_shape[1],
                     n_jobs=max_processes
