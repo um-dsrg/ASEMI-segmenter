@@ -87,7 +87,7 @@ class ProgressListener(object):
 class CliProgressListener(ProgressListener):
 
     #########################################
-    def __init__(self, log_file_fullfname, text_width=100):
+    def __init__(self, log_file_fullfname=None, text_width=100):
         self.prog = None
         self.prog_prev_value = 0
         self.log_file_fullfname = log_file_fullfname

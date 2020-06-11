@@ -22,7 +22,7 @@ def visualise(in_array, sigma):
     (fig, ax) = plt.subplots(1, 1)
     kernel = downsample_kernel.get_kernel(1)
     ax.set_title('Sum of kernel values: {}'.format(kernel.sum()))
-    ax.matshow(kernel[kernel.shape[0]//2,:,:], cmap='gray', vmin=0, vmax=1)
+    ax.matshow(kernel[kernel.shape[0]//2,:,:], cmap='gray')
     fig.show()
 
     (fig, axs) = plt.subplots(3, 3, figsize=(12,8))
@@ -54,9 +54,9 @@ def main():
     parser.add_argument('--sigma', required=True, type=float,
         help='Sigma of Gaussian kernel to use when downscaling.')
     args = parser.parse_args()
-    
+
     print('Running...')
-    
+
     full_volume = volumes.FullVolume(args.volume_fullfname)
     full_volume.load()
     in_array = full_volume.get_scale_array(0)[:]

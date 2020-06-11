@@ -8,45 +8,9 @@ import cProfile
 import pstats
 import os
 import io
-import textwrap
-import tqdm
-from asemi_segmenter import listener
+from asemi_segmenter import listeners
 from asemi_segmenter import segment
 
-TEXT_WIDTH = 100
-
-#########################################
-class ProgressListener(listener.ProgressListener):
-
-    #########################################
-    def __init__(self):
-        self.prog = None
-        self.prog_prev_value = 0
-
-    #########################################
-    def log_output(self, text):
-        if text == '':
-            print()
-        else:
-            for (i, line) in enumerate(textwrap.wrap(text, TEXT_WIDTH)):
-                if i == 0:
-                    print(line)
-                else:
-                    print('   '+line)
-
-    #########################################
-    def current_progress_start(self, start, total):
-        self.prog = tqdm.tqdm(initial=start, total=total)
-        self.prog_prev_value = start
-
-    #########################################
-    def current_progress_update(self, curr):
-        self.prog.update(curr - self.prog_prev_value)
-        self.prog_prev_value = curr
-
-    #########################################
-    def current_progress_end(self):
-        self.prog.close()
 
 #########################################
 def main():
@@ -65,8 +29,10 @@ def main():
         help='The maximum number of processes to use.')
     parser.add_argument('--max_batch_memory', required=True, type=float,
         help='The maximum amount of memory in GB to use.')
+    parser.add_argument('--use_gpu', required=False, default='no', choices=['yes', 'no'],
+        help='Whether to use the GPU for computing features.')
     args = parser.parse_args()
-    
+
     print('Running...')
     print()
     pr = cProfile.Profile()
@@ -83,7 +49,8 @@ def main():
         checkpoint_init=dict(),
         max_processes=args.max_processes,
         max_batch_memory=args.max_batch_memory,
-        listener=ProgressListener(),
+        use_gpu=args.use_gpu == 'yes',
+        listener=listeners.CliProgressListener(),
         debug_mode=True
         )
 

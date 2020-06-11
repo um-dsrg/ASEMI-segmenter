@@ -29,7 +29,6 @@ def getchannels(im):
 
 def imwrite(I,outfile):
    # Updated for PIL 1.1.6 upwards
-   assert list(map(int, PIL.Image.VERSION.split('.'))) >= [1,1,6]
    # convert to image of the correct type based on shape and dtype
    im = PIL.Image.fromarray(I.squeeze())
    # save to file
@@ -42,7 +41,6 @@ def imread(infile):
    (x,y) = im.size
    # Updated for PIL 1.1.6 upwards
    # return array is read-only!
-   assert list(map(int, PIL.Image.VERSION.split('.'))) >= [1,1,6]
    I = np.asarray(im).reshape(y,x,ch)
    return I
 
@@ -121,7 +119,7 @@ def main():
     for (i, images) in enumerate(zip(*filestack)):
         print("Scheduling %d of %d..." % (i+1, N))
         paths = [os.path.join(a,b) for a,b in zip(args.input, images)]
-        queue_in.put((i, paths, os.path.join(args.output, "%05d.tiff" % i)))
+        queue_in.put((i, paths, os.path.join(args.output, "%05d.tiff" % (i+1))))
 
     # wait on completion
     for i in range(N):

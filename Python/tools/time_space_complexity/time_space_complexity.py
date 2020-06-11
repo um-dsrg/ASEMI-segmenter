@@ -22,7 +22,7 @@ from asemi_segmenter import train
 from asemi_segmenter import segment
 
 #########################################
-def measure(side_lengths, max_batch_memory_list, max_processes_list, num_training_slices, num_labels, num_runs, train_config, voxel_seed, label_seed):
+def measure(results_fullfname, side_lengths, max_batch_memory_list, max_processes_list, use_gpu, num_training_slices, num_labels, num_runs, train_config, segment_config, num_simultaneous_slices, voxel_seed, label_seed):
     checkpoint = checkpoints.CheckpointManager(
         'timespace',
         'checkpoint.json'
@@ -33,7 +33,7 @@ def measure(side_lengths, max_batch_memory_list, max_processes_list, num_trainin
             print('Reusing results file')
             print()
             raise skip
-        with open('time_space_complexity.txt', 'w', encoding='utf-8') as f:
+        with open(results_fullfname, 'w', encoding='utf-8') as f:
             print('side_length', 'max_batch_memory', 'max_processes', 'slice_area', 'cube_volume', 'run', 'train_time', 'train_memory', 'segment_time', 'segment_memory', sep='\t', file=f)
 
     featuriser = featurisers.load_featuriser_from_config(train_config['featuriser'])
@@ -131,6 +131,7 @@ def measure(side_lengths, max_batch_memory_list, max_processes_list, num_trainin
                                                 checkpoint_init=None,
                                                 max_processes=max_processes,
                                                 max_batch_memory=max_batch_memory,
+                                                use_gpu=use_gpu,
                                                 debug_mode=True
                                             )
                                         )
@@ -147,14 +148,16 @@ def measure(side_lengths, max_batch_memory_list, max_processes_list, num_trainin
                                             dict(
                                                 segmenter=os.path.join(temp_dir, 'segmenter.pkl'),
                                                 preproc_volume_fullfname=os.path.join(temp_dir, 'full_volume.hdf'),
-                                                config={'soft_segmentation': False, 'as_masks': True, 'bits': 8, 'image_extension': 'tiff'},
+                                                config=segment_config,
                                                 results_dir=os.path.join(temp_dir, 'segmentation'),
                                                 checkpoint_fullfname=None,
                                                 reset_checkpoint=False,
                                                 checkpoint_namespace=None,
                                                 checkpoint_init=None,
+                                                num_simultaneous_slices=num_simultaneous_slices,
                                                 max_processes=max_processes,
                                                 max_batch_memory=max_batch_memory,
+                                                use_gpu=use_gpu,
                                                 debug_mode=True
                                             )
                                         )
@@ -162,7 +165,7 @@ def measure(side_lengths, max_batch_memory_list, max_processes_list, num_trainin
                                 segment_time = timer.duration
                                 segment_memory = max(mem_usage)
 
-                                with open('time_space_complexity.txt', 'a', encoding='utf-8') as f:
+                                with open(results_fullfname, 'a', encoding='utf-8') as f:
                                     print(side_length, max_batch_memory, max_processes, side_length**2, side_length**3, run, round(train_time, 1), train_memory, round(segment_time, 1), segment_memory, sep='\t', file=f)
 
                         print()
@@ -175,6 +178,8 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--train_config_fullfname', required=True,
         help='Full file name (with path) of the train config file.')
+    parser.add_argument('--segment_config_fullfname', required=True,
+        help='Full file name (with path) of the segment config file.')
     parser.add_argument('--results_fullfname', required=True,
         help='Full file name (with path) of the results text file.')
     parser.add_argument('--max_processes', nargs='+', required=True, type=int,
@@ -189,16 +194,22 @@ def main():
         help='The number of different labels to put in the training slices.')
     parser.add_argument('--num_runs', required=True, type=int,
         help='The number of times to run each measurement.')
+    parser.add_argument('--num_simultaneous_slices', required=True, type=int,
+        help='The number of adjacent slices to process together.')
     parser.add_argument('--voxel_seed', required=False, default=None, type=int,
         help='Seed for the random number generator to generate voxel values. If left out then it will be non-deterministic.')
     parser.add_argument('--label_seed', required=False, default=None, type=int,
         help='Seed for the random number generator to generate labels. If left out then it will be non-deterministic.')
+    parser.add_argument('--use_gpu', required=False, default='no', choices=['yes', 'no'],
+        help='Whether to use the GPU for computing feature.')
     args = parser.parse_args()
 
     with open(args.train_config_fullfname, 'r', encoding='utf-8') as f:
         train_config = json.load(f)
+    with open(args.segment_config_fullfname, 'r', encoding='utf-8') as f:
+        segment_config = json.load(f)
 
-    measure(args.side_length, args.max_batch_memory, args.max_processes, args.num_training_slices, args.num_labels, args.num_runs, train_config, args.voxel_seed, args.label_seed)
+    measure(args.results_fullfname, args.side_length, args.max_batch_memory, args.max_processes, args.use_gpu == 'yes', args.num_training_slices, args.num_labels, args.num_runs, train_config, segment_config, args.num_simultaneous_slices, args.voxel_seed, args.label_seed)
 
 
 # main entry point

@@ -1,0 +1,6 @@
+{
+    "soft_segmentation": false,
+    "as_masks": true,
+    "image_extension": "tiff",
+    "bits": 8
+}
