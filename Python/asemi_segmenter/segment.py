@@ -168,8 +168,7 @@ def _segmenting(
                 slice_features = segmenter.featuriser.featurise_slice(
                     full_volume.get_scale_arrays(segmenter.featuriser.get_scales_needed()),
                     slice_range=slice(first_volume_slice_index, first_volume_slice_index+num_simultaneous_slices),
-                    block_rows=best_block_shape[0],
-                    block_cols=best_block_shape[1],
+                    block_shape=best_block_shape,
                     n_jobs=max_processes
                     )
                 for j in range(num_simultaneous_slices):

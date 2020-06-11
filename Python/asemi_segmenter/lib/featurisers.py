@@ -480,7 +480,7 @@ class Featuriser(object):
         raise NotImplementedError()
 
     #########################################
-    def featurise_slice(self, data_scales, slice_range, block_rows, block_cols, row_range=slice(None), col_range=slice(None), output=None, output_start_row_index=0, output_start_col_index=0, n_jobs=1):
+    def featurise_slice(self, data_scales, slice_range, block_shape, row_range=slice(None), col_range=slice(None), output=None, output_start_row_index=0, output_start_col_index=0, n_jobs=1):
         '''
         Turn a range of slices from a volume into a matrix of feature vectors.
 
@@ -494,8 +494,7 @@ class Featuriser(object):
 
         :param dict data_scales: A dictionary of different scales of the volume.
         :param slice slice_range: The range of slices in the volume to featurise.
-        :param int block_rows: The first dimension of the block shape (2D).
-        :param int block_cols: The second dimension of the block shape (2D).
+        :param tuple block_shape: The 2D block shape to use on each slice.
         :param slice row_range: The range of rows to featurise (if only a part of the slice is
             needed).
         :param slice col_range: The range of columns to featurise (if only a part of the slice is
@@ -636,7 +635,7 @@ class VoxelFeaturiser(Featuriser):
         return output
 
     #########################################
-    def featurise_slice(self, data_scales, slice_range, block_rows, block_cols, row_range=slice(None), col_range=slice(None), output=None, output_start_row_index=0, output_start_col_index=0, n_jobs=1):
+    def featurise_slice(self, data_scales, slice_range, block_shape, row_range=slice(None), col_range=slice(None), output=None, output_start_row_index=0, output_start_col_index=0, n_jobs=1):
         '''
         Turn a range of slices from a volume into a matrix of feature vectors.
 
@@ -644,8 +643,7 @@ class VoxelFeaturiser(Featuriser):
 
         :param dict data_scales: As described in the super class.
         :param slice slice_range: As described in the super class.
-        :param int block_rows: As described in the super class.
-        :param int block_cols: As described in the super class.
+        :param tuple block_shape: As described in the super class.
         :param slice row_range: As described in the super class.
         :param slice col_range: As described in the super class.
         :param numpy.ndarray output: As described in the super class.
@@ -835,7 +833,7 @@ class HistogramFeaturiser(Featuriser):
         return output
 
     #########################################
-    def featurise_slice(self, data_scales, slice_range, block_rows, block_cols, row_range=slice(None), col_range=slice(None), output=None, output_start_row_index=0, output_start_col_index=0, n_jobs=1):
+    def featurise_slice(self, data_scales, slice_range, block_shape, row_range=slice(None), col_range=slice(None), output=None, output_start_row_index=0, output_start_col_index=0, n_jobs=1):
         '''
         Turn a range of slices from a volume into a matrix of feature vectors.
 
@@ -843,8 +841,7 @@ class HistogramFeaturiser(Featuriser):
 
         :param dict data_scales: As described in the super class.
         :param slice slice_range: As described in the super class.
-        :param int block_rows: As described in the super class.
-        :param int block_cols: As described in the super class.
+        :param tuple block_shape: As described in the super class.
         :param slice row_range: As described in the super class.
         :param slice col_range: As described in the super class.
         :param numpy.ndarray output: As described in the super class.
@@ -910,7 +907,7 @@ class HistogramFeaturiser(Featuriser):
             data_scales,
             output,
             processor,
-            block_shape=(block_rows, block_cols),
+            block_shape=block_shape,
             slice_range=slice_range,
             scales=self.get_scales_needed(),
             in_ranges=[row_range, col_range],
@@ -1091,7 +1088,7 @@ class LocalBinaryPatternFeaturiser(Featuriser):
         return output
 
     #########################################
-    def featurise_slice(self, data_scales, slice_range, block_rows, block_cols, row_range=slice(None), col_range=slice(None), output=None, output_start_row_index=0, output_start_col_index=0, n_jobs=1):
+    def featurise_slice(self, data_scales, slice_range, block_shape, row_range=slice(None), col_range=slice(None), output=None, output_start_row_index=0, output_start_col_index=0, n_jobs=1):
         '''
         Turn a range of slices from a volume into a matrix of feature vectors.
 
@@ -1099,8 +1096,7 @@ class LocalBinaryPatternFeaturiser(Featuriser):
 
         :param dict data_scales: As described in the super class.
         :param slice slice_range: As described in the super class.
-        :param int block_rows: As described in the super class.
-        :param int block_cols: As described in the super class.
+        :param tuple block_shape: As described in the super class.
         :param slice row_range: As described in the super class.
         :param slice col_range: As described in the super class.
         :param numpy.ndarray output: As described in the super class.
@@ -1170,7 +1166,7 @@ class LocalBinaryPatternFeaturiser(Featuriser):
             data_scales,
             output,
             processor,
-            block_shape=(block_rows, block_cols),
+            block_shape=block_shape,
             slice_range=slice_range,
             scales=self.get_scales_needed(),
             in_ranges=[row_range, col_range],
@@ -1287,7 +1283,7 @@ class CompositeFeaturiser(Featuriser):
         return output
 
     #########################################
-    def featurise_slice(self, data_scales, slice_range, block_rows, block_cols, row_range=slice(None), col_range=slice(None), output=None, output_start_row_index=0, output_start_col_index=0, n_jobs=1):
+    def featurise_slice(self, data_scales, slice_range, block_shape, row_range=slice(None), col_range=slice(None), output=None, output_start_row_index=0, output_start_col_index=0, n_jobs=1):
         '''
         Turn a range of slices from a volume into a matrix of feature vectors.
 
@@ -1295,8 +1291,7 @@ class CompositeFeaturiser(Featuriser):
 
         :param dict data_scales: As described in the super class.
         :param slice slice_range: As described in the super class.
-        :param int block_rows: As described in the super class.
-        :param int block_cols: As described in the super class.
+        :param tuple block_shape: As described in the super class.
         :param slice row_range: As described in the super class.
         :param slice col_range: As described in the super class.
         :param numpy.ndarray output: As described in the super class.
@@ -1309,7 +1304,7 @@ class CompositeFeaturiser(Featuriser):
         (output_rows_needed, output_cols_needed, slc_range, row_range, col_range, output) = self._prepare_featurise_slice(data_scales, slice_range, row_range, col_range, output, output_start_row_index, output_start_col_index)
 
         for featuriser in self.featuriser_list:
-            featuriser.featurise_slice(data_scales, slice_range, block_rows, block_cols, row_range, col_range, output, output_start_row_index, output_start_col_index, n_jobs)
+            featuriser.featurise_slice(data_scales, slice_range, block_shape, row_range, col_range, output, output_start_row_index, output_start_col_index, n_jobs)
             output_start_col_index += featuriser.get_feature_size()
 
         return output

@@ -195,8 +195,7 @@ def _evaluating(
                     slice_features = segmenter.featuriser.featurise_slice(
                         full_volume.get_scale_arrays(segmenter.featuriser.get_scales_needed()),
                         slice_range=slice(volume_slice_index, volume_slice_index+1),
-                        block_rows=best_block_shape[0],
-                        block_cols=best_block_shape[1],
+                        block_shape=best_block_shape,
                         n_jobs=max_processes
                         )
 
