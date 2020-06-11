@@ -29,7 +29,7 @@ def _loading_data(
     listener.log_output('>> {}'.format(preproc_volume_fullfname))
     validations.check_filename(preproc_volume_fullfname, '.hdf', True)
     full_volume = volumes.FullVolume(preproc_volume_fullfname)
-    full_volume.load()
+    full_volume.load(as_readonly=True)
     validations.validate_json_with_schema_file(full_volume.get_config(), 'preprocess.json')
     slice_shape = full_volume.get_shape()[1:]
 

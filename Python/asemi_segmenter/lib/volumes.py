@@ -72,7 +72,7 @@ class FullVolume(object):
         self.data = None
         if self.data_fullfname is None:
             raise NotImplementedError('Non-file preprocessed data method not implemented.')
-    
+
     #########################################
     def create(self, config_data, volume_shape):
         '''
@@ -103,10 +103,10 @@ class FullVolume(object):
                     )
 
     #########################################
-    def load(self):
+    def load(self, as_readonly=False):
         '''Load an existing HDF file using the file path given in the constructor.'''
         if self.data_fullfname is not None:
-            self.data = h5py.File(self.data_fullfname, 'r+')
+            self.data = h5py.File(self.data_fullfname, 'r' if as_readonly else 'r+')
 
     #########################################
     def get_config(self):
@@ -273,7 +273,7 @@ def load_label_dir(label_dir):
     '''
     if not files.fexists(label_dir):
         raise ValueError('Label directory does not exist.')
-    
+
     label_name = os.path.split(label_dir)[1]
     if label_name == '':  #If directory ends with a '/' then label name will be an empty string.
         label_name = os.path.split(label_dir[:-1])[1]
@@ -352,9 +352,9 @@ def load_labels(labels_data):
         max_value = np.max(subvolume_label_slice_values)
         if min_value == max_value:
             raise ValueError('All pixels of labelled slices of the label {} are the same value so background cannot be identified.'.format(label))
-        
+
         subvolume_label_flags = subvolume_label_slice_values > min_value
-        
+
         subvolume_slice_labels = np.where(
             np.logical_and(subvolume_slice_labels != UNINIT_LABEL, subvolume_label_flags),
             MULTILABEL,
@@ -383,9 +383,9 @@ def load_labels(labels_data):
 def get_label_overlap(labels_data):
     '''
     Get a label to label dictionary of the number of overlaps between label pairs.
-    
+
     Note that the overlap of a label and itself is the frequency of said label.
-    
+
     :param list labels_data: A list of LabelData objects, one for each label.
     :return: A list of dictionaries, one for each slice in labels_data, where each dictionary
         has a key for every label and each value is another dictionary with a key for every label.
@@ -417,13 +417,13 @@ def get_label_overlap(labels_data):
         max_value = np.max(subvolume_label_slice_values)
         if min_value == max_value:
             raise ValueError('All pixels of labelled slices of the label {} are the same value so background cannot be identified.'.format(label))
-        
+
         subvolume_label_flags = subvolume_label_slice_values > min_value
-        
+
         for i in range(slice_size*num_slices):
             if subvolume_label_flags[i]:
                 subvolume_slice_labels[i].add(label_index)
-    
+
     overlap_matrices = [
         {label: {label: 0 for label in labels} for label in labels}
         for _ in range(num_slices)

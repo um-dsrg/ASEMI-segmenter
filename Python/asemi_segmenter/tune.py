@@ -33,7 +33,7 @@ def _loading_data(
     listener.log_output('>> {}'.format(preproc_volume_fullfname))
     validations.check_filename(preproc_volume_fullfname, '.hdf', True)
     full_volume = volumes.FullVolume(preproc_volume_fullfname)
-    full_volume.load()
+    full_volume.load(as_readonly=True)
     preprocess_config = full_volume.get_config()
     validations.validate_json_with_schema_file(preprocess_config, 'preprocess.json')
     hash_function = hashfunctions.load_hashfunction_from_config(preprocess_config['hash_function'])
