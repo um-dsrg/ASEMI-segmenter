@@ -1,5 +1,7 @@
 '''Tune command.'''
 
+import sys
+import random
 import json
 import memory_profiler
 import numpy as np
@@ -29,6 +31,13 @@ def _loading_data(
         reset_checkpoint, checkpoint_init, max_processes, max_batch_memory, use_gpu, listener
     ):
     '''Loading data stage.'''
+    if train_sample_seed is None:
+        train_sample_seed = random.randrange(sys.maxsize)
+    if eval_sample_seed is None:
+        eval_sample_seed = random.randrange(sys.maxsize)
+    if parameter_selection_seed is None:
+        parameter_selection_seed = random.randrange(sys.maxsize)
+
     listener.log_output('> Volume')
     listener.log_output('>> {}'.format(preproc_volume_fullfname))
     validations.check_filename(preproc_volume_fullfname, '.hdf', True)
@@ -161,18 +170,16 @@ def _loading_data(
     hash_function.init(slice_shape, seed=0)
     training_set = datasets.DataSet(None)
 
+
     listener.log_output('> Other parameters:')
-    if train_sample_seed is not None:
-        listener.log_output('>> train sample seed: {}'.format(train_sample_seed))
-    if eval_sample_seed is not None:
-        listener.log_output('>> evaluation sample seed: {}'.format(eval_sample_seed))
-    if parameter_selection_seed is not None:
-        listener.log_output('>> parameter selection seed: {}'.format(parameter_selection_seed))
+    listener.log_output('>> train sample seed: {}'.format(train_sample_seed))
+    listener.log_output('>> evaluation sample seed: {}'.format(eval_sample_seed))
+    listener.log_output('>> parameter selection seed: {}'.format(parameter_selection_seed))
     listener.log_output('>> reset_checkpoint: {}'.format(reset_checkpoint))
     listener.log_output('>> max_processes: {}'.format(max_processes))
     listener.log_output('>> max_batch_memory: {}GB'.format(max_batch_memory))
 
-    return (config_data, full_volume, slice_shape, slice_size, segmenter, train_subvolume_fullfnames, train_labels_data, eval_subvolume_fullfnames, eval_labels_data, training_set, hash_function, evaluation, tuning_results_file, features_table, checkpoint)
+    return (config_data, full_volume, slice_shape, slice_size, segmenter, train_subvolume_fullfnames, train_labels_data, eval_subvolume_fullfnames, eval_labels_data, training_set, hash_function, evaluation, tuning_results_file, features_table, train_sample_seed, eval_sample_seed, parameter_selection_seed, checkpoint)
 
 
 #########################################
@@ -614,7 +621,7 @@ def main(
     :param list extra_result_col_names: Names of any extra columns to add to the result file.
     :param list extra_result_col_values: Values (fixed) of any extra columns to add to the result file.
     :param int train_sample_seed: Seed for the random number generator which samples training
-        voxels. If None then the random number generator will be non-deterministic.
+        voxels. If None then a seed will be generated randomly.
     :param int eval_sample_seed: Seed for the random number generator which samples evaluation
         voxels. If None then the random number generator will be non-deterministic.
     :param int parameter_selection_seed: Seed for the random number generator which samples
@@ -650,7 +657,7 @@ def main(
             listener.log_output(times.get_timestamp())
             listener.log_output('Loading data')
             with times.Timer() as timer:
-                (config_data, full_volume, slice_shape, slice_size, segmenter, train_subvolume_fullfnames, train_labels_data, eval_subvolume_fullfnames, eval_labels_data, training_set, hash_function, evaluation, tuning_results_file, features_table, checkpoint) = _loading_data(
+                (config_data, full_volume, slice_shape, slice_size, segmenter, train_subvolume_fullfnames, train_labels_data, eval_subvolume_fullfnames, eval_labels_data, training_set, hash_function, evaluation, tuning_results_file, features_table, train_sample_seed, eval_sample_seed, parameter_selection_seed, checkpoint) = _loading_data(
                     preproc_volume_fullfname, train_subvolume_dir, train_label_dirs,
                     eval_subvolume_dir, eval_label_dirs, config, search_results_fullfname,
                     best_result_fullfname, parameter_selection_timeout, use_features_table,

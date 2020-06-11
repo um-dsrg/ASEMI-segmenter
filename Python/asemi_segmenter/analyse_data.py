@@ -1,5 +1,7 @@
 '''Analyse command.'''
 
+import sys
+import random
 import os
 import json
 import numpy as np
@@ -20,6 +22,9 @@ def _loading_data(
         reset_checkpoint, checkpoint_init, listener
     ):
     '''Loading data stage.'''
+    if data_sample_seed is None:
+        data_sample_seed = random.randrange(sys.maxsize)
+
     listener.log_output('> Subvolume')
     listener.log_output('>> {}'.format(subvolume_dir))
     subvolume_data = volumes.load_volume_dir(subvolume_dir)
@@ -70,11 +75,10 @@ def _loading_data(
     listener.log_output('> Initialising')
 
     listener.log_output('> Other parameters:')
-    if data_sample_seed is not None:
-        listener.log_output('>> data sample seed: {}'.format(data_sample_seed))
+    listener.log_output('>> data sample seed: {}'.format(data_sample_seed))
     listener.log_output('>> reset_checkpoint: {}'.format(reset_checkpoint))
 
-    return (subvolume_fullfnames, labels_data, config_data, checkpoint)
+    return (subvolume_fullfnames, labels_data, config_data, data_sample_seed, checkpoint)
 
 
 #########################################
@@ -231,7 +235,7 @@ def main(
             listener.log_output(times.get_timestamp())
             listener.log_output('Loading data')
             with times.Timer() as timer:
-                (subvolume_fullfnames, labels_data, config_data, checkpoint) = _loading_data(
+                (subvolume_fullfnames, labels_data, config_data, data_sample_seed, checkpoint) = _loading_data(
                     subvolume_dir, label_dirs, config, highlight_radius,
                     results_dir, data_sample_seed, checkpoint_fullfname, checkpoint_namespace,
                     reset_checkpoint, checkpoint_init, listener

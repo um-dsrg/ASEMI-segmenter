@@ -1,5 +1,7 @@
 '''train command.'''
 
+import sys
+import random
 import json
 import numpy as np
 from asemi_segmenter import listeners
@@ -23,6 +25,9 @@ def _loading_data(
         checkpoint_init, max_processes, max_batch_memory, use_gpu, listener
     ):
     '''Loading data stage.'''
+    if train_sample_seed is None:
+        train_sample_seed = random.randrange(sys.maxsize)
+
     listener.log_output('> Volume')
     listener.log_output('>> {}'.format(preproc_volume_fullfname))
     validations.check_filename(preproc_volume_fullfname, '.hdf', False)
@@ -87,13 +92,12 @@ def _loading_data(
     hash_function.init(slice_shape, seed=0)
 
     listener.log_output('> Other parameters:')
-    if train_sample_seed is not None:
-        listener.log_output('>> data sample seed: {}'.format(train_sample_seed))
+    listener.log_output('>> train sample seed: {}'.format(train_sample_seed))
     listener.log_output('>> reset_checkpoint: {}'.format(reset_checkpoint))
     listener.log_output('>> max_processes: {}'.format(max_processes))
     listener.log_output('>> max_batch_memory: {}GB'.format(max_batch_memory))
 
-    return (full_volume, subvolume_fullfnames, labels_data, slice_shape, slice_size, segmenter, training_set, hash_function, checkpoint)
+    return (full_volume, subvolume_fullfnames, labels_data, slice_shape, slice_size, segmenter, training_set, hash_function, train_sample_seed, checkpoint)
 
 
 #########################################
@@ -323,7 +327,7 @@ def main(
             listener.log_output(times.get_timestamp())
             listener.log_output('Loading data')
             with times.Timer() as timer:
-                (full_volume, subvolume_fullfnames, labels_data, slice_shape, slice_size, segmenter, training_set, hash_function, checkpoint) = _loading_data(
+                (full_volume, subvolume_fullfnames, labels_data, slice_shape, slice_size, segmenter, training_set, hash_function, train_sample_seed, checkpoint) = _loading_data(
                     preproc_volume_fullfname, subvolume_dir, label_dirs, config,
                     result_segmenter_fullfname, trainingset_file_fullfname,
                     train_sample_seed, checkpoint_fullfname, checkpoint_namespace, reset_checkpoint,
