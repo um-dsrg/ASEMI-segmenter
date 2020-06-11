@@ -87,9 +87,10 @@ if __name__ == '__main__':
     if args is not None:
         listener = listeners.CliProgressListener(args.log_file_fullfname)
         listener.log_output('='*100)
-        listener.log_output('version: {}'.format(asemi_segmenter.__version__))
+        listener.log_output('version:  {}'.format(asemi_segmenter.__version__))
         listener.log_output('hostname: {}'.format(socket.gethostname()))
-        listener.log_output('bin dir: {}'.format(os.path.dirname(os.path.realpath(__file__))))
+        listener.log_output('bin dir:  {}'.format(os.path.dirname(os.path.realpath(__file__))))
+        listener.log_output('curr dir: {}'.format(os.getcwd()))
         listener.log_output('-'*50)
         listener.log_output('')
         analyse_data.main(
