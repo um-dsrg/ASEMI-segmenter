@@ -24,7 +24,7 @@
             "required": ["type", "min", "max", "distribution"],
             "additionalProperties": false
         },
-        
+
         "float_variable": {
             "type": "object",
             "properties": {
@@ -51,10 +51,10 @@
             "required": ["type", "min", "max", "distribution"],
             "additionalProperties": false
         },
-        
+
         "evaluation_set": { "$ref": "dataset.json#definitions/dataset" }
     },
-    
+
     "type": "object",
     "properties": {
         "variables": {
@@ -87,8 +87,11 @@
             },
             "required": ["num_global_iterations", "num_local_iterations"],
             "additionalProperties": false
+        },
+        "output": {
+            "training_set": { "$ref": "train.json#definitions/training_set" }
         }
     },
-    "required": ["variables", "featuriser", "classifier", "training_set", "tuning"],
+    "required": ["variables", "featuriser", "classifier", "training_set", "tuning", "output"],
     "additionalProperties": false
 }

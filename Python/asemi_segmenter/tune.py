@@ -543,14 +543,19 @@ def _tuning(
             listener.current_progress_end()
             listener.log_output('>> Next parameter selection process timed out')
 
-    return ()
+    best_config = dict()
+    best_config['featuriser'] = tuning_results_file.best_config['featuriser']
+    best_config['classifier'] = tuning_results_file.best_config['classifier']
+    best_config['training_set'] = config_data['output']['training_set']
+
+    return (best_config,)
 
 #########################################
-def _saving_best_config(best_result_fullfname, tuning_results_file, listener):
+def _saving_best_config(best_result_fullfname, best_config, listener):
     '''Saving best config stage.'''
     if best_result_fullfname is not None:
         with open(best_result_fullfname, 'w', encoding='utf-8') as f:
-            json.dump(tuning_results_file.best_config, f, indent='\t')
+            json.dump(best_config, f, indent='\t')
     else:
         listener.log_output('Config not to be saved')
 
@@ -707,7 +712,7 @@ def main(
             listener.log_output(times.get_timestamp())
             listener.log_output('Tuning')
             with times.Timer() as timer:
-                () = _tuning(config_data, segmenter, slice_shape, slice_size, full_volume, train_subvolume_slice_labels, volume_slice_indexes_in_train_subvolume, eval_subvolume_slice_labels, volume_slice_indexes_in_eval_subvolume, training_set, evaluation, parameter_selection_timeout, tuning_results_file, features_table, train_sample_seed, eval_sample_seed, checkpoint, max_processes, max_batch_memory, listener, extra_result_col_names, extra_result_col_values)
+                (best_config,) = _tuning(config_data, segmenter, slice_shape, slice_size, full_volume, train_subvolume_slice_labels, volume_slice_indexes_in_train_subvolume, eval_subvolume_slice_labels, volume_slice_indexes_in_eval_subvolume, training_set, evaluation, parameter_selection_timeout, tuning_results_file, features_table, train_sample_seed, eval_sample_seed, checkpoint, max_processes, max_batch_memory, listener, extra_result_col_names, extra_result_col_values)
             listener.log_output('Tuned')
             listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
             listener.log_output('')
@@ -718,7 +723,7 @@ def main(
             listener.log_output(times.get_timestamp())
             listener.log_output('Saving best config')
             with times.Timer() as timer:
-                () = _saving_best_config(best_result_fullfname, tuning_results_file, listener)
+                () = _saving_best_config(best_result_fullfname, best_config, listener)
             listener.log_output('Saved')
             listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
             listener.log_output('')
@@ -731,7 +736,7 @@ def main(
 
         listener.overall_progress_end()
 
-        return tuning_results_file.best_config
+        return best_config
     except Exception as ex:
         listener.error_output(str(ex))
         if debug_mode:

@@ -88,5 +88,11 @@
     "tuning": {
         "num_global_iterations": 20,
         "num_local_iterations": 20
+    },
+    "output": {
+        "training_set": {
+            "sample_size_per_label": 100,
+            "samples_to_skip_per_label": 0
+        }
     }
 }

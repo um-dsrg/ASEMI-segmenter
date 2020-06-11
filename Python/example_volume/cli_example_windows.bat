@@ -38,7 +38,7 @@ python ..\bin\tune.py ^
         "validation_set\labels\bones" ^
     --config_fullfname "configs\tune_config.json" ^
     --search_results_fullfname "output\tune\results.txt" ^
-    --best_result_fullfname "output\tune\result.json" ^
+    --best_result_fullfname "output\tune\best_result.json" ^
     --parameter_selection_timeout 2 ^
     --use_features_table "yes" ^
     --features_table_fullfname "output\tune\features.hdf" ^
@@ -58,7 +58,7 @@ python ..\bin\train.py ^
         "training_set\labels\air" ^
         "training_set\labels\tissues" ^
         "training_set\labels\bones" ^
-    --config_fullfname "configs\train_config.json" ^
+    --config_fullfname "output\tune\best_result.json" ^
     --result_segmenter_fullfname "output\train\segmenter.pkl" ^
     --trainingset_file_fullfname "output\train\trainingset.hdf" ^
     --train_sample_seed 0 ^

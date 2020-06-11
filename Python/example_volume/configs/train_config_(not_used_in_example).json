@@ -10,7 +10,7 @@
 				{
 					"type": "histogram",
 					"params": {
-						"radius": 11,
+						"radius": 1,
 						"scale": 0,
 						"num_bins": 32
 					}
@@ -19,16 +19,16 @@
 					"type": "lbp",
 					"params": {
 						"orientation": "front",
-						"radius": 25,
-						"scale": 0
+						"radius": 3,
+						"scale": 1
 					}
 				},
 				{
 					"type": "lbp",
 					"params": {
 						"orientation": "flat",
-						"radius": 25,
-						"scale": 0
+						"radius": 3,
+						"scale": 1
 					}
 				}
 			]
@@ -43,7 +43,7 @@
 		}
 	},
 	"training_set": {
-		"sample_size_per_label": 50,
+		"sample_size_per_label": 100,
 		"samples_to_skip_per_label": 0
 	}
 }
