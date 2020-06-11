@@ -43,6 +43,12 @@ if __name__ == '__main__':
             help='Directory of folder to contain results.'
         )
     parser.add_argument(
+            '--label_names_fullfname',
+            required=False,
+            default=None,
+            help='Full path to text file to create with names of labels (*.txt).'
+        )
+    parser.add_argument(
             '--checkpoint_fullfname',
             required=False,
             default=None,
@@ -115,6 +121,7 @@ if __name__ == '__main__':
             preproc_volume_fullfname=args.preproc_volume_fullfname,
             config=args.config_fullfname,
             results_dir=args.results_dir,
+            label_names_fullfname=args.label_names_fullfname,
             checkpoint_fullfname=args.checkpoint_fullfname,
             checkpoint_namespace='segment',
             reset_checkpoint=args.reset_checkpoint == 'yes',

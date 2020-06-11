@@ -88,6 +88,7 @@ python ..\bin\segment.py ^
     --preproc_volume_fullfname "output\preprocess\volume.hdf" ^
     --config_fullfname "configs\segment_config.json" ^
     --results_dir "output\segment" ^
+    --label_names_fullfname "output\segment\labels.txt" ^
     --checkpoint_fullfname "output\checkpoint.json" ^
     --log_file_fullfname "output\log.txt" ^
     --max_processes 4 ^

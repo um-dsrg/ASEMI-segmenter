@@ -19,7 +19,7 @@ from asemi_segmenter.lib import featurisers
 
 #########################################
 def _loading_data(
-        segmenter, preproc_volume_fullfname, config, results_dir,
+        segmenter, preproc_volume_fullfname, config, results_dir, label_names_fullfname,
         slice_indexes, checkpoint_fullfname, checkpoint_namespace, reset_checkpoint,
         checkpoint_init, max_processes, max_batch_memory, num_simultaneous_slices,
         use_gpu, listener
@@ -57,6 +57,11 @@ def _loading_data(
     listener.log_output('>> {}'.format(results_dir))
     validations.check_directory(results_dir)
 
+    listener.log_output('> Label names file')
+    if label_names_fullfname is not None:
+        listener.log_output('>> {}'.format(label_names_fullfname))
+        validations.check_filename(label_names_fullfname, '.txt')
+
     listener.log_output('> Checkpoint')
     if checkpoint_fullfname is not None:
         listener.log_output('>> {}'.format(checkpoint_fullfname))
@@ -87,7 +92,7 @@ def _loading_data(
 
 #########################################
 def _segmenting(
-        config_data, full_volume, slice_shape, segmenter, results_dir, slice_indexes, max_processes, max_batch_memory, checkpoint, num_simultaneous_slices, listener
+        config_data, full_volume, slice_shape, segmenter, results_dir, label_names_fullfname, slice_indexes, max_processes, max_batch_memory, checkpoint, num_simultaneous_slices, listener
     ):
     '''Segmenting stage.'''
     if slice_indexes is None:
@@ -103,6 +108,11 @@ def _segmenting(
     if config_data['as_masks']:
         for label in segmenter.classifier.labels:
             files.mkdir(os.path.join(results_dir, label))
+
+    if label_names_fullfname is not None:
+        with open(label_names_fullfname, 'w', encoding='utf-8') as f:
+            for label in segmenter.classifier.labels:
+                print(label, file=f)
 
     num_digits_in_filename = math.ceil(math.log10(full_volume.get_shape()[0]+1))
 
@@ -180,6 +190,7 @@ def main(
         preproc_volume_fullfname,
         config,
         results_dir,
+        label_names_fullfname=None,
         slice_indexes=None,
         checkpoint_fullfname=None,
         checkpoint_namespace='segment',
@@ -206,6 +217,8 @@ def main(
     :param str results_dir: The path to the directory in which to store the segmented slices. Segmented
         slices consist of a directory for each label, each containing images that act as masks for
         whether a particular pixel belongs to said label or not.
+    :param str label_names_fullfname: Full file name (with path) to text file in which to store
+        label names.
     :param list slice_indexes: The integer indexes (0-based) of slices in the volume to
         segment. If None then all slices are segmented.
     :param str checkpoint_fullfname: Full file name (with path) to checkpoint pickle.
@@ -240,7 +253,7 @@ def main(
             listener.log_output('Loading data')
             with times.Timer() as timer:
                 (config_data, full_volume, slice_shape, segmenter, checkpoint) = _loading_data(
-                    segmenter, preproc_volume_fullfname, config, results_dir,
+                    segmenter, preproc_volume_fullfname, config, results_dir, label_names_fullfname,
                     slice_indexes, checkpoint_fullfname, checkpoint_namespace, reset_checkpoint,
                     checkpoint_init, max_processes, max_batch_memory, num_simultaneous_slices,
                     use_gpu, listener
@@ -255,7 +268,7 @@ def main(
             listener.log_output(times.get_timestamp())
             listener.log_output('Segmenting')
             with times.Timer() as timer:
-                () = _segmenting(config_data, full_volume, slice_shape, segmenter, results_dir, slice_indexes, max_processes, max_batch_memory, checkpoint, num_simultaneous_slices, listener)
+                () = _segmenting(config_data, full_volume, slice_shape, segmenter, results_dir, label_names_fullfname, slice_indexes, max_processes, max_batch_memory, checkpoint, num_simultaneous_slices, listener)
             listener.log_output('Volume segmented')
             listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
             listener.log_output('')
