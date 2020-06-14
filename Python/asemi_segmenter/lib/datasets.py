@@ -48,10 +48,10 @@ class DataSet(object):
                 }
 
     #########################################
-    def load(self):
-        '''Load the HDF file (if data_fullfname was not None).'''
+    def load(self, as_readonly=False):
+        '''Load an existing HDF file using the file path given in the constructor.'''
         if self.data_fullfname is not None:
-            self.data = h5py.File(self.data_fullfname, 'r+')
+            self.data = h5py.File(self.data_fullfname, 'r' if as_readonly else 'r+')
 
     #########################################
     def get_labels_array(self):
@@ -91,7 +91,8 @@ class DataSet(object):
     def close(self):
         '''Close the HDF file (if used and open).'''
         if self.data is not None:
-            self.data.close()
+            if self.data_fullfname is not None:
+                self.data.close()
             self.data = None
 
 
