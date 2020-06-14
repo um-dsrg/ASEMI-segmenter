@@ -179,8 +179,9 @@ def get_optimal_block_size(
     :return: The block shape (with context included).
     :rtype: tuple
     '''
-    block_shape = tuple((2*context_needed + side) for side in data_shape)
-    return block_shape
+    block_shape = [2*context_needed + side for side in data_shape[1:]]
+    block_shape = [2*context_needed + math.ceil(data_shape[0]/num_processes)] + block_shape
+    return tuple(block_shape)
 
     #To be returned to after further analysis.
 
