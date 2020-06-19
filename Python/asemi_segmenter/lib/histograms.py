@@ -235,31 +235,37 @@ def gpu_apply_histogram_to_all_neighbourhoods_in_slice_3d(array_3d, slice_range,
     assert array_3d.dtype == np.uint16
     NZ, NY, NX = array_3d.shape
 
-    # GPU block size (working sizes)
-    WS_Y = 16
-    WS_X = 16
-    # kernel parameters
-    blocksize = (WS_X, WS_Y, 1)
-    gridsize = ( int(math.ceil( float(cols) / float(WS_X) )),
-                 int(math.ceil( float(rows) / float(WS_Y) )),
-                 1 )
-    sharedsize_tile = 1 * (2 * radius + WS_X) * (2 * radius + WS_Y) # index_t
-    sharedsize_hist = 4 * WS_Y * WS_X * num_bins # result_t
-    sharedsize = sharedsize_tile + sharedsize_hist
+    if neighbouring_dims == {0,1,2}:
+        # GPU block size (working sizes)
+        WS_Y = 16
+        WS_X = 16
+        # kernel parameters
+        blocksize = (WS_X, WS_Y, 1)
+        gridsize = ( int(math.ceil( float(cols) / float(WS_X) )),
+                     int(math.ceil( float(rows) / float(WS_Y) )),
+                     1 )
+        sharedsize_tile = 1 * (2 * radius + WS_X) * (2 * radius + WS_Y) # index_t
+        sharedsize_hist = 4 * WS_Y * WS_X * num_bins # result_t
+        sharedsize = sharedsize_tile + sharedsize_hist
+        # kernel call
+        ch = cuda.histograms()
+        import time
+        t = time.time()
+        ch.histogram_3d( cuda.drv.Out(result),
+                    np.int32(min_range), np.int32(max_range), np.int32(num_bins),
+                    cuda.drv.In(array_3d),
+                    np.int32(NX), np.int32(NY), np.int32(NZ),
+                    np.int32(col_slice.start), np.int32(col_slice.stop),
+                    np.int32(row_slice.start), np.int32(row_slice.stop),
+                    np.int32(slice_range.start), np.int32(slice_range.stop),
+                    np.int32(radius),
 
-    # kernel call
-    ch = cuda.histograms()
-    ch.histogram_3d( cuda.drv.Out(result),
-                np.int32(min_range), np.int32(max_range), np.int32(num_bins),
-                cuda.drv.In(array_3d),
-                np.int32(NX), np.int32(NY), np.int32(NZ),
-                np.int32(col_slice.start), np.int32(col_slice.stop),
-                np.int32(row_slice.start), np.int32(row_slice.stop),
-                np.int32(slice_range.start), np.int32(slice_range.stop),
-                np.int32(radius),
-
-                block=blocksize,
-                grid=gridsize,
-                shared=sharedsize )
+                    block=blocksize,
+                    grid=gridsize,
+                    shared=sharedsize )
+        t = time.time() - t
+        print("Histogram of %dx%dx%d: %s s" % (cols, rows, 1, t))
+    else:
+        raise NotImplementedError('Only neighbouring dimensions of {0,1,2} implemented.')
 
     return result
