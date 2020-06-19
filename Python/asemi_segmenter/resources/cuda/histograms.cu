@@ -367,7 +367,6 @@ __global__ void histogram_2d_xy(
    // size of the histogram output matrix
    const int HX = x_stop - x_start;
    const int HY = y_stop - y_start;
-   const int HZ = z_stop - z_start;
    // x,y,z coordinates of thread's voxel in histogram output matrix
    const int ix = block_cx + threadIdx.x - x_start;
    const int iy = block_cy + threadIdx.y - y_start;
