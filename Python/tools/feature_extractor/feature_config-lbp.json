@@ -1,0 +1,15 @@
+{
+		"type": "composite",
+		"params": {
+			"featuriser_list": [
+				{
+					"type": "lbp",
+					"params": {
+						"orientation": "xy",
+						"radius": 32,
+						"scale": 0
+					}
+				}
+			]
+		}
+	}
