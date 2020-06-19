@@ -105,6 +105,128 @@ __device__ void update_tiles_xy(
    __syncthreads();
    }
 
+/* Computes histogram contribution from the tiles on the x,z plane at global_y.
+ * (Auxiliary Function)
+ *
+ * See update_tiles_xy for more information.
+ */
+__device__ void update_tiles_xz(
+      // iadd = +1/-1 to add/subtract
+      const int iadd,
+      // thread index in CUDA block ( tid >= 0 && tid < blockDim.x * blockDim.z )
+      const int tid,
+      // size of the tile read in this block
+      const int WW_X, const int WW_Z,
+      // neighbourhood radius around voxel for computing histogram
+      const int radius,
+      // x,z coordinates of block's corner in global volume
+      const int block_cx, const int block_cz,
+      // y coordinate of thread's voxel in global volume
+      const int global_y,
+      // histogram definition
+      const int min_range, const int max_range, const int num_bins,
+      // input volume and size
+      const ${data_t} *d_volume_in,
+      const int NX, const int NY, const int NZ)
+   {
+   // pointers for shared-memory regions
+   ${index_t} *shared_tile = (${index_t} *)(shared_memory);
+   ${result_t} *shared_hist = (${result_t} *)&shared_tile[WW_X * WW_Z];
+   // parallel read of tile into shared memory
+   for (int i_in_tile = tid;
+         i_in_tile < WW_X * WW_Z;
+         i_in_tile += blockDim.x * blockDim.z)
+      {
+      // determine x,z coordinates for this thread
+      const int global_x = block_cx + (i_in_tile % WW_X) - radius;
+      const int global_z = block_cz + (i_in_tile / WW_X) - radius;
+      // read value at x,y,z from global memory if exists, zero otherwise
+      ${data_t} val = 0;
+      if( global_x >= 0 && global_x < NX &&
+          global_y >= 0 && global_y < NY &&
+          global_z >= 0 && global_z < NZ )
+         val = d_volume_in[global_x + NX * (global_y + NY * global_z)];
+      // convert value to corresponding histogram bin index
+      // and store in shared memory
+      shared_tile[i_in_tile] = int(num_bins * (val - min_range) / float(max_range - min_range));
+      }
+   // make sure all slice section is read
+   __syncthreads();
+   // each thread computes histogram for neighbourhood of its coordinate
+   for (int sx = -radius; sx <= radius; sx++)
+      for (int sz = -radius; sz <= radius; sz++)
+         {
+         // get neighbouring pixel bin index
+         const int v = int(shared_tile[threadIdx.x + sx + radius + WW_X * (threadIdx.z + sz + radius)]);
+         // add to histogram if within limits
+         if (v >= 0 && v < num_bins)
+            shared_hist[v * blockDim.x * blockDim.z + tid] += iadd;
+         }
+   // make sure all slice section is processed
+   __syncthreads();
+   }
+
+/* Computes histogram contribution from the tiles on the y,z plane at global_x.
+ * (Auxiliary Function)
+ *
+ * See update_tiles_xy for more information.
+ */
+__device__ void update_tiles_yz(
+      // iadd = +1/-1 to add/subtract
+      const int iadd,
+      // thread index in CUDA block ( tid >= 0 && tid < blockDim.y * blockDim.z )
+      const int tid,
+      // size of the tile read in this block
+      const int WW_Y, const int WW_Z,
+      // neighbourhood radius around voxel for computing histogram
+      const int radius,
+      // y,z coordinates of block's corner in global volume
+      const int block_cy, const int block_cz,
+      // x coordinate of thread's voxel in global volume
+      const int global_x,
+      // histogram definition
+      const int min_range, const int max_range, const int num_bins,
+      // input volume and size
+      const ${data_t} *d_volume_in,
+      const int NX, const int NY, const int NZ)
+   {
+   // pointers for shared-memory regions
+   ${index_t} *shared_tile = (${index_t} *)(shared_memory);
+   ${result_t} *shared_hist = (${result_t} *)&shared_tile[WW_Y * WW_Z];
+   // parallel read of tile into shared memory
+   for (int i_in_tile = tid;
+         i_in_tile < WW_Y * WW_Z;
+         i_in_tile += blockDim.x * blockDim.z)
+      {
+      // determine y,z coordinates for this thread
+      const int global_y = block_cy + (i_in_tile % WW_Y) - radius;
+      const int global_z = block_cz + (i_in_tile / WW_Y) - radius;
+      // read value at x,y,z from global memory if exists, zero otherwise
+      ${data_t} val = 0;
+      if( global_x >= 0 && global_x < NX &&
+          global_y >= 0 && global_y < NY &&
+          global_z >= 0 && global_z < NZ )
+         val = d_volume_in[global_x + NX * (global_y + NY * global_z)];
+      // convert value to corresponding histogram bin index
+      // and store in shared memory
+      shared_tile[i_in_tile] = int(num_bins * (val - min_range) / float(max_range - min_range));
+      }
+   // make sure all slice section is read
+   __syncthreads();
+   // each thread computes histogram for neighbourhood of its coordinate
+   for (int sy = -radius; sy <= radius; sy++)
+      for (int sz = -radius; sz <= radius; sz++)
+         {
+         // get neighbouring pixel bin index
+         const int v = int(shared_tile[threadIdx.y + sy + radius + WW_Y * (threadIdx.z + sz + radius)]);
+         // add to histogram if within limits
+         if (v >= 0 && v < num_bins)
+            shared_hist[v * blockDim.y * blockDim.z + tid] += iadd;
+         }
+   // make sure all slice section is processed
+   __syncthreads();
+   }
+
 /* Computes the 3D neighbourhood histogram for a given range of voxels.
  * (Main Kernel)
  *
@@ -268,5 +390,119 @@ __global__ void histogram_2d_xy(
       if (ix < HX && iy < HY)
          d_volume_histo[ibin + num_bins * (ix + HX * (iy + HY * iz))] =
                shared_hist[ibin * blockDim.x * blockDim.y + tid];
+      }
+   }
+
+/* Computes the 2D neighbourhood (XZ plane) histogram for a given range of voxels.
+ * (Main Kernel)
+ *
+ * See histogram_2d_xy for more information.
+ */
+__global__ void histogram_2d_xz(
+      // histogram output matrix
+      ${result_t} *d_volume_histo,
+      // histogram definition
+      const int min_range, const int max_range, const int num_bins,
+      // input volume and size
+      const ${data_t} *d_volume_in,
+      const int NX, const int NY, const int NZ,
+      // range of slices to consider in each dimension (half-open)
+      const int x_start, const int x_stop,
+      const int y_start, const int y_stop,
+      const int z_start, const int z_stop,
+      // neighbourhood radius around voxel for computing histogram
+      const int radius)
+   {
+   // size of the tile read in this block
+   const int WW_X = 2 * radius + blockDim.x;
+   const int WW_Z = 2 * radius + blockDim.z;
+   // x,z coordinates of block's corner in global volume
+   const int block_cx = x_start + blockIdx.x * blockDim.x;
+   const int block_cz = z_start + blockIdx.z * blockDim.z;
+   // thread index in CUDA block ( tid >= 0 && tid < blockDim.x * blockDim.z )
+   const int tid = threadIdx.z * blockDim.x + threadIdx.x;
+   // size of the histogram output matrix
+   const int HX = x_stop - x_start;
+   const int HY = y_stop - y_start;
+   const int HZ = z_stop - z_start;
+   // x,y,z coordinates of thread's voxel in histogram output matrix
+   const int ix = block_cx + threadIdx.x - x_start;
+   const int iy = blockIdx.y;
+   const int iz = block_cz + threadIdx.z - z_start;
+   // pointers for shared-memory regions
+   ${index_t} *shared_tile = (${index_t} *)(shared_memory);
+   ${result_t} *shared_hist = (${result_t} *)&shared_tile[WW_X * WW_Z];
+
+   // every thread clears its histogram in shared memory
+   for (int i = 0; i < num_bins; i++)
+      shared_hist[i * blockDim.x * blockDim.z + tid]  = 0;
+
+   // computation
+   update_tiles_xz(+1, tid, WW_X, WW_Z, radius, block_cx, block_cz,
+         y_start + iy,
+         min_range, max_range, num_bins, d_volume_in, NX, NY, NZ);
+   // copy histogram from shared memory to global memory (non-coalesced)
+   for (int ibin = 0; ibin < num_bins; ibin++)
+      {
+      if (ix < HX && iz < HZ)
+         d_volume_histo[ibin + num_bins * (ix + HX * (iy + HY * iz))] =
+               shared_hist[ibin * blockDim.x * blockDim.z + tid];
+      }
+   }
+
+/* Computes the 2D neighbourhood (YZ plane) histogram for a given range of voxels.
+ * (Main Kernel)
+ *
+ * See histogram_2d_xy for more information.
+ */
+__global__ void histogram_2d_yz(
+      // histogram output matrix
+      ${result_t} *d_volume_histo,
+      // histogram definition
+      const int min_range, const int max_range, const int num_bins,
+      // input volume and size
+      const ${data_t} *d_volume_in,
+      const int NX, const int NY, const int NZ,
+      // range of slices to consider in each dimension (half-open)
+      const int x_start, const int x_stop,
+      const int y_start, const int y_stop,
+      const int z_start, const int z_stop,
+      // neighbourhood radius around voxel for computing histogram
+      const int radius)
+   {
+   // size of the tile read in this block
+   const int WW_Y = 2 * radius + blockDim.y;
+   const int WW_Z = 2 * radius + blockDim.z;
+   // y,z coordinates of block's corner in global volume
+   const int block_cy = y_start + blockIdx.y * blockDim.y;
+   const int block_cz = z_start + blockIdx.z * blockDim.z;
+   // thread index in CUDA block ( tid >= 0 && tid < blockDim.y * blockDim.z )
+   const int tid = threadIdx.z * blockDim.y + threadIdx.y;
+   // size of the histogram output matrix
+   const int HX = x_stop - x_start;
+   const int HY = y_stop - y_start;
+   const int HZ = z_stop - z_start;
+   // x,y,z coordinates of thread's voxel in histogram output matrix
+   const int ix = blockIdx.x;
+   const int iy = block_cy + threadIdx.y - y_start;
+   const int iz = block_cz + threadIdx.z - z_start;
+   // pointers for shared-memory regions
+   ${index_t} *shared_tile = (${index_t} *)(shared_memory);
+   ${result_t} *shared_hist = (${result_t} *)&shared_tile[WW_Y * WW_Z];
+
+   // every thread clears its histogram in shared memory
+   for (int i = 0; i < num_bins; i++)
+      shared_hist[i * blockDim.y * blockDim.z + tid]  = 0;
+
+   // computation
+   update_tiles_yz(+1, tid, WW_Y, WW_Z, radius, block_cy, block_cz,
+         x_start + ix,
+         min_range, max_range, num_bins, d_volume_in, NX, NY, NZ);
+   // copy histogram from shared memory to global memory (non-coalesced)
+   for (int ibin = 0; ibin < num_bins; ibin++)
+      {
+      if (iy < HY && iz < HZ)
+         d_volume_histo[ibin + num_bins * (ix + HX * (iy + HY * iz))] =
+               shared_hist[ibin * blockDim.y * blockDim.z + tid];
       }
    }

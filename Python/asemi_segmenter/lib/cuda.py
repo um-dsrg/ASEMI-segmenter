@@ -28,5 +28,7 @@ class histograms():
             # get function pointers
             self.__class__.histogram_3d = self.__class__.__mod.get_function("histogram_3d")
             self.__class__.histogram_2d_xy = self.__class__.__mod.get_function("histogram_2d_xy")
+            self.__class__.histogram_2d_xz = self.__class__.__mod.get_function("histogram_2d_xz")
+            self.__class__.histogram_2d_yz = self.__class__.__mod.get_function("histogram_2d_yz")
             # mark as done
             self.__class__.__initialised = True

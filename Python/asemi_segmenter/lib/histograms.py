@@ -266,9 +266,67 @@ def gpu_apply_histogram_to_all_neighbourhoods_in_slice_3d(array_3d, slice_range,
         t = time.time() - t
         print("3D Histogram of %dx%dx%d: %s s" % (cols, rows, slices, t))
     elif neighbouring_dims == {0,1}: # y,z
-        raise NotImplementedError('Neighbouring dimensions of {0,1} not yet implemented.')
+        # GPU block size (working sizes)
+        WS_Y = 16
+        WS_Z = 16
+        # kernel parameters
+        blocksize = (1, WS_Y, WS_Z)
+        gridsize = ( cols,
+                     int(math.ceil( float(rows) / float(WS_Y) )),
+                     int(math.ceil( float(slices) / float(WS_Z) ))
+                     )
+        sharedsize_tile = 1 * (2 * radius + WS_Y) * (2 * radius + WS_Z) # index_t
+        sharedsize_hist = 4 * WS_Y * WS_Z * num_bins # result_t
+        sharedsize = sharedsize_tile + sharedsize_hist
+        # kernel call
+        ch = cuda.histograms()
+        import time
+        t = time.time()
+        ch.histogram_2d_yz( cuda.drv.Out(result),
+                    np.int32(min_range), np.int32(max_range), np.int32(num_bins),
+                    cuda.drv.In(array_3d),
+                    np.int32(NX), np.int32(NY), np.int32(NZ),
+                    np.int32(col_slice.start), np.int32(col_slice.stop),
+                    np.int32(row_slice.start), np.int32(row_slice.stop),
+                    np.int32(slice_range.start), np.int32(slice_range.stop),
+                    np.int32(radius),
+
+                    block=blocksize,
+                    grid=gridsize,
+                    shared=sharedsize )
+        t = time.time() - t
+        print("2D YZ Histogram of %dx%dx%d: %s s" % (cols, rows, slices, t))
     elif neighbouring_dims == {0,2}: # x,z
-        raise NotImplementedError('Neighbouring dimensions of {0,2} not yet implemented.')
+        # GPU block size (working sizes)
+        WS_X = 16
+        WS_Z = 16
+        # kernel parameters
+        blocksize = (WS_X, 1, WS_Z)
+        gridsize = ( int(math.ceil( float(cols) / float(WS_X) )),
+                     rows,
+                     int(math.ceil( float(slices) / float(WS_Z) ))
+                     )
+        sharedsize_tile = 1 * (2 * radius + WS_X) * (2 * radius + WS_Z) # index_t
+        sharedsize_hist = 4 * WS_X * WS_Z * num_bins # result_t
+        sharedsize = sharedsize_tile + sharedsize_hist
+        # kernel call
+        ch = cuda.histograms()
+        import time
+        t = time.time()
+        ch.histogram_2d_xz( cuda.drv.Out(result),
+                    np.int32(min_range), np.int32(max_range), np.int32(num_bins),
+                    cuda.drv.In(array_3d),
+                    np.int32(NX), np.int32(NY), np.int32(NZ),
+                    np.int32(col_slice.start), np.int32(col_slice.stop),
+                    np.int32(row_slice.start), np.int32(row_slice.stop),
+                    np.int32(slice_range.start), np.int32(slice_range.stop),
+                    np.int32(radius),
+
+                    block=blocksize,
+                    grid=gridsize,
+                    shared=sharedsize )
+        t = time.time() - t
+        print("2D XZ Histogram of %dx%dx%d: %s s" % (cols, rows, slices, t))
     elif neighbouring_dims == {1,2}: # x,y
         # GPU block size (working sizes)
         WS_X = 16
