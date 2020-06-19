@@ -237,15 +237,15 @@ def gpu_apply_histogram_to_all_neighbourhoods_in_slice_3d(array_3d, slice_range,
 
     if neighbouring_dims == {0,1,2}:
         # GPU block size (working sizes)
-        WS_Y = 16
         WS_X = 16
+        WS_Y = 16
         # kernel parameters
         blocksize = (WS_X, WS_Y, 1)
         gridsize = ( int(math.ceil( float(cols) / float(WS_X) )),
                      int(math.ceil( float(rows) / float(WS_Y) )),
                      1 )
         sharedsize_tile = 1 * (2 * radius + WS_X) * (2 * radius + WS_Y) # index_t
-        sharedsize_hist = 4 * WS_Y * WS_X * num_bins # result_t
+        sharedsize_hist = 4 * WS_X * WS_Y * num_bins # result_t
         sharedsize = sharedsize_tile + sharedsize_hist
         # kernel call
         ch = cuda.histograms()
@@ -271,15 +271,15 @@ def gpu_apply_histogram_to_all_neighbourhoods_in_slice_3d(array_3d, slice_range,
         raise NotImplementedError('Neighbouring dimensions of {0,2} not yet implemented.')
     elif neighbouring_dims == {1,2}: # x,y
         # GPU block size (working sizes)
-        WS_Y = 16
         WS_X = 16
+        WS_Y = 16
         # kernel parameters
         blocksize = (WS_X, WS_Y, 1)
         gridsize = ( int(math.ceil( float(cols) / float(WS_X) )),
                      int(math.ceil( float(rows) / float(WS_Y) )),
                      slices )
         sharedsize_tile = 1 * (2 * radius + WS_X) * (2 * radius + WS_Y) # index_t
-        sharedsize_hist = 4 * WS_Y * WS_X * num_bins # result_t
+        sharedsize_hist = 4 * WS_X * WS_Y * num_bins # result_t
         sharedsize = sharedsize_tile + sharedsize_hist
         # kernel call
         ch = cuda.histograms()

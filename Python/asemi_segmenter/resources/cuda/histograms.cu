@@ -54,7 +54,7 @@ __device__ void update_tiles_xy(
       const int iadd,
       // thread index in CUDA block ( tid >= 0 && tid < blockDim.x * blockDim.y )
       const int tid,
-      // size of the section of slice read in this block
+      // size of the tile read in this block
       const int WW_X, const int WW_Y,
       // neighbourhood radius around voxel for computing histogram
       const int radius,
@@ -71,7 +71,7 @@ __device__ void update_tiles_xy(
    // pointers for shared-memory regions
    ${index_t} *shared_tile = (${index_t} *)(shared_memory);
    ${result_t} *shared_hist = (${result_t} *)&shared_tile[WW_X * WW_Y];
-   // parallel read of section of slice into shared memory
+   // parallel read of tile into shared memory
    for (int i_in_tile = tid;
          i_in_tile < WW_X * WW_Y;
          i_in_tile += blockDim.x * blockDim.y)
@@ -142,10 +142,10 @@ __global__ void histogram_3d(
       const int x_start, const int x_stop,
       const int y_start, const int y_stop,
       const int z_start, const int z_stop,
-      // il raggio della zone di interesse intorno al voxel
+      // neighbourhood radius around voxel for computing histogram
       const int radius)
    {
-   // size of the section of slice read in this block
+   // size of the tile read in this block
    const int WW_X = 2 * radius + blockDim.x;
    const int WW_Y = 2 * radius + blockDim.y;
    // x,y coordinates of block's corner in global volume
@@ -231,10 +231,10 @@ __global__ void histogram_2d_xy(
       const int x_start, const int x_stop,
       const int y_start, const int y_stop,
       const int z_start, const int z_stop,
-      // il raggio della zone di interesse intorno al voxel
+      // neighbourhood radius around voxel for computing histogram
       const int radius)
    {
-   // size of the section of slice read in this block
+   // size of the tile read in this block
    const int WW_X = 2 * radius + blockDim.x;
    const int WW_Y = 2 * radius + blockDim.y;
    // x,y coordinates of block's corner in global volume
