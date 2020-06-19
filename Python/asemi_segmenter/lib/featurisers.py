@@ -1139,7 +1139,6 @@ class LocalBinaryPatternFeaturiser(Featuriser):
 
             t = time.time()
             if use_gpu:
-                print("Using GPU")
                 hists = histograms.gpu_apply_histogram_to_all_neighbourhoods_in_slice_3d(
                     lbp_codes,
                     params[scale]['contextless_slices_wrt_block'][0],
@@ -1151,7 +1150,6 @@ class LocalBinaryPatternFeaturiser(Featuriser):
                     col_slice=params[scale]['contextless_slices_wrt_block'][2]
                     )
             else:
-                print("Using CPU")
                 hists = histograms.apply_histogram_to_all_neighbourhoods_in_slice_3d(
                     lbp_codes,
                     params[scale]['contextless_slices_wrt_block'][0],
