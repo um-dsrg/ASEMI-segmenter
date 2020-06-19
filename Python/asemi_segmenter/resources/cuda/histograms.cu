@@ -12,13 +12,13 @@
  *    WW_X = (radius + blockDim.x + radius)
  *    WW_Y = (radius + blockDim.y + radius)
  *
- * The next blockDim.y * blockDim.x * num_bins elements hold the histograms for
+ * The next blockDim.x * blockDim.y * num_bins elements hold the histograms for
  * each thread (i.e. a separate histogram for every voxel in the tile).
  */
 
 extern __shared__ int8_t shared_memory[];
 
-/* Computes the contribution to the histogram from the slice at global_z.
+/* Computes histogram contribution from the tiles on the x,y plane at global_z.
  * (Auxiliary Function)
  *
  * Optimisations in this function include:
@@ -44,10 +44,10 @@ extern __shared__ int8_t shared_memory[];
  * 5) Histogram elements for thread A and thread B are on different shared
  *    memory banks.
  */
-__device__ void update_slice(
+__device__ void update_tiles_xy(
       // iadd = +1/-1 to add/subtract
       const int iadd,
-      // thread index in CUDA block ( tid >= 0 && tid < blockDim.y * blockDim.x )
+      // thread index in CUDA block ( tid >= 0 && tid < blockDim.x * blockDim.y )
       const int tid,
       // size of the section of slice read in this block
       const int WW_X, const int WW_Y,
@@ -65,16 +65,16 @@ __device__ void update_slice(
    {
    // pointers for shared-memory regions
    ${index_t} *shared_tile = (${index_t} *)(shared_memory);
-   ${result_t} *shared_hist = (${result_t} *)&shared_tile[WW_Y * WW_X];
+   ${result_t} *shared_hist = (${result_t} *)&shared_tile[WW_X * WW_Y];
    // parallel read of section of slice into shared memory
    for (int i_in_tile = tid;
-         i_in_tile < WW_Y * WW_X;
-         i_in_tile += blockDim.y * blockDim.x)
+         i_in_tile < WW_X * WW_Y;
+         i_in_tile += blockDim.x * blockDim.y)
       {
       // determine x,y coordinates for this thread
       const int global_x = block_cx + (i_in_tile % WW_X) - radius;
       const int global_y = block_cy + (i_in_tile / WW_X) - radius;
-      // read value at x,y from global memory if exists, zero otherwise
+      // read value at x,y,z from global memory if exists, zero otherwise
       ${data_t} val = 0;
       if( global_x >= 0 && global_x < NX &&
           global_y >= 0 && global_y < NY &&
@@ -94,19 +94,20 @@ __device__ void update_slice(
          const int v = int(shared_tile[threadIdx.x + sx + radius + WW_X * (threadIdx.y + sy + radius)]);
          // add to histogram if within limits
          if (v >= 0 && v < num_bins)
-            shared_hist[v * blockDim.y * blockDim.x + tid] += iadd;
+            shared_hist[v * blockDim.x * blockDim.y + tid] += iadd;
          }
    // make sure all slice section is processed
    __syncthreads();
    }
 
-/* Computes the neighbourhood histogram for a given range of voxels.
+/* Computes the 3D neighbourhood histogram for a given range of voxels.
  * (Main Kernel)
  *
- * Kernel is launched with a 2D grid of 2D blocks, covering a single slice of
- * voxels in the XY plane. A range of slices are considered with an internal
- * loop over the Z dimension. For each voxel (ix,iy,iz) we need to compute the
- * neighbourhood histogram.
+ * Kernel is launched with a 2D grid of 2D blocks, with a thread for each voxel
+ * in a single slice (XY plane). Each block covers a 2D tile, so that threads
+ * in a block cache the tile neighbourhood in shared memory. A range of slices
+ * are considered with an internal loop over the Z dimension. For each voxel
+ * (ix,iy,iz) we need to compute the neighbourhood histogram.
  *
  * Storage is always in row-major order, so from slow to fast the dimensions
  * are Z, Y, X, or slice, row, column.
@@ -145,7 +146,7 @@ __global__ void histogram_3d(
    // x,y coordinates of block's corner in global volume
    const int block_cx = x_start + blockIdx.x * blockDim.x;
    const int block_cy = y_start + blockIdx.y * blockDim.y;
-   // thread index in CUDA block ( tid >= 0 && tid < blockDim.y * blockDim.x )
+   // thread index in CUDA block ( tid >= 0 && tid < blockDim.x * blockDim.y )
    const int tid = threadIdx.y * blockDim.x + threadIdx.x;
    // size of the histogram output matrix
    const int HX = x_stop - x_start;
@@ -158,16 +159,16 @@ __global__ void histogram_3d(
    int iz = 0;
    // pointers for shared-memory regions
    ${index_t} *shared_tile = (${index_t} *)(shared_memory);
-   ${result_t} *shared_hist = (${result_t} *)&shared_tile[WW_Y * WW_X];
+   ${result_t} *shared_hist = (${result_t} *)&shared_tile[WW_X * WW_Y];
 
    // every thread clears its histogram in shared memory
    for (int i = 0; i < num_bins; i++)
-      shared_hist[i * blockDim.y * blockDim.x + tid]  = 0;
+      shared_hist[i * blockDim.x * blockDim.y + tid]  = 0;
 
    // computation of first slice
    for (int z_offset = -radius; z_offset <= radius; z_offset++)
       {
-      update_slice(+1, tid, WW_X, WW_Y, radius, block_cx, block_cy,
+      update_tiles_xy(+1, tid, WW_X, WW_Y, radius, block_cx, block_cy,
             z_start + iz + z_offset,
             min_range, max_range, num_bins, d_volume_in, NX, NY, NZ);
       }
@@ -176,15 +177,15 @@ __global__ void histogram_3d(
       {
       if (ix < HX && iy < HY)
          d_volume_histo[ibin + num_bins * (ix + HX * (iy + HY * iz))] =
-               shared_hist[ibin * blockDim.y * blockDim.x + tid];
+               shared_hist[ibin * blockDim.x * blockDim.y + tid];
       }
    // computation of following slices
    for (iz++; iz < HZ; iz++)
       {
-      update_slice(-1, tid, WW_X, WW_Y, radius, block_cx, block_cy,
+      update_tiles_xy(-1, tid, WW_X, WW_Y, radius, block_cx, block_cy,
             z_start + iz - 1 - radius,
             min_range, max_range, num_bins, d_volume_in, NX, NY, NZ);
-      update_slice(+1, tid, WW_X, WW_Y, radius, block_cx, block_cy,
+      update_tiles_xy(+1, tid, WW_X, WW_Y, radius, block_cx, block_cy,
             z_start + iz + radius,
             min_range, max_range, num_bins, d_volume_in, NX, NY, NZ);
       // copy histogram from shared memory to global memory (non-coalesced)
@@ -192,7 +193,7 @@ __global__ void histogram_3d(
          {
          if (ix < HX && iy < HY)
             d_volume_histo[ibin + num_bins * (ix + HX * (iy + HY * iz))] =
-                  shared_hist[ibin * blockDim.y * blockDim.x + tid];
+                  shared_hist[ibin * blockDim.x * blockDim.y + tid];
          }
       }
    }

@@ -866,7 +866,8 @@ class HistogramFeaturiser(Featuriser):
                     {0,1,2},
                     0, 2**16,
                     num_bins,
-                    row_slice=params[scale]['contextless_slices_wrt_block'][1], col_slice=params[scale]['contextless_slices_wrt_block'][2]
+                    row_slice=params[scale]['contextless_slices_wrt_block'][1],
+                    col_slice=params[scale]['contextless_slices_wrt_block'][2]
                     )
             else:
                 hists = histograms.apply_histogram_to_all_neighbourhoods_in_slice_3d(
@@ -876,7 +877,8 @@ class HistogramFeaturiser(Featuriser):
                     {0,1,2},
                     0, 2**16,
                     num_bins,
-                    row_slice=params[scale]['contextless_slices_wrt_block'][1], col_slice=params[scale]['contextless_slices_wrt_block'][2]
+                    row_slice=params[scale]['contextless_slices_wrt_block'][1],
+                    col_slice=params[scale]['contextless_slices_wrt_block'][2]
                     )
 
             grown = downscales.grow_array(

@@ -264,7 +264,7 @@ def gpu_apply_histogram_to_all_neighbourhoods_in_slice_3d(array_3d, slice_range,
                     grid=gridsize,
                     shared=sharedsize )
         t = time.time() - t
-        print("Histogram of %dx%dx%d: %s s" % (cols, rows, 1, t))
+        print("3D Histogram of %dx%dx%d: %s s" % (cols, rows, slices, t))
     else:
         raise NotImplementedError('Only neighbouring dimensions of {0,1,2} implemented.')
 
