@@ -27,5 +27,6 @@ class histograms():
             self.__class__.__mod = pycuda.compiler.SourceModule(code)
             # get function pointers
             self.__class__.histogram_3d = self.__class__.__mod.get_function("histogram_3d")
+            self.__class__.histogram_2d_xy = self.__class__.__mod.get_function("histogram_2d_xy")
             # mark as done
             self.__class__.__initialised = True

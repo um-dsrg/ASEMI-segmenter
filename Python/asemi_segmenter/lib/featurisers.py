@@ -167,7 +167,7 @@ def load_featuriser_from_config(config, sampler_factory=None, use_gpu=False):
                     raise ValueError('scale must be a constant not a range.')
                 scale = config['params']['scale']
 
-            return LocalBinaryPatternFeaturiser(neighbouring_dims, radius, scale)
+            return LocalBinaryPatternFeaturiser(neighbouring_dims, radius, scale, use_gpu)
 
         elif config['type'] == 'composite':
             return CompositeFeaturiser(
@@ -930,7 +930,7 @@ class LocalBinaryPatternFeaturiser(Featuriser):
     '''
 
     #########################################
-    def __init__(self, neighbouring_dims, radius, scale):
+    def __init__(self, neighbouring_dims, radius, scale, use_gpu=False):
         '''
         Constructor.
 
@@ -940,6 +940,7 @@ class LocalBinaryPatternFeaturiser(Featuriser):
         :type radius: int or samplers.Sampler
         :param scale: The scale of the volume from which to extract this neighbourhood or a function that generates it.
         :type scale: int or samplers.Sampler
+        :param bool use_gpu: Flag indicating the use of GPU implementation.
         '''
         if not isinstance(neighbouring_dims, set):
             raise ValueError('neighbouring_dims must be a set.')
@@ -949,6 +950,7 @@ class LocalBinaryPatternFeaturiser(Featuriser):
         self.neighbouring_dims = neighbouring_dims
         self.radius = None
         self.scale = None
+        self.use_gpu = use_gpu
         self.radius_sampler = None
         self.scale_sampler = None
         if isinstance(radius, samplers.Sampler):
@@ -1111,10 +1113,12 @@ class LocalBinaryPatternFeaturiser(Featuriser):
         '''
         (output_rows_needed, output_cols_needed, slc_range, row_range, col_range, output) = self._prepare_featurise_slice(data_scales, slice_range, row_range, col_range, output, output_start_row_index, output_start_col_index)
 
-        def processor(params, neighbouring_dims, radius, scale, full_input_ranges, output_start_row_index, output_start_col_index):
+        def processor(params, neighbouring_dims, radius, scale, full_input_ranges, output_start_row_index, output_start_col_index, use_gpu):
             '''Processor for process_array_in_blocks_single_slice.'''
             [ num_slcs_out, num_rows_out, num_cols_out ] = params[0]['contextless_shape']
 
+            import time
+            t = time.time()
             lbp_codes = np.empty_like(params[scale]['block'])
             if neighbouring_dims == {1,2}:
                 for data_index in range(
@@ -1128,17 +1132,39 @@ class LocalBinaryPatternFeaturiser(Featuriser):
                 for i in range(lbp_codes.shape[dim]):
                     index[dim] = i
                     index_ = tuple(index)
+                    print(index_)
                     lbp_codes[index_] = skimage.feature.local_binary_pattern(params[scale]['block'][index_], 8, 1, 'uniform')
+            t = time.time() - t
+            x,y,z = params[scale]['block'].shape
+            print("LBP of %dx%dx%d: %s s" % (x,y,z,t))
 
-            hists = histograms.apply_histogram_to_all_neighbourhoods_in_slice_3d(
-                lbp_codes,
-                params[scale]['contextless_slices_wrt_block'][0],
-                radius,
-                neighbouring_dims,
-                0, 10,
-                10,
-                row_slice=params[scale]['contextless_slices_wrt_block'][1], col_slice=params[scale]['contextless_slices_wrt_block'][2]
-                )
+            t = time.time()
+            if use_gpu:
+                print("Using GPU")
+                hists = histograms.gpu_apply_histogram_to_all_neighbourhoods_in_slice_3d(
+                    lbp_codes,
+                    params[scale]['contextless_slices_wrt_block'][0],
+                    radius,
+                    neighbouring_dims,
+                    0, 10,
+                    10,
+                    row_slice=params[scale]['contextless_slices_wrt_block'][1],
+                    col_slice=params[scale]['contextless_slices_wrt_block'][2]
+                    )
+            else:
+                print("Using CPU")
+                hists = histograms.apply_histogram_to_all_neighbourhoods_in_slice_3d(
+                    lbp_codes,
+                    params[scale]['contextless_slices_wrt_block'][0],
+                    radius,
+                    neighbouring_dims,
+                    0, 10,
+                    10,
+                    row_slice=params[scale]['contextless_slices_wrt_block'][1],
+                    col_slice=params[scale]['contextless_slices_wrt_block'][2]
+                    )
+            t = time.time() - t
+            print("Histogram of %dx%dx%d: %s s" % (x,y,z,t))
 
             grown = downscales.grow_array(
                 hists,
@@ -1174,7 +1200,7 @@ class LocalBinaryPatternFeaturiser(Featuriser):
             in_ranges=[row_range, col_range],
             context_size=self.get_context_needed(),
             n_jobs=n_jobs,
-            extra_params=(self.neighbouring_dims, self.radius, self.scale, (row_range, col_range), output_start_row_index, output_start_col_index),
+            extra_params=(self.neighbouring_dims, self.radius, self.scale, (row_range, col_range), output_start_row_index, output_start_col_index, self.use_gpu),
             )
 
 
