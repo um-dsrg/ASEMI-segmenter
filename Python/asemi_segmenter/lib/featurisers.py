@@ -1132,7 +1132,6 @@ class LocalBinaryPatternFeaturiser(Featuriser):
                 for i in range(lbp_codes.shape[dim]):
                     index[dim] = i
                     index_ = tuple(index)
-                    print(index_)
                     lbp_codes[index_] = skimage.feature.local_binary_pattern(params[scale]['block'][index_], 8, 1, 'uniform')
             t = time.time() - t
             x,y,z = params[scale]['block'].shape
