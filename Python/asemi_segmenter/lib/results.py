@@ -259,6 +259,7 @@ class TuningResultsFile(object):
                 'iteration',
                 'json config',
                 'global {}'.format(self.evaluation.name),
+                'best global {}'.format(self.evaluation.name),
                 'min {}'.format(self.evaluation.name),
                 'stddev {}'.format(self.evaluation.name),
                 *['{} {}'.format(label, self.evaluation.name) for label in labels],
@@ -309,6 +310,10 @@ class TuningResultsFile(object):
                 json.dumps(config),
                 '{:.3{}}'.format(
                     global_score,
+                    '%' if self.evaluation.is_percentage else 'f'
+                    ),
+                '{:.3{}}'.format(
+                    self.best_globalscore,
                     '%' if self.evaluation.is_percentage else 'f'
                     ),
                 '{:.3{}}'.format(
