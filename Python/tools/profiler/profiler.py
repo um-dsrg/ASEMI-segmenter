@@ -25,8 +25,10 @@ def main():
         help='Full directory to store results of segmentation.')
     parser.add_argument('--profiler_results_fullfname', required=True,
         help='Full file name (with path) of the profiler results text file.')
-    parser.add_argument('--max_processes', required=True, type=int,
-        help='The maximum number of processes to use.')
+    parser.add_argument('--max_processes_featuriser', required=True, type=int,
+        help='The maximum number of processes to use whilst featurising.')
+    parser.add_argument('--max_processes_classifier', required=True, type=int,
+        help='The maximum number of processes to use whilst classifying.')
     parser.add_argument('--max_batch_memory', required=True, type=float,
         help='The maximum amount of memory in GB to use.')
     parser.add_argument('--use_gpu', required=False, default='no', choices=['yes', 'no'],
@@ -47,7 +49,8 @@ def main():
         checkpoint_namespace='segment',
         reset_checkpoint=False,
         checkpoint_init=dict(),
-        max_processes=args.max_processes,
+        max_processes_featuriser=args.max_processes_featuriser,
+        max_processes_classifier=args.max_processes_classifier,
         max_batch_memory=args.max_batch_memory,
         use_gpu=args.use_gpu == 'yes',
         listener=listeners.CliProgressListener(),

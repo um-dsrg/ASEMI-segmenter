@@ -121,11 +121,18 @@ if __name__ == '__main__':
             help='Full path to file that is used to store a log of what is displayed on screen (*.txt).'
         )
     parser.add_argument(
-            '--max_processes',
+            '--max_processes_featuriser',
             required=False,
             default=-1,
             type=int,
-            help='Maximum number of parallel processes to use (-1 to use maximum, default).'
+            help='Maximum number of parallel processes to use concurrently whilst featurising (-1 to use maximum, default).'
+        )
+    parser.add_argument(
+            '--max_processes_classifier',
+            required=False,
+            default=-1,
+            type=int,
+            help='Maximum number of parallel processes to use concurrently whilst classifying (-1 to use maximum, default).'
         )
     parser.add_argument(
             '--max_batch_memory',
@@ -181,7 +188,8 @@ if __name__ == '__main__':
             checkpoint_namespace='tune',
             reset_checkpoint=args.reset_checkpoint == 'yes',
             checkpoint_init=dict(),
-            max_processes=arrayprocs.get_num_processes(args.max_processes),
+            max_processes_featuriser=arrayprocs.get_num_processes(args.max_processes_featuriser),
+            max_processes_classifier=arrayprocs.get_num_processes(args.max_processes_classifier),
             max_batch_memory=(
                 args.max_batch_memory
                 if args.max_batch_memory > 0

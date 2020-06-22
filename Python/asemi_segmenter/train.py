@@ -22,7 +22,8 @@ def _loading_data(
         preproc_volume_fullfname, subvolume_dir, label_dirs, config,
         result_segmenter_fullfname, trainingset_file_fullfname, train_sample_seed,
         checkpoint_fullfname, checkpoint_namespace, reset_checkpoint,
-        checkpoint_init, max_processes, max_batch_memory, use_gpu, listener
+        checkpoint_init, max_processes_featuriser, max_processes_classifier, max_batch_memory,
+        use_gpu, listener
     ):
     '''Loading data stage.'''
     if train_sample_seed is None:
@@ -94,7 +95,8 @@ def _loading_data(
     listener.log_output('> Other parameters:')
     listener.log_output('>> train sample seed: {}'.format(train_sample_seed))
     listener.log_output('>> reset_checkpoint: {}'.format(reset_checkpoint))
-    listener.log_output('>> max_processes: {}'.format(max_processes))
+    listener.log_output('>> max_processes_featuriser: {}'.format(max_processes_featuriser))
+    listener.log_output('>> max_processes_classifier: {}'.format(max_processes_classifier))
     listener.log_output('>> max_batch_memory: {}GB'.format(max_batch_memory))
 
     return (full_volume, subvolume_fullfnames, labels_data, slice_shape, slice_size, segmenter, training_set, hash_function, train_sample_seed, checkpoint)
@@ -141,7 +143,7 @@ def _constructing_labels_dataset(
 #########################################
 def _constructing_trainingset(
         full_volume, subvolume_fullfnames, volume_slice_indexes_in_subvolume, slice_shape, slice_size, subvolume_slice_labels, segmenter, training_set, train_sample_seed, checkpoint,
-        max_processes, max_batch_memory, listener
+        max_processes_featuriser, max_processes_classifier, max_batch_memory, listener
     ):
     '''Constructing training set stage.'''
     sample_size_per_label = segmenter.train_config['training_set']['sample_size_per_label']
@@ -212,7 +214,7 @@ def _constructing_trainingset(
                 slice_shape,
                 full_volume.get_dtype(),
                 segmenter.featuriser.get_context_needed(),
-                max_processes,
+                max_processes_featuriser,
                 max_batch_memory,
                 num_implicit_slices=1,
                 feature_size=segmenter.featuriser.get_feature_size(),
@@ -230,7 +232,7 @@ def _constructing_trainingset(
                         block_shape=best_block_shape,
                         output=training_set.get_features_array(),
                         output_start_row_index=i*slice_size,
-                        n_jobs=max_processes
+                        n_jobs=max_processes_featuriser
                         )
                 listener.current_progress_update(i+1)
             listener.current_progress_end()
@@ -242,7 +244,7 @@ def _constructing_trainingset(
 
 #########################################
 def _training_segmenter(
-        segmenter, training_set, checkpoint, max_processes, listener
+        segmenter, training_set, checkpoint, max_processes_featuriser, max_processes_classifier, listener
     ):
     '''Training segmenter stage.'''
     listener.log_output('> Training')
@@ -256,7 +258,7 @@ def _training_segmenter(
         sample_size_per_label = segmenter.train_config['training_set']['sample_size_per_label']
         if sample_size_per_label == -1:
             training_set = training_set.without_control_labels()
-        segmenter.train(training_set, max_processes)
+        segmenter.train(training_set, max_processes_classifier)
 
         training_set.close()
 
@@ -295,7 +297,8 @@ def main(
         checkpoint_namespace='train',
         reset_checkpoint=False,
         checkpoint_init=dict(),
-        max_processes=-1,
+        max_processes_featuriser=-1,
+        max_processes_classifier=-1,
         max_batch_memory=1,
         use_gpu=False,
         listener=listeners.ProgressListener(),
@@ -328,8 +331,12 @@ def main(
         including the checkpoint file (only data about this particular command will be
         overwritten). If None then checkpoint is checkpoint file content if file exists,
         otherwise the checkpoint will be empty. To restart checkpoint set to empty dictionary.
-    :param int max_processes: The maximum number of processes to use concurrently.
-    :param float max_batch_memory: The maximum number of gigabytes to use between all processes.
+    :param int max_processes_featuriser: The maximum number of processes to use concurrently
+        whilst featurising.
+    :param int max_processes_classifier: The maximum number of processes to use concurrently
+        whilst classifying.
+    :param float max_batch_memory: The maximum number of gigabytes to use between all featuriser
+        processes.
     :param bool use_gpu: Whether to use the GPU for computing features.
     :param ProgressListener listener: The command's progress listener.
     :param bool debug_mode: Whether to show full error messages or just simple ones.
@@ -355,8 +362,7 @@ def main(
                     preproc_volume_fullfname, subvolume_dir, label_dirs, config,
                     result_segmenter_fullfname, trainingset_file_fullfname,
                     train_sample_seed, checkpoint_fullfname, checkpoint_namespace, reset_checkpoint,
-                    checkpoint_init, max_processes, max_batch_memory, use_gpu,
-                    listener
+                    checkpoint_init, max_processes_featuriser, max_processes_classifier, max_batch_memory, use_gpu, listener
                     )
             listener.log_output('Data loaded')
             listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
@@ -390,7 +396,7 @@ def main(
             listener.log_output(times.get_timestamp())
             listener.log_output('Constructing training set')
             with times.Timer() as timer:
-                () = _constructing_trainingset(full_volume, subvolume_fullfnames, volume_slice_indexes_in_subvolume, slice_shape, slice_size, subvolume_slice_labels, segmenter, training_set, train_sample_seed, checkpoint, max_processes, max_batch_memory, listener)
+                () = _constructing_trainingset(full_volume, subvolume_fullfnames, volume_slice_indexes_in_subvolume, slice_shape, slice_size, subvolume_slice_labels, segmenter, training_set, train_sample_seed, checkpoint, max_processes_featuriser, max_processes_classifier, max_batch_memory, listener)
             listener.log_output('Training set constructed')
             listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
             listener.log_output('')
@@ -401,7 +407,7 @@ def main(
             listener.log_output(times.get_timestamp())
             listener.log_output('Training segmenter')
             with times.Timer() as timer:
-                () = _training_segmenter(segmenter, training_set, checkpoint, max_processes, listener)
+                () = _training_segmenter(segmenter, training_set, checkpoint, max_processes_featuriser, max_processes_classifier, listener)
             listener.log_output('Segmenter trained')
             listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
             listener.log_output('')

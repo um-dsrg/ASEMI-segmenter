@@ -49,7 +49,8 @@
     --parameter_selection_seed 0 \
     --checkpoint_fullfname "output/checkpoint.json" \
     --log_file_fullfname "output/log.txt" \
-    --max_processes 4 \
+    --max_processes_featuriser 4 \
+    --max_processes_classifier 4 \
     --max_batch_memory 1.0 \
     --use_gpu "no"
 
@@ -66,7 +67,8 @@
     --train_sample_seed 0 \
     --checkpoint_fullfname "output/checkpoint.json" \
     --log_file_fullfname "output/log.txt" \
-    --max_processes 4 \
+    --max_processes_featuriser 4 \
+    --max_processes_classifier 4 \
     --max_batch_memory 1.0 \
     --use_gpu "no"
 
@@ -81,7 +83,8 @@
     --results_dir "output/evaluate" \
     --checkpoint_fullfname "output/checkpoint.json" \
     --log_file_fullfname "output/log.txt" \
-    --max_processes 4 \
+    --max_processes_featuriser 4 \
+    --max_processes_classifier 4 \
     --max_batch_memory 1.0 \
     --use_gpu "no"
 
@@ -93,7 +96,8 @@
     --label_names_fullfname "output/segment/labels.txt" \
     --checkpoint_fullfname "output/checkpoint.json" \
     --log_file_fullfname "output/log.txt" \
-    --max_processes 4 \
+    --max_processes_featuriser 4 \
+    --max_processes_classifier 4 \
     --max_batch_memory 1.0 \
     --num_simultaneous_slices 2 \
     --use_gpu "no"

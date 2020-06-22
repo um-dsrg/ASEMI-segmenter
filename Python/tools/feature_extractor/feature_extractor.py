@@ -15,7 +15,7 @@ from asemi_segmenter.lib import arrayprocs
 
 
 #########################################
-def extract_features(preproc_volume_fullfname, featuriser_config, volume_slice_index, volume_slice_count, max_processes, max_batch_memory, save_as=None, use_gpu=False):
+def extract_features(preproc_volume_fullfname, featuriser_config, volume_slice_index, volume_slice_count, max_processes_featuriser, max_batch_memory, save_as=None, use_gpu=False):
     full_volume = volumes.FullVolume(preproc_volume_fullfname)
     full_volume.load()
 
@@ -25,7 +25,7 @@ def extract_features(preproc_volume_fullfname, featuriser_config, volume_slice_i
         full_volume.get_shape()[1:],
         full_volume.get_dtype(),
         featuriser.get_context_needed(),
-        max_processes,
+        max_processes_featuriser,
         max_batch_memory,
         num_implicit_slices=volume_slice_count,
         feature_size=featuriser.get_feature_size(),
@@ -39,7 +39,7 @@ def extract_features(preproc_volume_fullfname, featuriser_config, volume_slice_i
                 full_volume.get_scale_arrays(featuriser.get_scales_needed()),
                 slice_range=slice(volume_slice_index, volume_slice_index+volume_slice_count),
                 block_shape=best_block_shape,
-                n_jobs=max_processes
+                n_jobs=max_processes_featuriser
                 )
             )
 
@@ -74,7 +74,7 @@ def main():
     parser.add_argument('--save_as', required=False, default=None,
         help='Full file name (with path) of file to contain the features '
             '(can be .txt, .npy, or left out to not save anything).')
-    parser.add_argument('--max_processes', required=True, type=int,
+    parser.add_argument('--max_processes_featuriser', required=True, type=int,
         help='The maximum number of processes to use.')
     parser.add_argument('--max_batch_memory', required=True, type=float,
         help='The maximum amount of memory in GB to use.')
@@ -93,7 +93,7 @@ def main():
         volume_slice_index=args.volume_slice_index,
         volume_slice_count=args.volume_slice_count,
         save_as=args.save_as,
-        max_processes=args.max_processes,
+        max_processes_featuriser=args.max_processes_featuriser,
         max_batch_memory=args.max_batch_memory,
         use_gpu=args.use_gpu == 'yes'
         )

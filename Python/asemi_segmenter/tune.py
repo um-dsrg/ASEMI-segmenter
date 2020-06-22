@@ -28,7 +28,8 @@ def _loading_data(
         best_result_fullfname, parameter_selection_timeout, use_features_table,
         features_table_fullfname, train_sample_seed, eval_sample_seed,
         parameter_selection_seed, checkpoint_fullfname, checkpoint_namespace,
-        reset_checkpoint, checkpoint_init, max_processes, max_batch_memory, use_gpu, listener
+        reset_checkpoint, checkpoint_init, max_processes_featuriser, max_processes_classifier,
+        max_batch_memory, use_gpu, listener
     ):
     '''Loading data stage.'''
     if train_sample_seed is None:
@@ -176,7 +177,8 @@ def _loading_data(
     listener.log_output('>> evaluation sample seed: {}'.format(eval_sample_seed))
     listener.log_output('>> parameter selection seed: {}'.format(parameter_selection_seed))
     listener.log_output('>> reset_checkpoint: {}'.format(reset_checkpoint))
-    listener.log_output('>> max_processes: {}'.format(max_processes))
+    listener.log_output('>> max_processes_featuriser: {}'.format(max_processes_featuriser))
+    listener.log_output('>> max_processes_classifier: {}'.format(max_processes_classifier))
     listener.log_output('>> max_batch_memory: {}GB'.format(max_batch_memory))
 
     return (config_data, full_volume, slice_shape, slice_size, segmenter, train_subvolume_fullfnames, train_labels_data, eval_subvolume_fullfnames, eval_labels_data, training_set, hash_function, evaluation, tuning_results_file, features_table, train_sample_seed, eval_sample_seed, parameter_selection_seed, checkpoint)
@@ -245,7 +247,7 @@ def _constructing_labels_dataset(
 
 #########################################
 def _tuning(
-        config_data, segmenter, slice_shape, slice_size, full_volume, train_subvolume_slice_labels, volume_slice_indexes_in_train_subvolume, eval_subvolume_slice_labels, volume_slice_indexes_in_eval_subvolume, training_set, evaluation, parameter_selection_timeout, tuning_results_file, features_table, train_sample_seed, eval_sample_seed, checkpoint, max_processes, max_batch_memory, listener, extra_col_names, extra_col_values
+        config_data, segmenter, slice_shape, slice_size, full_volume, train_subvolume_slice_labels, volume_slice_indexes_in_train_subvolume, eval_subvolume_slice_labels, volume_slice_indexes_in_eval_subvolume, training_set, evaluation, parameter_selection_timeout, tuning_results_file, features_table, train_sample_seed, eval_sample_seed, checkpoint, max_processes_featuriser, max_processes_classifier, max_batch_memory, listener, extra_col_names, extra_col_values
     ):
     '''Tuning stage.'''
     train_sample_size_per_label = config_data['training_set']['sample_size_per_label']
@@ -336,7 +338,7 @@ def _tuning(
                             slice_shape,
                             full_volume.get_dtype(),
                             segmenter.featuriser.get_context_needed(),
-                            max_processes,
+                            max_processes_featuriser,
                             max_batch_memory,
                             num_implicit_slices=1,
                             feature_size=segmenter.featuriser.get_feature_size(),
@@ -370,11 +372,11 @@ def _tuning(
                                     block_shape=best_block_shape,
                                     output=training_set.get_features_array(),
                                     output_start_row_index=i*slice_size,
-                                    n_jobs=max_processes
+                                    n_jobs=max_processes_featuriser
                                     )
                             training_set = training_set.without_control_labels()
 
-                        segmenter.train(training_set, max_processes)
+                        segmenter.train(training_set, max_processes_classifier)
 
                         iou_lists = [[] for _ in range(len(segmenter.classifier.labels))]
                         if eval_sample_size_per_label != -1:
@@ -394,7 +396,7 @@ def _tuning(
                                 features_table=features_table
                                 )
 
-                            prediction = segmenter.segment_to_label_indexes(eval_set.get_features_array(), max_processes)
+                            prediction = segmenter.segment_to_label_indexes(eval_set.get_features_array(), max_processes_classifier)
 
                             evaluation.evaluate(prediction, eval_set.get_labels_array())
                         else:
@@ -403,10 +405,10 @@ def _tuning(
                                     full_volume.get_scale_arrays(segmenter.featuriser.get_scales_needed()),
                                     slice_range=slice(volume_slice_index, volume_slice_index+1),
                                     block_shape=best_block_shape,
-                                    n_jobs=max_processes
+                                    n_jobs=max_processes_featuriser
                                     )
 
-                                prediction = segmenter.segment_to_label_indexes(slice_features, max_processes)
+                                prediction = segmenter.segment_to_label_indexes(slice_features, max_processes_classifier)
 
                                 evaluation.evaluate(prediction, eval_subvolume_slice_labels[i*slice_size:(i+1)*slice_size])
 
@@ -452,7 +454,7 @@ def _tuning(
                             slice_shape,
                             full_volume.get_dtype(),
                             segmenter.featuriser.get_context_needed(),
-                            max_processes,
+                            max_processes_featuriser,
                             max_batch_memory,
                             num_implicit_slices=1,
                             feature_size=segmenter.featuriser.get_feature_size(),
@@ -486,11 +488,11 @@ def _tuning(
                                     block_shape=best_block_shape,
                                     output=training_set.get_features_array(),
                                     output_start_row_index=i*slice_size,
-                                    n_jobs=max_processes
+                                    n_jobs=max_processes_featuriser
                                     )
                             training_set = training_set.without_control_labels()
 
-                        segmenter.train(training_set, max_processes)
+                        segmenter.train(training_set, max_processes_classifier)
 
                         iou_lists = [[] for _ in range(len(segmenter.classifier.labels))]
                         if eval_sample_size_per_label != -1:
@@ -510,7 +512,7 @@ def _tuning(
                                 features_table=features_table
                                 )
 
-                            prediction = segmenter.segment_to_label_indexes(eval_set.get_features_array(), max_processes)
+                            prediction = segmenter.segment_to_label_indexes(eval_set.get_features_array(), max_processes_classifier)
 
                             evaluation.evaluate(prediction, eval_set.get_labels_array())
                         else:
@@ -519,10 +521,10 @@ def _tuning(
                                     full_volume.get_scale_arrays(segmenter.featuriser.get_scales_needed()),
                                     slice_range=slice(volume_slice_index, volume_slice_index+1),
                                     block_shape=best_block_shape,
-                                    n_jobs=max_processes
+                                    n_jobs=max_processes_featuriser
                                     )
 
-                                prediction = segmenter.segment_to_label_indexes(slice_features, max_processes)
+                                prediction = segmenter.segment_to_label_indexes(slice_features, max_processes_classifier)
 
                                 evaluation.evaluate(prediction, eval_subvolume_slice_labels[i*slice_size:(i+1)*slice_size])
 
@@ -579,7 +581,8 @@ def main(
         checkpoint_namespace='tune',
         reset_checkpoint=False,
         checkpoint_init=dict(),
-        max_processes=-1,
+        max_processes_featuriser=-1,
+        max_processes_classifier=-1,
         max_batch_memory=1,
         use_gpu=False,
         listener=listeners.ProgressListener(),
@@ -636,8 +639,12 @@ def main(
         including the checkpoint file (only data about this particular command will be
         overwritten). If None then checkpoint is checkpoint file content if file exists,
         otherwise the checkpoint will be empty. To restart checkpoint set to empty dictionary.
-    :param int max_processes: The maximum number of processes to use concurrently.
-    :param float max_batch_memory: The maximum number of gigabytes to use between all processes.
+    :param int max_processes_featuriser: The maximum number of processes to use concurrently
+        whilst featurising.
+    :param int max_processes_classifier: The maximum number of processes to use concurrently
+        whilst classifying.
+    :param float max_batch_memory: The maximum number of gigabytes to use between all featuriser
+        processes.
     :param bool use_gpu: Whether to use the GPU for computing features.
     :param ProgressListener listener: The command's progress listener.
     :param bool debug_mode: Whether to show full error messages or just simple ones.
@@ -663,7 +670,7 @@ def main(
                     eval_subvolume_dir, eval_label_dirs, config, search_results_fullfname,
                     best_result_fullfname, parameter_selection_timeout, use_features_table,
                     features_table_fullfname, train_sample_seed, eval_sample_seed, parameter_selection_seed, checkpoint_fullfname, checkpoint_namespace,
-                    reset_checkpoint, checkpoint_init, max_processes, max_batch_memory, use_gpu, listener
+                    reset_checkpoint, checkpoint_init, max_processes_featuriser, max_processes_classifier, max_batch_memory, use_gpu, listener
                     )
             listener.log_output('Input data')
             listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
@@ -708,7 +715,7 @@ def main(
             listener.log_output(times.get_timestamp())
             listener.log_output('Tuning')
             with times.Timer() as timer:
-                (best_config,) = _tuning(config_data, segmenter, slice_shape, slice_size, full_volume, train_subvolume_slice_labels, volume_slice_indexes_in_train_subvolume, eval_subvolume_slice_labels, volume_slice_indexes_in_eval_subvolume, training_set, evaluation, parameter_selection_timeout, tuning_results_file, features_table, train_sample_seed, eval_sample_seed, checkpoint, max_processes, max_batch_memory, listener, extra_result_col_names, extra_result_col_values)
+                (best_config,) = _tuning(config_data, segmenter, slice_shape, slice_size, full_volume, train_subvolume_slice_labels, volume_slice_indexes_in_train_subvolume, eval_subvolume_slice_labels, volume_slice_indexes_in_eval_subvolume, training_set, evaluation, parameter_selection_timeout, tuning_results_file, features_table, train_sample_seed, eval_sample_seed, checkpoint, max_processes_featuriser, max_processes_classifier, max_batch_memory, listener, extra_result_col_names, extra_result_col_values)
             listener.log_output('Tuned')
             listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
             listener.log_output('')
