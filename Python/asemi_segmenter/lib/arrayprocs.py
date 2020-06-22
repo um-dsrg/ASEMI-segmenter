@@ -179,12 +179,6 @@ def get_optimal_block_size(
     :return: The block shape (with context included).
     :rtype: tuple
     '''
-    block_shape = [2*context_needed + side for side in data_shape[1:]]
-    block_shape = [2*context_needed + math.ceil(data_shape[0]/num_processes)] + block_shape
-    return tuple(block_shape)
-
-    #To be returned to after further analysis.
-
     #Get the number of data elements that can fit in memory.
     in_space_available = math.floor(
         max_batch_memory_gb*(1024**3)/np.dtype(data_dtype).itemsize

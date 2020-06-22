@@ -123,6 +123,7 @@ class CliProgressListener(ProgressListener):
     #########################################
     def current_progress_update(self, curr):
         self.prog.update(curr - self.prog_prev_value)
+        self.prog.refresh()
         self.prog_prev_value = curr
 
     #########################################
