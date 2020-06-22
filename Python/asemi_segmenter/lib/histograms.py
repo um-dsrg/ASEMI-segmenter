@@ -249,8 +249,6 @@ def gpu_apply_histogram_to_all_neighbourhoods_in_slice_3d(array_3d, slice_range,
         sharedsize = sharedsize_tile + sharedsize_hist
         # kernel call
         ch = cuda.histograms()
-        import time
-        t = time.time()
         ch.histogram_3d( cuda.drv.Out(result),
                     np.int32(min_range), np.int32(max_range), np.int32(num_bins),
                     cuda.drv.In(array_3d),
@@ -263,8 +261,6 @@ def gpu_apply_histogram_to_all_neighbourhoods_in_slice_3d(array_3d, slice_range,
                     block=blocksize,
                     grid=gridsize,
                     shared=sharedsize )
-        t = time.time() - t
-        print("3D Histogram of %dx%dx%d: %s s" % (cols, rows, slices, t))
     elif neighbouring_dims == {0,1}: # y,z
         # GPU block size (working sizes)
         WS_Y = 16
@@ -280,8 +276,6 @@ def gpu_apply_histogram_to_all_neighbourhoods_in_slice_3d(array_3d, slice_range,
         sharedsize = sharedsize_tile + sharedsize_hist
         # kernel call
         ch = cuda.histograms()
-        import time
-        t = time.time()
         ch.histogram_2d_yz( cuda.drv.Out(result),
                     np.int32(min_range), np.int32(max_range), np.int32(num_bins),
                     cuda.drv.In(array_3d),
@@ -294,8 +288,6 @@ def gpu_apply_histogram_to_all_neighbourhoods_in_slice_3d(array_3d, slice_range,
                     block=blocksize,
                     grid=gridsize,
                     shared=sharedsize )
-        t = time.time() - t
-        print("2D YZ Histogram of %dx%dx%d: %s s" % (cols, rows, slices, t))
     elif neighbouring_dims == {0,2}: # x,z
         # GPU block size (working sizes)
         WS_X = 16
@@ -311,8 +303,6 @@ def gpu_apply_histogram_to_all_neighbourhoods_in_slice_3d(array_3d, slice_range,
         sharedsize = sharedsize_tile + sharedsize_hist
         # kernel call
         ch = cuda.histograms()
-        import time
-        t = time.time()
         ch.histogram_2d_xz( cuda.drv.Out(result),
                     np.int32(min_range), np.int32(max_range), np.int32(num_bins),
                     cuda.drv.In(array_3d),
@@ -325,8 +315,6 @@ def gpu_apply_histogram_to_all_neighbourhoods_in_slice_3d(array_3d, slice_range,
                     block=blocksize,
                     grid=gridsize,
                     shared=sharedsize )
-        t = time.time() - t
-        print("2D XZ Histogram of %dx%dx%d: %s s" % (cols, rows, slices, t))
     elif neighbouring_dims == {1,2}: # x,y
         # GPU block size (working sizes)
         WS_X = 16
@@ -341,8 +329,6 @@ def gpu_apply_histogram_to_all_neighbourhoods_in_slice_3d(array_3d, slice_range,
         sharedsize = sharedsize_tile + sharedsize_hist
         # kernel call
         ch = cuda.histograms()
-        import time
-        t = time.time()
         ch.histogram_2d_xy( cuda.drv.Out(result),
                     np.int32(min_range), np.int32(max_range), np.int32(num_bins),
                     cuda.drv.In(array_3d),
@@ -355,8 +341,6 @@ def gpu_apply_histogram_to_all_neighbourhoods_in_slice_3d(array_3d, slice_range,
                     block=blocksize,
                     grid=gridsize,
                     shared=sharedsize )
-        t = time.time() - t
-        print("2D XY Histogram of %dx%dx%d: %s s" % (cols, rows, slices, t))
     else:
         raise NotImplementedError('Only neighbouring dimensions of {0,1}, {0,2}, {1,2}, and {0,1,2} implemented.')
 

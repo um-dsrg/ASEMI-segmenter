@@ -93,8 +93,8 @@ def main():
         volume_slice_index=args.volume_slice_index,
         volume_slice_count=args.volume_slice_count,
         save_as=args.save_as,
-        max_processes=2,
-        max_batch_memory=0.1,
+        max_processes=args.max_processes,
+        max_batch_memory=args.max_batch_memory,
         use_gpu=args.use_gpu == 'yes'
         )
 

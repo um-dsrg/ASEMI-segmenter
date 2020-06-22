@@ -1117,8 +1117,6 @@ class LocalBinaryPatternFeaturiser(Featuriser):
             '''Processor for process_array_in_blocks_single_slice.'''
             [ num_slcs_out, num_rows_out, num_cols_out ] = params[0]['contextless_shape']
 
-            import time
-            t = time.time()
             lbp_codes = np.empty_like(params[scale]['block'])
             if neighbouring_dims == {1,2}:
                 for data_index in range(
@@ -1133,11 +1131,7 @@ class LocalBinaryPatternFeaturiser(Featuriser):
                     index[dim] = i
                     index_ = tuple(index)
                     lbp_codes[index_] = skimage.feature.local_binary_pattern(params[scale]['block'][index_], 8, 1, 'uniform')
-            t = time.time() - t
-            x,y,z = params[scale]['block'].shape
-            print("LBP of %dx%dx%d: %s s" % (x,y,z,t))
 
-            t = time.time()
             if use_gpu:
                 hists = histograms.gpu_apply_histogram_to_all_neighbourhoods_in_slice_3d(
                     lbp_codes,
@@ -1160,8 +1154,6 @@ class LocalBinaryPatternFeaturiser(Featuriser):
                     row_slice=params[scale]['contextless_slices_wrt_block'][1],
                     col_slice=params[scale]['contextless_slices_wrt_block'][2]
                     )
-            t = time.time() - t
-            print("Histogram of %dx%dx%d: %s s" % (x,y,z,t))
 
             grown = downscales.grow_array(
                 hists,
