@@ -10,6 +10,9 @@ from asemi_segmenter.lib import images
 from asemi_segmenter.lib import downscales
 
 
+#########################################
+voxel_dtype = np.uint16
+
 #Control label indexes.
 UNINIT_LABEL = 2**8-1
 MULTILABEL = 2**8-2
@@ -91,7 +94,7 @@ class FullVolume(object):
                     data_f.create_dataset(
                         'volume/scale_{}'.format(scale),
                         new_shape,
-                        dtype=np.uint16,
+                        dtype=voxel_dtype,
                         chunks=None
                         )
                     data_f['volume/scale_{}'.format(scale)].attrs['scale'] = scale
@@ -343,7 +346,7 @@ def load_labels(labels_data):
             ))
     num_slices = len(label_fullfnames[labels[0]])
     subvolume_slice_labels = np.full([slice_size*num_slices], UNINIT_LABEL, np.uint8)
-    subvolume_label_slice_values = np.empty([slice_size*num_slices], np.uint16)
+    subvolume_label_slice_values = np.empty([slice_size*num_slices], voxel_dtype)
     for (label_index, label) in enumerate(labels):
         for i in range(num_slices):
             image_data = images.load_image(label_fullfnames[label][i])
@@ -408,7 +411,7 @@ def get_label_overlap(labels_data):
             ))
     num_slices = len(label_fullfnames[labels[0]])
     subvolume_slice_labels = [set() for i in range(slice_size*num_slices)]
-    subvolume_label_slice_values = np.empty([slice_size*num_slices], np.uint16)
+    subvolume_label_slice_values = np.empty([slice_size*num_slices], voxel_dtype)
     for (label_index, label) in enumerate(labels):
         for i in range(num_slices):
             image_data = images.load_image(label_fullfnames[label][i])

@@ -89,6 +89,31 @@ def _loading_data(
         initial_content=checkpoint_init
         )
 
+    listener.log_output('> Calculating block shape')
+    if config_data['training_set']['sample_size_per_label'] == -1:
+        best_block_shape = arrayprocs.get_optimal_block_size(
+            slice_shape,
+            full_volume.get_dtype(),
+            segmenter.featuriser.get_context_needed(),
+            max_processes_featuriser,
+            max_batch_memory,
+            num_implicit_slices=1,
+            feature_size=segmenter.featuriser.get_feature_size(),
+            feature_dtype=featurisers.feature_dtype
+            )
+        listener.log_output('>> Block shape: {}'.format(best_block_shape))
+        listener.log_output('>> Block voxels memory usage: {:.3f}GB (out of {}GB)'.format(
+            (2*segmenter.featuriser.get_context_needed() + 1)*np.prod(best_block_shape)*np.dtype(full_volume.get_dtype()).itemsize*max_processes_featuriser/(1024**3),
+            max_batch_memory
+            ))
+        listener.log_output('>> Block features memory usage: {:.3f}GB (out of {}GB)'.format(
+            np.prod([l - 2*segmenter.featuriser.get_context_needed() for l in best_block_shape])*segmenter.featuriser.get_feature_size()*np.dtype(featurisers.feature_dtype).itemsize*max_processes_featuriser/(1024**3),
+            max_batch_memory
+            ))
+    else:
+        listener.log_output('>> Blocks are only used with unsampled datasets')
+        best_block_shape = None
+
     listener.log_output('> Initialising')
     hash_function.init(slice_shape, seed=0)
 
@@ -99,7 +124,7 @@ def _loading_data(
     listener.log_output('>> max_processes_classifier: {}'.format(max_processes_classifier))
     listener.log_output('>> max_batch_memory: {}GB'.format(max_batch_memory))
 
-    return (full_volume, subvolume_fullfnames, labels_data, slice_shape, slice_size, segmenter, training_set, hash_function, train_sample_seed, checkpoint)
+    return (full_volume, subvolume_fullfnames, labels_data, slice_shape, slice_size, segmenter, training_set, hash_function, train_sample_seed, best_block_shape, checkpoint)
 
 
 #########################################
@@ -142,7 +167,7 @@ def _constructing_labels_dataset(
 
 #########################################
 def _constructing_trainingset(
-        full_volume, subvolume_fullfnames, volume_slice_indexes_in_subvolume, slice_shape, slice_size, subvolume_slice_labels, segmenter, training_set, train_sample_seed, checkpoint,
+        full_volume, subvolume_fullfnames, volume_slice_indexes_in_subvolume, slice_shape, slice_size, subvolume_slice_labels, segmenter, training_set, train_sample_seed, checkpoint, best_block_shape,
         max_processes_featuriser, max_processes_classifier, max_batch_memory, listener
     ):
     '''Constructing training set stage.'''
@@ -210,16 +235,6 @@ def _constructing_trainingset(
                 output=training_set.get_features_array()
                 )
         else:
-            best_block_shape = arrayprocs.get_optimal_block_size(
-                slice_shape,
-                full_volume.get_dtype(),
-                segmenter.featuriser.get_context_needed(),
-                max_processes_featuriser,
-                max_batch_memory,
-                num_implicit_slices=1,
-                feature_size=segmenter.featuriser.get_feature_size(),
-                feature_dtype=featurisers.feature_dtype
-                )
             start = checkpoint.get_next_to_process('constructing_features_prog')
             listener.current_progress_start(start, len(subvolume_fullfnames))
             for (i, volume_slice_index) in enumerate(volume_slice_indexes_in_subvolume):
@@ -358,7 +373,7 @@ def main(
             listener.log_output(times.get_timestamp())
             listener.log_output('Loading data')
             with times.Timer() as timer:
-                (full_volume, subvolume_fullfnames, labels_data, slice_shape, slice_size, segmenter, training_set, hash_function, train_sample_seed, checkpoint) = _loading_data(
+                (full_volume, subvolume_fullfnames, labels_data, slice_shape, slice_size, segmenter, training_set, hash_function, train_sample_seed, best_block_shape, checkpoint) = _loading_data(
                     preproc_volume_fullfname, subvolume_dir, label_dirs, config,
                     result_segmenter_fullfname, trainingset_file_fullfname,
                     train_sample_seed, checkpoint_fullfname, checkpoint_namespace, reset_checkpoint,
@@ -396,7 +411,7 @@ def main(
             listener.log_output(times.get_timestamp())
             listener.log_output('Constructing training set')
             with times.Timer() as timer:
-                () = _constructing_trainingset(full_volume, subvolume_fullfnames, volume_slice_indexes_in_subvolume, slice_shape, slice_size, subvolume_slice_labels, segmenter, training_set, train_sample_seed, checkpoint, max_processes_featuriser, max_processes_classifier, max_batch_memory, listener)
+                () = _constructing_trainingset(full_volume, subvolume_fullfnames, volume_slice_indexes_in_subvolume, slice_shape, slice_size, subvolume_slice_labels, segmenter, training_set, train_sample_seed, checkpoint, best_block_shape, max_processes_featuriser, max_processes_classifier, max_batch_memory, listener)
             listener.log_output('Training set constructed')
             listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
             listener.log_output('')

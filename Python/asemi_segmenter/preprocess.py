@@ -1,6 +1,7 @@
 '''Preprocess command.'''
 
 import json
+import numpy as np
 from asemi_segmenter import listeners
 from asemi_segmenter.lib import arrayprocs
 from asemi_segmenter.lib import checkpoints
@@ -52,6 +53,21 @@ def _loading_data(
         reset_checkpoint=reset_checkpoint,
         initial_content=checkpoint_init
         )
+
+    listener.log_output('> Calculating block shape')
+    best_block_shape = arrayprocs.get_optimal_block_size(
+        (len(volume_fullfnames),)+slice_shape,
+        volumes.voxel_dtype,
+        downsample_filter.get_context_needed(1),
+        max_processes,
+        max_batch_memory,
+        num_implicit_slices=None
+        )
+    listener.log_output('>> Block shape: {}'.format(best_block_shape))
+    listener.log_output('>> Block voxels memory usage: {:.3f}GB (out of {}GB)'.format(
+        np.prod(best_block_shape)*np.dtype(volumes.voxel_dtype).itemsize*max_processes/(1024**3),
+        max_batch_memory
+        ))
 
     listener.log_output('> Initialising')
     hash_function.init(slice_shape, seed=0)

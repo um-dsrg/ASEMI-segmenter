@@ -81,6 +81,27 @@ def _loading_data(
         initial_content=checkpoint_init
         )
 
+    listener.log_output('> Calculating block shape')
+    best_block_shape = arrayprocs.get_optimal_block_size(
+        slice_shape,
+        full_volume.get_dtype(),
+        segmenter.featuriser.get_context_needed(),
+        max_processes_featuriser,
+        max_batch_memory,
+        num_implicit_slices=1,
+        feature_size=segmenter.featuriser.get_feature_size(),
+        feature_dtype=featurisers.feature_dtype
+        )
+    listener.log_output('>> Block shape: {}'.format(best_block_shape))
+    listener.log_output('>> Block voxels memory usage: {:.3f}GB (out of {}GB)'.format(
+        (2*segmenter.featuriser.get_context_needed() + 1)*np.prod(best_block_shape)*np.dtype(full_volume.get_dtype()).itemsize*max_processes_featuriser/(1024**3),
+        max_batch_memory
+        ))
+    listener.log_output('>> Block features memory usage: {:.3f}GB (out of {}GB)'.format(
+        np.prod([l - 2*segmenter.featuriser.get_context_needed() for l in best_block_shape])*segmenter.featuriser.get_feature_size()*np.dtype(featurisers.feature_dtype).itemsize*max_processes_featuriser/(1024**3),
+        max_batch_memory
+        ))
+
     listener.log_output('> Initialising')
     hash_function.init(slice_shape, seed=0)
 
@@ -90,7 +111,7 @@ def _loading_data(
     listener.log_output('>> max_processes_classifier: {}'.format(max_processes_classifier))
     listener.log_output('>> max_batch_memory: {}GB'.format(max_batch_memory))
 
-    return (full_volume, slice_shape, slice_size, segmenter, subvolume_fullfnames, labels_data, hash_function, evaluation, evaluation_results_file, checkpoint)
+    return (full_volume, slice_shape, slice_size, segmenter, subvolume_fullfnames, labels_data, hash_function, evaluation, evaluation_results_file, best_block_shape, checkpoint)
 
 
 #########################################
@@ -132,7 +153,7 @@ def _constructing_labels_dataset(
 
 #########################################
 def _evaluating(
-        full_volume, segmenter, slice_shape, slice_size, subvolume_fullfnames, volume_slice_indexes_in_subvolume, subvolume_slice_labels, evaluation, checkpoint, evaluation_results_file, results_dir, max_processes_featuriser, max_processes_classifier, max_batch_memory, listener
+        full_volume, segmenter, slice_shape, slice_size, subvolume_fullfnames, volume_slice_indexes_in_subvolume, subvolume_slice_labels, evaluation, checkpoint, evaluation_results_file, results_dir, best_block_shape, max_processes_featuriser, max_processes_classifier, max_batch_memory, listener
     ):
     '''Evaluating stage.'''
     listener.log_output('> Label sizes:')
@@ -147,17 +168,6 @@ def _evaluating(
             listener.log_output('>> Continuing use of checkpointed results file')
             raise skip
         evaluation_results_file.create(segmenter.classifier.labels)
-
-    best_block_shape = arrayprocs.get_optimal_block_size(
-        slice_shape,
-        full_volume.get_dtype(),
-        segmenter.featuriser.get_context_needed(),
-        max_processes_featuriser,
-        max_batch_memory,
-        num_implicit_slices=1,
-        feature_size=segmenter.featuriser.get_feature_size(),
-        feature_dtype=featurisers.feature_dtype
-        )
 
     labels_palette = colours.LabelPalette(['unlabelled'] + segmenter.classifier.labels)
     images.save_image(
@@ -354,7 +364,7 @@ def main(
             listener.log_output(times.get_timestamp())
             listener.log_output('Loading data')
             with times.Timer() as timer:
-                (full_volume, slice_shape, slice_size, segmenter, subvolume_fullfnames, labels_data, hash_function, evaluation, evaluation_results_file, checkpoint) = _loading_data(
+                (full_volume, slice_shape, slice_size, segmenter, subvolume_fullfnames, labels_data, hash_function, evaluation, evaluation_results_file, best_block_shape, checkpoint) = _loading_data(
                     segmenter, preproc_volume_fullfname, subvolume_dir, label_dirs, results_dir,
                     checkpoint_fullfname, checkpoint_namespace, reset_checkpoint,
                     checkpoint_init, max_processes_featuriser, max_processes_classifier, max_batch_memory, use_gpu, listener
@@ -391,7 +401,7 @@ def main(
             listener.log_output(times.get_timestamp())
             listener.log_output('Evaluating')
             with times.Timer() as timer:
-                () = _evaluating(full_volume, segmenter, slice_shape, slice_size, subvolume_fullfnames, volume_slice_indexes_in_subvolume, subvolume_slice_labels, evaluation, checkpoint, evaluation_results_file, results_dir, max_processes_featuriser, max_processes_classifier, max_batch_memory, listener)
+                () = _evaluating(full_volume, segmenter, slice_shape, slice_size, subvolume_fullfnames, volume_slice_indexes_in_subvolume, subvolume_slice_labels, evaluation, checkpoint, evaluation_results_file, results_dir, best_block_shape, max_processes_featuriser, max_processes_classifier, max_batch_memory, listener)
             listener.log_output('Evaluated')
             listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
             listener.log_output('')

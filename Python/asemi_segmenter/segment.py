@@ -73,6 +73,27 @@ def _loading_data(
         initial_content=checkpoint_init
         )
 
+    listener.log_output('> Calculating block shape')
+    best_block_shape = arrayprocs.get_optimal_block_size(
+        slice_shape,
+        full_volume.get_dtype(),
+        segmenter.featuriser.get_context_needed(),
+        max_processes_featuriser,
+        max_batch_memory,
+        num_implicit_slices=num_simultaneous_slices,
+        feature_size=segmenter.featuriser.get_feature_size(),
+        feature_dtype=featurisers.feature_dtype
+        )
+    listener.log_output('>> Block shape: {}'.format(best_block_shape))
+    listener.log_output('>> Block voxels memory usage: {:.3f}GB (out of {}GB)'.format(
+        (2*segmenter.featuriser.get_context_needed() + num_simultaneous_slices)*np.prod(best_block_shape)*np.dtype(full_volume.get_dtype()).itemsize*max_processes_featuriser/(1024**3),
+        max_batch_memory
+        ))
+    listener.log_output('>> Block features memory usage: {:.3f}GB (out of {}GB)'.format(
+        num_simultaneous_slices*np.prod([l - 2*segmenter.featuriser.get_context_needed() for l in best_block_shape])*segmenter.featuriser.get_feature_size()*np.dtype(featurisers.feature_dtype).itemsize*max_processes_featuriser/(1024**3),
+        max_batch_memory
+        ))
+
     listener.log_output('> Initialising')
 
     listener.log_output('> Other parameters:')
@@ -88,12 +109,12 @@ def _loading_data(
     if slice_indexes is not None and num_simultaneous_slices > 1:
         raise ValueError('num_simultaneous_slices can only be more than 1 when segmenting whole volume.')
 
-    return (config_data, full_volume, slice_shape, segmenter, checkpoint)
+    return (config_data, full_volume, slice_shape, segmenter, best_block_shape, checkpoint)
 
 
 #########################################
 def _segmenting(
-        config_data, full_volume, slice_shape, segmenter, results_dir, label_names_fullfname, slice_indexes, max_processes_featuriser, max_processes_classifier, max_batch_memory, checkpoint, num_simultaneous_slices, listener
+        config_data, full_volume, slice_shape, segmenter, results_dir, label_names_fullfname, slice_indexes, best_block_shape, max_processes_featuriser, max_processes_classifier, max_batch_memory, checkpoint, num_simultaneous_slices, listener
     ):
     '''Segmenting stage.'''
     if slice_indexes is None:
@@ -116,17 +137,6 @@ def _segmenting(
                 print(label, file=f)
 
     num_digits_in_filename = math.ceil(math.log10(full_volume.get_shape()[0]+1))
-
-    best_block_shape = arrayprocs.get_optimal_block_size(
-        slice_shape,
-        full_volume.get_dtype(),
-        segmenter.featuriser.get_context_needed(),
-        max_processes_featuriser,
-        max_batch_memory,
-        num_implicit_slices=num_simultaneous_slices,
-        feature_size=segmenter.featuriser.get_feature_size(),
-        feature_dtype=featurisers.feature_dtype
-        )
 
     def save_slice(volume_slice_index, segmentation, label=None):
         '''Save image slice.'''
@@ -257,7 +267,7 @@ def main(
             listener.log_output(times.get_timestamp())
             listener.log_output('Loading data')
             with times.Timer() as timer:
-                (config_data, full_volume, slice_shape, segmenter, checkpoint) = _loading_data(
+                (config_data, full_volume, slice_shape, segmenter, best_block_shape, checkpoint) = _loading_data(
                     segmenter, preproc_volume_fullfname, config, results_dir, label_names_fullfname,
                     slice_indexes, checkpoint_fullfname, checkpoint_namespace, reset_checkpoint,
                     checkpoint_init, max_processes_featuriser, max_processes_classifier, max_batch_memory, num_simultaneous_slices, use_gpu, listener
@@ -272,7 +282,7 @@ def main(
             listener.log_output(times.get_timestamp())
             listener.log_output('Segmenting')
             with times.Timer() as timer:
-                () = _segmenting(config_data, full_volume, slice_shape, segmenter, results_dir, label_names_fullfname, slice_indexes, max_processes_featuriser, max_processes_classifier, max_batch_memory, checkpoint, num_simultaneous_slices, listener)
+                () = _segmenting(config_data, full_volume, slice_shape, segmenter, results_dir, label_names_fullfname, slice_indexes, best_block_shape, max_processes_featuriser, max_processes_classifier, max_batch_memory, checkpoint, num_simultaneous_slices, listener)
             listener.log_output('Volume segmented')
             listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
             listener.log_output('')
