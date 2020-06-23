@@ -117,7 +117,7 @@ class CliProgressListener(ProgressListener):
 
     #########################################
     def current_progress_start(self, start, total):
-        self.prog = tqdm.tqdm(initial=start, total=total)
+        self.prog = tqdm.tqdm(initial=start, total=total, smoothing=0.0)
         self.prog_prev_value = start
 
     #########################################
