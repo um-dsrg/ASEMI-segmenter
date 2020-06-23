@@ -180,15 +180,11 @@ def get_optimal_block_size(
     :rtype: tuple
     '''
     #Get the number of data elements that can fit in memory.
-    in_space_available = math.floor(
-        max_batch_memory_gb*(1024**3)/np.dtype(data_dtype).itemsize
-        )
+    in_space_available = math.floor(max_batch_memory_gb*(1024**3)/np.dtype(data_dtype).itemsize)
     if feature_dtype is not None:
-        out_space_available = math.floor(
-            math.floor(max_batch_memory_gb*(1024**3)/np.dtype(feature_dtype).itemsize)/feature_size
-            )
+        out_space_available = math.floor(max_batch_memory_gb*(1024**3)/np.dtype(feature_dtype).itemsize)
     else:
-        out_space_available = in_space_available
+        out_space_available = None
 
     def get_next_block_size(data_size, start_block_size, blocks_needed):
         '''
@@ -259,8 +255,6 @@ def get_optimal_block_size(
 
     def out_space_needed(contextless_block_shape):
         '''The amount of space needed for a given block shape in output memory.'''
-        if in_space_available == out_space_available:
-            return in_space_available
         block_size = np.prod(contextless_block_shape).tolist()*feature_size
         if num_implicit_slices is not None:
             block_size *= num_implicit_slices
@@ -278,7 +272,10 @@ def get_optimal_block_size(
     contextless_block_shape = list(data_shape)
     while (
             in_space_needed(contextless_block_shape) > in_space_available or
-            out_space_needed(contextless_block_shape) > out_space_available or
+            (
+                out_space_needed(contextless_block_shape) > out_space_available
+                if out_space_available is not None else False
+                ) or
             total_num_blocks(contextless_block_shape) < num_processes
         ):
         #Pick a side of the block to reduce.
@@ -309,7 +306,7 @@ def get_optimal_block_size(
 
     if in_space_needed(contextless_block_shape) > in_space_available:
         raise ValueError('Not enough memory to even store the smallest possible block size.')
-    if out_space_needed(contextless_block_shape) > out_space_available:
+    if out_space_available is not None and out_space_needed(contextless_block_shape) > out_space_available:
         raise ValueError('Not enough memory to even store the smallest possible block size when featurised.')
 
     block_shape = tuple((2*context_needed + side) for side in contextless_block_shape)
