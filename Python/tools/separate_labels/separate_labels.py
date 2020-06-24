@@ -71,8 +71,9 @@ def main():
         with PIL.Image.open(fullfname) as f:
             f.load()
             img = np.array(f)
-        assert np.max(img) < len(labels), (np.max(img), len(labels))
-        for (index, label) in enumerate(labels):
+        # The index 0 in the image is the null label which is ignored
+        assert np.max(img) <= len(labels), (np.max(img), len(labels))
+        for (index, label) in zip(range(1, len(labels)+1), labels):
             mask = img == index
             if args.bits == 8:
                 mask = mask*(2**8 - 1)

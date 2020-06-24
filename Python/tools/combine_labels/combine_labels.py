@@ -101,10 +101,16 @@ def main():
     print('Running...')
 
     # get lists of files in each folder
+    labels = [path.strip(os.path.sep).split(os.path.sep)[-1] for path in args.input]
     filestack = [sorted(os.listdir(path)) for path in args.input]
     N = len(filestack[0])
     if not all(len(x)==N for x in filestack):
         print("Warning: not all folders contain an equal number of files")
+
+    # save labels
+    with open(os.path.join(args.output, 'labels.txt'), 'w', encoding='utf-8') as f:
+        for label in labels:
+            print(label, file=f)
 
     # main timer
     start = time.time()
