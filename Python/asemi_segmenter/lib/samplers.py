@@ -82,7 +82,7 @@ class SamplerFactory(object):
         :param string distribution: One of the following values:
             'uniform': All values between min and max are
             equally likely to be sampled.
-            'log10': A logarithmic bias of base 10 is used.
+            'log': A logarithmic bias is used.
         :param str name: Name to use to refer to created sampler.
             If None then will not be referrable.
         :return: The Sampler object.
@@ -268,7 +268,7 @@ class IntegerSampler(Sampler):
 
         if min > max:
             raise ValueError('min cannot be greater than max (min={}, max={}).'.format(min, max))
-        if distribution not in ['uniform', 'log2', 'log10']:
+        if distribution not in ['uniform', 'log2']:
             raise ValueError('distribution must be uniform or log2, not {}.'.format(distribution))
         if distribution == 'log2':
             if min <= 0:
@@ -330,38 +330,24 @@ class FloatSampler(Sampler):
     '''Sample a random float.'''
 
     #########################################
-    def __init__(self, min, max, decimal_places, distribution, seed=None):
+    def __init__(self, min, max, divisions, distribution, seed=None):
         '''
         Constructor.
 
         :param int min: Minimum value (inclusive).
         :param int max: Maximum value (exclusive).
-        :param int decimal_places: Number of digits after the decimal point.
+        :param int divisions: Number of samples to take from range.
         :param string distribution: One of the following values:
             'uniform': All values between min and max are
             equally likely to be sampled.
-            'log10': A logarithmic bias of base 10 is used.
+            'log': A logarithmic bias is used.
         :param object seed: Seed to the random number generator.
         '''
         super().__init__(seed)
 
-        def get_num_decimal_places(num):
-            '''Get the number of decimal places in a number.'''
-            fractional = str(float(num)).split('.')[1]
-            if fractional == '0':
-                return 0
-            else:
-                return len(fractional)
-
         if min > max:
             raise ValueError('min cannot be greater than max (min={}, max={}).'.format(min, max))
-        if get_num_decimal_places(min) > decimal_places:
-            raise ValueError('min cannot have more decimal places than decimal_places (min={}, decimal_places={}).'.format(min, decimal_places))
-        if get_num_decimal_places(max) > decimal_places:
-            raise ValueError('max cannot have more decimal places than decimal_places (max={}, decimal_places={}).'.format(max, decimal_places))
-        if distribution not in ['uniform', 'log10']:
-            raise ValueError('distribution must be uniform or log10, not {}.'.format(distribution))
-        if distribution == 'log10':
+        if distribution == 'log':
             if min <= 0:
                 raise ValueError('When distribution is logarithmic, min must be a positive number (not {}).'.format(min))
             if max <= 0:
@@ -369,9 +355,17 @@ class FloatSampler(Sampler):
 
         self.min = min
         self.max = max
-        self.decimal_places = decimal_places
+        self.divisions = divisions
         self.distribution = distribution
         self.rng = random.Random(seed)
+        if self.distribution == 'uniform':
+            # base = (max - min)/divs
+            # y = min + base*i
+            self.base = (self.max - self.min)/self.divisions
+        elif self.distribution == 'log':
+            # base = (log(max) - log(min))/divs
+            # y = min*exp(base*i)
+            self.base = (math.log(self.max) - math.log(self.min))/self.divisions
 
     #########################################
     def get_sample_space_size(self):
@@ -381,32 +375,7 @@ class FloatSampler(Sampler):
         :return: The number of different values.
         :rtype: int
         '''
-        # The 3 decimal place numbers between 1.0 and 2.0 is:
-        # 1.0, 1.001, 1.002, ..., 1.998, 1.999
-        # The length of this list is (amount of whole numbers)*(10**dp)
-        #  = max(2 - 1, 1)*(10**3) = 1000
-        # This is the trivial case when both fractional numbers are 0.
-        #
-        # The 3 decimal place numbers between 0.01 and 0.1 is:
-        # 0.010, 0.011, 0.012, ..., 0.098, 0.099
-        # The length of this list is found as follows:
-        # Convert each limit's fractional part to an integer with the right number of dp
-        #  0.01 -> 01 -> 010 -> 10
-        #  0.1  -> 1  -> 100 -> 100
-        # Then: (amount of whole numbers)*(amount of fractional numbers)
-        #  = max(0 - 0, 1)*(100 - 10) = 90
-
-        def get_fractional_part(num):
-            '''Get the part of the number after the decimal point as a string.'''
-            return str(float(num)).split('.')[1]
-
-        min_str_frac = get_fractional_part(self.min)
-        min_str_frac += '0'*(self.decimal_places - len(min_str_frac))
-
-        max_str_frac = get_fractional_part(self.max)
-        max_str_frac += '0'*(self.decimal_places - len(max_str_frac))
-
-        return max(int(self.max) - int(self.min), 1)*(int(max_str_frac) - int(min_str_frac))
+        return self.divisions + 1
 
     #########################################
     def set_value(self, value):
@@ -425,7 +394,7 @@ class FloatSampler(Sampler):
         Generate a new random value.
         '''
         self.set_value({
-            'uniform': (lambda:round(self.rng.uniform(self.min, self.max), self.decimal_places)),
-            'log10':   (lambda:round(10**self.rng.uniform(math.log10(self.min), math.log10(self.max)), self.decimal_places))
+            'uniform': (lambda:self.min + self.base*self.rng.randint(0, self.divisions)),
+            'log':     (lambda:self.min*math.exp(self.base*self.rng.randint(0, self.divisions)))
             }[self.distribution]())
         self.initialised = True

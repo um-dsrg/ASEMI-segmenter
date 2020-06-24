@@ -41,7 +41,7 @@ def load_classifier_from_config(labels, config, sklearn_model=None, sampler_fact
                 c = sampler_factory.create_float_sampler(
                     config['params']['C']['min'],
                     config['params']['C']['max'],
-                    config['params']['C']['decimal_places'],
+                    config['params']['C']['divisions'],
                     config['params']['C']['distribution']
                     )
             elif isinstance(config['params']['C'], str):
@@ -137,7 +137,7 @@ def load_classifier_from_config(labels, config, sklearn_model=None, sampler_fact
                 alpha = sampler_factory.create_float_sampler(
                     config['params']['alpha']['min'],
                     config['params']['alpha']['max'],
-                    config['params']['alpha']['decimal_places'],
+                    config['params']['alpha']['divisions'],
                     config['params']['alpha']['distribution']
                     )
             elif isinstance(config['params']['alpha'], str):

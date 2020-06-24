@@ -78,9 +78,9 @@
             ],
             "alpha": {
                 "min": 0.0001,
-                "max": 0.9999,
-                "decimal_places": 4,
-                "distribution": "log10"
+                "max": 1.0,
+                "divisions": 10,
+                "distribution": "log"
             },
             "batch_size": {
                 "min": 4,

@@ -31,16 +31,16 @@
                                             "type": "number",
                                             "exclusiveMinimum": 0.0
                                         },
-                                        "decimal_places": {
+                                        "divisions": {
                                             "type": "integer",
                                             "minimum": 1
                                         },
                                         "distribution": {
                                             "type": "string",
-                                            "enum": ["uniform", "log10"]
+                                            "enum": ["uniform", "log"]
                                         }
                                     },
-                                    "required": ["min", "max", "decimal_places", "distribution"],
+                                    "required": ["min", "max", "divisions", "distribution"],
                                     "additionalProperties": false
                                 }
                             ]
@@ -148,16 +148,16 @@
                                             "type": "number",
                                             "exclusiveMinimum": 0.0
                                         },
-                                        "decimal_places": {
+                                        "divisions": {
                                             "type": "integer",
                                             "minimum": 1
                                         },
                                         "distribution": {
                                             "type": "string",
-                                            "enum": ["uniform", "log10"]
+                                            "enum": ["uniform", "log"]
                                         }
                                     },
-                                    "required": ["min", "max", "decimal_places", "distribution"],
+                                    "required": ["min", "max", "divisions", "distribution"],
                                     "additionalProperties": false
                                 }
                             ]
