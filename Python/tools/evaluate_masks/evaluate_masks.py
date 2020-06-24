@@ -60,16 +60,15 @@ def main():
         groundtruth_slice_labels = all_groundtruths[i*slice_size:(i+1)*slice_size]
         predicted_slice_labels = all_predictions[i*slice_size:(i+1)*slice_size]
 
-        for (label_index, label) in enumerate(labels):
-            evaluation_results_file.add(
-                i + 1,
-                -1,
-                predicted_slice_labels,
-                groundtruth_slice_labels,
-                -1,
-                -1,
-                -1
-                )
+        evaluation_results_file.add(
+            i + 1,
+            -1,
+            predicted_slice_labels,
+            groundtruth_slice_labels,
+            -1,
+            -1,
+            -1
+            )
 
     evaluation_results_file.conclude()
 
