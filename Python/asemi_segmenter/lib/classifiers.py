@@ -18,7 +18,7 @@ from asemi_segmenter.lib import samplers
 def load_classifier_from_config(labels, config, sklearn_model=None, sampler_factory=None):
     '''
     Load a classifier from a configuration dictionary.
-    
+
     :param list labels: List of labels to recognise.
     :param dict config: Configuration of the classifier.
     :param sklearn_model sklearn_model: Trained sklearn model if available.
@@ -28,14 +28,14 @@ def load_classifier_from_config(labels, config, sklearn_model=None, sampler_fact
     :rtype: Classifier
     '''
     validations.validate_json_with_schema_file(config, 'classifier.json')
-    
+
     if sampler_factory is not None and sklearn_model is not None:
         raise ValueError('Cannot generate hyperparameters from samples when sklearn model is provided.')
-    
+
     if config['type'] == 'logistic_regression':
         c = None
         max_iter = None
-        
+
         if sampler_factory is not None:
             if isinstance(config['params']['C'], dict):
                 c = sampler_factory.create_float_sampler(
@@ -57,7 +57,7 @@ def load_classifier_from_config(labels, config, sklearn_model=None, sampler_fact
             if isinstance(config['params']['C'], dict):
                 raise ValueError('C must be a constant not a range.')
             c = config['params']['C']
-        
+
         if sampler_factory is not None:
             if isinstance(config['params']['max_iter'], dict):
                 max_iter = sampler_factory.create_integer_sampler(
@@ -78,7 +78,7 @@ def load_classifier_from_config(labels, config, sklearn_model=None, sampler_fact
             if isinstance(config['params']['max_iter'], dict):
                 raise ValueError('max_iter must be a constant not a range.')
             max_iter = config['params']['max_iter']
-        
+
         if sklearn_model is not None:
             if not isinstance(sklearn_model, sklearn.pipeline.Pipeline):
                 raise ValueError('sklearn_model is invalid as it is not a pipeline.')
@@ -100,35 +100,38 @@ def load_classifier_from_config(labels, config, sklearn_model=None, sampler_fact
                 raise ValueError('sklearn_model is invalid as C is not as declared.')
             if sklearn_model.named_steps['classifier'].max_iter != max_iter:
                 raise ValueError('sklearn_model is invalid as max_iter is not as declared.')
-        
+
         return LogisticRegressionClassifier(labels, c, max_iter, sklearn_model)
-    
+
     elif config['type'] == 'neural_network':
-        hidden_layer_size = None
+        hidden_layer_sizes = list()
         alpha = None
+        batch_size = None
         max_iter = None
-        
+
         if sampler_factory is not None:
-            if isinstance(config['params']['hidden_layer_size'], dict):
-                hidden_layer_size = sampler_factory.create_integer_sampler(
-                    config['params']['hidden_layer_size']['min'],
-                    config['params']['hidden_layer_size']['max'],
-                    config['params']['hidden_layer_size']['distribution']
-                    )
-            elif isinstance(config['params']['hidden_layer_size'], str):
-                hidden_layer_size = sampler_factory.get_named_sampler(
-                    config['params']['hidden_layer_size'],
-                    'integer'
-                    )
-            else:
-                hidden_layer_size = sampler_factory.create_constant_sampler(
-                    config['params']['hidden_layer_size']
-                    )
+            for i in range(len(config['params']['hidden_layer_sizes'])):
+                if isinstance(config['params']['hidden_layer_sizes'][i], dict):
+                    hidden_layer_sizes.append(sampler_factory.create_integer_sampler(
+                        config['params']['hidden_layer_sizes'][i]['min'],
+                        config['params']['hidden_layer_sizes'][i]['max'],
+                        config['params']['hidden_layer_sizes'][i]['distribution']
+                        ))
+                elif isinstance(config['params']['hidden_layer_sizes'][i], str):
+                    hidden_layer_sizes.append(sampler_factory.get_named_sampler(
+                        config['params']['hidden_layer_sizes'][i],
+                        'integer'
+                        ))
+                else:
+                    hidden_layer_sizes.append(sampler_factory.create_constant_sampler(
+                        config['params']['hidden_layer_sizes'][i]
+                        ))
         else:
-            if isinstance(config['params']['hidden_layer_size'], dict):
-                raise ValueError('hidden_layer_size must be a constant not a range.')
-            hidden_layer_size = config['params']['hidden_layer_size']
-        
+            for i in range(len(config['params']['hidden_layer_sizes'])):
+                if isinstance(config['params']['hidden_layer_sizes'][i], dict):
+                    raise ValueError('hidden_layer_sizes item {} must be a constant not a range.'.format(i))
+                hidden_layer_sizes.append(config['params']['hidden_layer_sizes'][i])
+
         if sampler_factory is not None:
             if isinstance(config['params']['alpha'], dict):
                 alpha = sampler_factory.create_float_sampler(
@@ -150,7 +153,28 @@ def load_classifier_from_config(labels, config, sklearn_model=None, sampler_fact
             if isinstance(config['params']['alpha'], dict):
                 raise ValueError('alpha must be a constant not a range.')
             alpha = config['params']['alpha']
-        
+
+        if sampler_factory is not None:
+            if isinstance(config['params']['batch_size'], dict):
+                batch_size = sampler_factory.create_integer_sampler(
+                    config['params']['batch_size']['min'],
+                    config['params']['batch_size']['max'],
+                    config['params']['batch_size']['distribution']
+                    )
+            elif isinstance(config['params']['batch_size'], str):
+                batch_size = sampler_factory.get_named_sampler(
+                    config['params']['batch_size'],
+                    'integer'
+                    )
+            else:
+                batch_size = sampler_factory.create_constant_sampler(
+                    config['params']['batch_size']
+                    )
+        else:
+            if isinstance(config['params']['batch_size'], dict):
+                raise ValueError('batch_size must be a constant not a range.')
+            batch_size = config['params']['batch_size']
+
         if sampler_factory is not None:
             if isinstance(config['params']['max_iter'], dict):
                 max_iter = sampler_factory.create_integer_sampler(
@@ -171,7 +195,7 @@ def load_classifier_from_config(labels, config, sklearn_model=None, sampler_fact
             if isinstance(config['params']['max_iter'], dict):
                 raise ValueError('max_iter must be a constant not a range.')
             max_iter = config['params']['max_iter']
-        
+
         if sklearn_model is not None:
             if not isinstance(sklearn_model, sklearn.pipeline.Pipeline):
                 raise ValueError('sklearn_model is invalid as it is not a pipeline.')
@@ -189,19 +213,21 @@ def load_classifier_from_config(labels, config, sklearn_model=None, sampler_fact
                         sklearn_model.classes_.size
                         )
                     )
-            if sklearn_model.named_steps['classifier'].hidden_layer_sizes != (hidden_layer_size,):
-                raise ValueError('sklearn_model is invalid as hidden_layer_size is not as declared.')
+            if sklearn_model.named_steps['classifier'].hidden_layer_sizes != hidden_layer_sizes:
+                raise ValueError('sklearn_model is invalid as hidden_layer_sizes is not as declared.')
             if sklearn_model.named_steps['classifier'].alpha != alpha:
                 raise ValueError('sklearn_model is invalid as alpha is not as declared.')
+            if sklearn_model.named_steps['classifier'].batch_size != batch_size:
+                raise ValueError('sklearn_model is invalid as batch_size is not as declared.')
             if sklearn_model.named_steps['classifier'].max_iter != max_iter:
                 raise ValueError('sklearn_model is invalid as max_iter is not as declared.')
-        
-        return NeuralNetworkClassifier(labels, hidden_layer_size, alpha, max_iter, sklearn_model)
-    
+
+        return NeuralNetworkClassifier(labels, hidden_layer_sizes, alpha, batch_size, max_iter, sklearn_model)
+
     elif config['type'] == 'decision_tree':
         max_depth = None
         min_samples_leaf = None
-        
+
         if sampler_factory is not None:
             if isinstance(config['params']['max_depth'], dict):
                 max_depth = sampler_factory.create_integer_sampler(
@@ -222,7 +248,7 @@ def load_classifier_from_config(labels, config, sklearn_model=None, sampler_fact
             if isinstance(config['params']['max_depth'], dict):
                 raise ValueError('max_depth must be a constant not a range.')
             max_depth = config['params']['max_depth']
-        
+
         if sampler_factory is not None:
             if isinstance(config['params']['min_samples_leaf'], dict):
                 min_samples_leaf = sampler_factory.create_integer_sampler(
@@ -243,7 +269,7 @@ def load_classifier_from_config(labels, config, sklearn_model=None, sampler_fact
             if isinstance(config['params']['min_samples_leaf'], dict):
                 raise ValueError('min_samples_leaf must be a constant not a range.')
             min_samples_leaf = config['params']['min_samples_leaf']
-        
+
         if sampler_factory is not None:
             if not isinstance(sklearn_model, sklearn.pipeline.Pipeline):
                 raise ValueError('sklearn_model is invalid as it is not a pipeline.')
@@ -265,14 +291,14 @@ def load_classifier_from_config(labels, config, sklearn_model=None, sampler_fact
                 raise ValueError('sklearn_model is invalid as max_depth is not as declared.')
             if sklearn_model.named_steps['classifier'].min_samples_leaf != min_samples_leaf:
                 raise ValueError('sklearn_model is invalid as min_samples_leaf is not as declared.')
-        
+
         return DecisionTreeClassifier(labels, max_depth, min_samples_leaf, sklearn_model)
-    
+
     elif config['type'] == 'random_forest':
         n_estimators = None
         max_depth = None
         min_samples_leaf = None
-        
+
         if sampler_factory is not None:
             if isinstance(config['params']['n_estimators'], dict):
                 n_estimators = sampler_factory.create_integer_sampler(
@@ -293,7 +319,7 @@ def load_classifier_from_config(labels, config, sklearn_model=None, sampler_fact
             if isinstance(config['params']['n_estimators'], dict):
                 raise ValueError('n_estimators must be a constant not a range.')
             n_estimators = config['params']['n_estimators']
-        
+
         if sampler_factory is not None:
             if isinstance(config['params']['max_depth'], dict):
                 max_depth = sampler_factory.create_integer_sampler(
@@ -314,7 +340,7 @@ def load_classifier_from_config(labels, config, sklearn_model=None, sampler_fact
             if isinstance(config['params']['max_depth'], dict):
                 raise ValueError('max_depth must be a constant not a range.')
             max_depth = config['params']['max_depth']
-        
+
         if sampler_factory is not None:
             if isinstance(config['params']['min_samples_leaf'], dict):
                 min_samples_leaf = sampler_factory.create_integer_sampler(
@@ -335,7 +361,7 @@ def load_classifier_from_config(labels, config, sklearn_model=None, sampler_fact
             if isinstance(config['params']['min_samples_leaf'], dict):
                 raise ValueError('min_samples_leaf must be a constant not a range.')
             min_samples_leaf = config['params']['min_samples_leaf']
-        
+
         if sklearn_model is not None:
             if not isinstance(sklearn_model, sklearn.pipeline.Pipeline):
                 raise ValueError('sklearn_model is invalid as it is not a pipeline.')
@@ -359,9 +385,9 @@ def load_classifier_from_config(labels, config, sklearn_model=None, sampler_fact
                 raise ValueError('sklearn_model is invalid as max_depth is not as declared.')
             if sklearn_model.named_steps['classifier'].min_samples_leaf != min_samples_leaf:
                 raise ValueError('sklearn_model is invalid as min_samples_leaf is not as declared.')
-        
+
         return RandomForestClassifier(labels, n_estimators, max_depth, min_samples_leaf, sklearn_model)
-    
+
     else:
         raise NotImplementedError('Classifier {} not implemented.'.format(config['type']))
 
@@ -369,12 +395,12 @@ def load_classifier_from_config(labels, config, sklearn_model=None, sampler_fact
 #########################################
 class Classifier(object):
     '''Super class for classifiers.'''
-    
+
     #########################################
     def __init__(self, labels, sklearn_model=None):
         '''
         Constructor.
-        
+
         :param list labels: List of labels to be classified.
         :param sklearn_model sklearn_model: The pretrained sklearn model to use, if any.
             If None then an untrained model will be created. Otherwise
@@ -382,43 +408,43 @@ class Classifier(object):
         '''
         self.labels = labels
         self.sklearn_model = sklearn_model
-    
+
     #########################################
     def refresh_parameters(self):
         '''
         Refresh parameter values and resulting sklearn model from the samplers provided.
         '''
         raise NotImplementedError()
-    
+
     #########################################
     def set_sampler_values(self, config):
         '''
         Set the values of the samplers provided according to a config.
-        
+
         :param dict config: The configuration dictionary for the classifier parameters.
         '''
         raise NotImplementedError()
-    
+
     #########################################
     def get_config(self):
         '''
         Get the dictionary configuration of the classifier's parameters.
-        
+
         :return: The dictionary configuration.
         :rtype: dict
         '''
         raise NotImplementedError()
-    
+
     #########################################
     def get_params(self):
         '''
         Get the classifier's parameters as nested tuples.
-        
+
         :return: The parameters.
         :rtype: tuple
         '''
         raise NotImplementedError()
-    
+
     #########################################
     def train(self, training_set, n_jobs=1):
         '''
@@ -435,12 +461,12 @@ class Classifier(object):
                 training_set.get_features_array(),
                 training_set.get_labels_array()
                 )
-    
+
     #########################################
     def predict_label_probs(self, features_array, n_jobs=1):
         '''
         Predict the probability of each label for each feature vector.
-        
+
         :param numpy.ndarray features_array: 2D numpy array with each row being a feature vector
             to pass to the classifier.
         :param int n_jobs: The number of concurrent processes to use.
@@ -450,15 +476,15 @@ class Classifier(object):
         '''
         self.sklearn_model.n_jobs = n_jobs
         return self.sklearn_model.predict_proba(features_array)
-    
+
     #########################################
     def predict_label_onehots(self, features_array, n_jobs=1):
         '''
         Predict one hot vectors of each label for each feature vector.
-        
+
         The label with the highest probability will get a 1 in the vectors' corresponding index
         and the other vector elements will be 0.
-        
+
         :param numpy.ndarray features_array: 2D numpy array with each row being a feature vector
             to pass to the classifier.
         :param int n_jobs: The number of concurrent processes to use.
@@ -471,12 +497,12 @@ class Classifier(object):
         probs[:, :] = 0.0
         probs[np.arange(probs.shape[0]), label_indexes] = 1.0
         return probs
-    
+
     #########################################
     def predict_label_indexes(self, features_array, n_jobs=1):
         '''
         Predict a label index for each feature vector.
-        
+
         :param numpy.ndarray features_array: 2D numpy array with each row being a feature vector
             to pass to the classifier.
         :param int n_jobs: The number of concurrent processes to use.
@@ -485,12 +511,12 @@ class Classifier(object):
         '''
         probs = self.predict_label_probs(features_array, n_jobs)
         return np.argmax(probs, axis=1)
-    
+
     #########################################
     def predict_label_names(self, features_array, n_jobs=1):
         '''
         Predict a label name for each feature vector.
-        
+
         :param numpy.ndarray features_array: 2D numpy array with each row being a feature vector
             to pass to the classifier.
         :param int n_jobs: The number of concurrent processes to use.
@@ -499,16 +525,16 @@ class Classifier(object):
         '''
         label_indexes = self.predict_label_indexes(features_array, n_jobs)
         return [self.labels[label_index] for label_index in label_indexes.tolist()]
-    
+
 
 #########################################
 class LogisticRegressionClassifier(Classifier):
     '''
     For sklearn's sklearn.linear_model.LogisticRegression.
-    
+
     https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.LogisticRegression.html#sklearn.linear_model.LogisticRegression
     '''
-    
+
     #########################################
     @staticmethod
     def __MAKE_MODEL(c, max_iter):
@@ -531,12 +557,12 @@ class LogisticRegressionClassifier(Classifier):
                     )
                 )
             ])
-    
+
     #########################################
     def __init__(self, labels, c, max_iter, sklearn_model=None):
         '''
         Constructor.
-        
+
         :param list labels: List of labels to be classified.
         :param c: The amount to regularise the model such that
             smaller numbers lead to stronger regularisation.
@@ -562,7 +588,7 @@ class LogisticRegressionClassifier(Classifier):
                 else None
                 )
             )
-        
+
         self.c = None
         self.max_iter = None
         self.c_sampler = None
@@ -575,7 +601,7 @@ class LogisticRegressionClassifier(Classifier):
             self.max_iter_sampler = max_iter
         else:
             self.max_iter = max_iter
-    
+
     #########################################
     def refresh_parameters(self):
         '''
@@ -583,24 +609,24 @@ class LogisticRegressionClassifier(Classifier):
         '''
         self.c = self.c_sampler.get_value()
         self.max_iter = self.max_iter_sampler.get_value()
-        
+
         self.sklearn_model = self.__MAKE_MODEL(self.c, self.max_iter)
-    
+
     #########################################
     def set_sampler_values(self, config):
         '''
         Set the values of the samplers provided according to a config.
-        
+
         :param dict config: The configuration dictionary for the classifier parameters.
         '''
         self.c_sampler.set_value(config['params']['C'])
         self.max_iter_sampler.set_value(config['params']['max_iter'])
-    
+
     #########################################
     def get_config(self):
         '''
         Get the dictionary configuration of the classifier's parameters.
-        
+
         :return: The dictionary configuration.
         :rtype: dict
         '''
@@ -611,12 +637,12 @@ class LogisticRegressionClassifier(Classifier):
                 'max_iter': self.max_iter
                 }
             }
-    
+
     #########################################
     def get_params(self):
         '''
         Get the classifier's parameters as nested tuples.
-        
+
         :return: The parameters.
         :rtype: tuple
         '''
@@ -627,13 +653,13 @@ class LogisticRegressionClassifier(Classifier):
 class NeuralNetworkClassifier(Classifier):
     '''
     For sklearn's sklearn.neural_network.MLPClassifier.
-    
+
     https://scikit-learn.org/stable/modules/generated/sklearn.neural_network.MLPClassifier.html#sklearn.neural_network.MLPClassifier
     '''
-    
+
     #########################################
     @staticmethod
-    def __MAKE_MODEL(hidden_layer_size, alpha, max_iter):
+    def __MAKE_MODEL(hidden_layer_sizes, alpha, batch_size, max_iter):
         '''Make an sklearn model from parameters.'''
         return sklearn.pipeline.Pipeline([
             (
@@ -643,28 +669,35 @@ class NeuralNetworkClassifier(Classifier):
             (
                 'classifier',
                 sklearn.neural_network.MLPClassifier(
-                    hidden_layer_sizes=(hidden_layer_size,),
+                    hidden_layer_sizes=hidden_layer_sizes,
                     alpha=alpha,
-                    max_iter=max_iter,
                     activation='relu',
                     solver='adam',
+                    batch_size=batch_size,
+                    early_stopping=True,
+                    validation_fraction=0.1,
+                    tol=1e-4,
+                    max_iter=max_iter,
                     random_state=0
                     )
                 )
             ])
-    
+
     #########################################
-    def __init__(self, labels, hidden_layer_size, alpha, max_iter, sklearn_model=None):
+    def __init__(self, labels, hidden_layer_sizes, alpha, batch_size, max_iter, sklearn_model=None):
         '''
         Constructor.
-        
+
         :param list labels: List of labels to be classified.
-        :param hidden_layer_size: The amount of neural units in the
+        :param hidden_layer_sizes: The amount of neural units in each
             hidden layer.
-        :type hidden_layer_size: int or samplers.Sampler
+        :type hidden_layer_sizes: list or samplers.Sampler
         :param alpha: The amount to regularise the model such that
             larger numbers lead to stronger regularisation.
         :type alpha: float or samplers.Sampler
+        :param batch_size: The number of training items in each
+            minibatch.
+        :type batch_size: int or samplers.Sampler
         :param max_iter: The number of iterations to spend on
             training.
         :type max_iter: int or samplers.Sampler
@@ -678,93 +711,106 @@ class NeuralNetworkClassifier(Classifier):
             (
                 sklearn_model
                 if sklearn_model is not None
-                else self.__MAKE_MODEL(hidden_layer_size, alpha, max_iter)
+                else self.__MAKE_MODEL(hidden_layer_sizes, alpha, batch_size, max_iter)
                 if (
-                    not isinstance(hidden_layer_size, samplers.Sampler)
+                    not any(isinstance(hidden_layer_size, samplers.Sampler) for hidden_layer_size in hidden_layer_sizes)
                     and not isinstance(alpha, samplers.Sampler)
+                    and not isinstance(batch_size, samplers.Sampler)
                     and not isinstance(max_iter, samplers.Sampler)
                     )
                 else None
                 )
             )
-        
-        self.hidden_layer_size = None
+
+        self.hidden_layer_sizes = [None]*len(hidden_layer_sizes)
         self.alpha = None
+        self.batch_size = None
         self.max_iter = None
-        self.hidden_layer_size_sampler = None
+        self.hidden_layer_sizes_samplers = [None]*len(hidden_layer_sizes)
         self.alpha_sampler = None
+        self.batch_size_sampler = None
         self.max_iter_sampler = None
-        if isinstance(hidden_layer_size, samplers.Sampler):
-            self.hidden_layer_size_sampler = hidden_layer_size
-        else:
-            self.hidden_layer_size = hidden_layer_size
+        for i in range(len(hidden_layer_sizes)):
+            if isinstance(hidden_layer_sizes[i], samplers.Sampler):
+                self.hidden_layer_sizes_samplers[i] = hidden_layer_sizes[i]
+            else:
+                self.hidden_layer_sizes[i] = hidden_layer_sizes[i]
         if isinstance(alpha, samplers.Sampler):
             self.alpha_sampler = alpha
         else:
             self.alpha = alpha
+        if isinstance(batch_size, samplers.Sampler):
+            self.batch_size_sampler = batch_size
+        else:
+            self.batch_size = batch_size
         if isinstance(max_iter, samplers.Sampler):
             self.max_iter_sampler = max_iter
         else:
             self.max_iter = max_iter
-        
+
     #########################################
     def refresh_parameters(self):
         '''
         Refresh parameter values and resulting sklearn model from the samplers provided.
         '''
-        self.hidden_layer_size = self.hidden_layer_size_sampler.get_value()
+        for i in range(len(self.hidden_layer_sizes)):
+            self.hidden_layer_sizes[i] = self.hidden_layer_sizes_samplers[i].get_value()
         self.alpha = self.alpha_sampler.get_value()
+        self.batch_size = self.batch_size_sampler.get_value()
         self.max_iter = self.max_iter_sampler.get_value()
-        
-        self.sklearn_model = self.__MAKE_MODEL(self.hidden_layer_size, self.alpha, self.max_iter)
-    
+
+        self.sklearn_model = self.__MAKE_MODEL(self.hidden_layer_sizes, self.alpha, self.batch_size, self.max_iter)
+
     #########################################
     def set_sampler_values(self, config):
         '''
         Set the values of the samplers provided according to a config.
-        
+
         :param dict config: The configuration dictionary for the classifier parameters.
         '''
-        self.hidden_layer_size_sampler.set_value(config['params']['hidden_layer_size'])
+        for i in range(len(self.hidden_layer_sizes)):
+            self.hidden_layer_sizes_samplers[i].set_value(config['params']['hidden_layer_sizes'][i])
         self.alpha_sampler.set_value(config['params']['alpha'])
+        self.batch_size_sampler.set_value(config['params']['batch_size'])
         self.max_iter_sampler.set_value(config['params']['max_iter'])
-    
+
     #########################################
     def get_config(self):
         '''
         Get the dictionary configuration of the classifier's parameters.
-        
+
         :return: The dictionary configuration.
         :rtype: dict
         '''
         return {
             'type': 'neural_network',
             'params': {
-                'hidden_layer_size': self.hidden_layer_size,
+                'hidden_layer_sizes': self.hidden_layer_sizes,
                 'alpha': self.alpha,
+                'batch_size': self.batch_size,
                 'max_iter': self.max_iter
                 }
             }
-    
+
     #########################################
     def get_params(self):
         '''
         Get the classifier's parameters as nested tuples.
-        
+
         :return: The parameters.
         :rtype: tuple
         '''
-        return (self.hidden_layer_size, self.alpha, self.max_iter)
+        return (tuple(self.hidden_layer_sizes), self.alpha, self.batch_size, self.max_iter)
 
 
 #########################################
 class DecisionTreeClassifier(Classifier):
     '''
     For sklearn's sklearn.tree.DecisionTreeClassifier.
-    
+
     https://scikit-learn.org/stable/modules/generated/sklearn.tree.DecisionTreeClassifier.html?highlight=decisiontreeclassifier#sklearn.tree.DecisionTreeClassifier
     '''
-    
+
     #########################################
     @staticmethod
     def __MAKE_MODEL(max_depth, min_samples_leaf):
@@ -784,12 +830,12 @@ class DecisionTreeClassifier(Classifier):
                     )
                 )
             ])
-    
+
     #########################################
     def __init__(self, labels, max_depth, min_samples_leaf, sklearn_model=None):
         '''
         Constructor.
-        
+
         :param list labels: List of labels to be classified.
         :param max_depth: The maximum depth of each tree.
         :type max_depth: int or samplers.Sampler
@@ -813,7 +859,7 @@ class DecisionTreeClassifier(Classifier):
                 else None
                 )
             )
-        
+
         self.max_depth = None
         self.min_samples_leaf = None
         self.max_depth_sampler = None
@@ -826,7 +872,7 @@ class DecisionTreeClassifier(Classifier):
             self.min_samples_leaf_sampler = min_samples_leaf
         else:
             self.min_samples_leaf = min_samples_leaf
-        
+
     #########################################
     def refresh_parameters(self):
         '''
@@ -834,24 +880,24 @@ class DecisionTreeClassifier(Classifier):
         '''
         self.max_depth = self.max_depth_sampler.get_value()
         self.min_samples_leaf = self.min_samples_leaf_sampler.get_value()
-        
+
         self.sklearn_model = self.__MAKE_MODEL(self.max_depth, self.min_samples_leaf)
-    
+
     #########################################
     def set_sampler_values(self, config):
         '''
         Set the values of the samplers provided according to a config.
-        
+
         :param dict config: The configuration dictionary for the classifier parameters.
         '''
         self.max_depth_sampler.set_value(config['params']['max_depth'])
         self.min_samples_leaf_sampler.set_value(config['params']['min_samples_leaf'])
-    
+
     #########################################
     def get_config(self):
         '''
         Get the dictionary configuration of the classifier's parameters.
-        
+
         :return: The dictionary configuration.
         :rtype: dict
         '''
@@ -862,12 +908,12 @@ class DecisionTreeClassifier(Classifier):
                 'min_samples_leaf': self.min_samples_leaf
                 }
             }
-    
+
     #########################################
     def get_params(self):
         '''
         Get the classifier's parameters as nested tuples.
-        
+
         :return: The parameters.
         :rtype: tuple
         '''
@@ -878,10 +924,10 @@ class DecisionTreeClassifier(Classifier):
 class RandomForestClassifier(Classifier):
     '''
     For sklearn's sklearn.ensemble.RandomForestClassifier.
-    
+
     https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestClassifier.html?highlight=random%20forest#sklearn.ensemble.RandomForestClassifier
     '''
-    
+
     #########################################
     @staticmethod
     def __MAKE_MODEL(n_estimators, max_depth, min_samples_leaf):
@@ -902,12 +948,12 @@ class RandomForestClassifier(Classifier):
                     )
                 )
             ])
-    
+
     #########################################
     def __init__(self, labels, n_estimators, max_depth, min_samples_leaf, sklearn_model=None):
         '''
         Constructor.
-        
+
         :param list labels: List of labels to be classified.
         :param n_estimators: The number of trees in the forest.
         :type n_estimators: int or samplers.Sampler
@@ -934,7 +980,7 @@ class RandomForestClassifier(Classifier):
                 else None
                 )
             )
-        
+
         self.n_estimators = None
         self.max_depth = None
         self.min_samples_leaf = None
@@ -953,7 +999,7 @@ class RandomForestClassifier(Classifier):
             self.min_samples_leaf_sampler = min_samples_leaf
         else:
             self.min_samples_leaf = min_samples_leaf
-        
+
     #########################################
     def refresh_parameters(self):
         '''
@@ -962,25 +1008,25 @@ class RandomForestClassifier(Classifier):
         self.n_estimators = self.n_estimators_sampler.get_value()
         self.max_depth = self.max_depth_sampler.get_value()
         self.min_samples_leaf = self.min_samples_leaf_sampler.get_value()
-        
+
         self.sklearn_model = self.__MAKE_MODEL(self.n_estimators, self.max_depth, self.min_samples_leaf)
-    
+
     #########################################
     def set_sampler_values(self, config):
         '''
         Set the values of the samplers provided according to a config.
-        
+
         :param dict config: The configuration dictionary for the classifier parameters.
         '''
         self.n_estimators_sampler.set_value(config['params']['n_estimators'])
         self.max_depth_sampler.set_value(config['params']['max_depth'])
         self.min_samples_leaf_sampler.set_value(config['params']['min_samples_leaf'])
-    
+
     #########################################
     def get_config(self):
         '''
         Get the dictionary configuration of the classifier's parameters.
-        
+
         :return: The dictionary configuration.
         :rtype: dict
         '''
@@ -992,12 +1038,12 @@ class RandomForestClassifier(Classifier):
                 'min_samples_leaf': self.min_samples_leaf
                 }
             }
-    
+
     #########################################
     def get_params(self):
         '''
         Get the classifier's parameters as nested tuples.
-        
+
         :return: The parameters.
         :rtype: tuple
         '''

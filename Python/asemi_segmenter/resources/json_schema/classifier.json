@@ -2,7 +2,7 @@
     "$schema": "http://json-schema.org/draft-07/schema#",
     "$id": "classifier.json",
     "definitions": {
-    
+
         "logistic_regression": {
             "type": "object",
             "properties": {
@@ -84,7 +84,7 @@
             "required": ["type", "params"],
             "additionalProperties": false
         },
-        
+
         "neural_network": {
             "type": "object",
             "properties": {
@@ -92,36 +92,40 @@
                 "params": {
                     "type": "object",
                     "properties": {
-                        "hidden_layer_size": {
-                            "oneOf": [
-                                {
-                                    "type": "integer",
-                                    "minimum": 0
-                                },
-                                {
-                                    "type": "string",
-                                    "pattern": "^[a-z_]+$"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "min": {
-                                            "type": "integer",
-                                            "minimum": 0
-                                        },
-                                        "max": {
-                                            "type": "integer",
-                                            "minimum": 0
-                                        },
-                                        "distribution": {
-                                            "type": "string",
-                                            "enum": ["uniform", "log2"]
-                                        }
+                        "hidden_layer_sizes": {
+                            "type": "array",
+                            "items": {
+                                "oneOf": [
+                                    {
+                                        "type": "integer",
+                                        "minimum": 1
                                     },
-                                    "required": ["min", "max", "distribution"],
-                                    "additionalProperties": false
-                                }
-                            ]
+                                    {
+                                        "type": "string",
+                                        "pattern": "^[a-z_]+$"
+                                    },
+                                    {
+                                        "type": "object",
+                                        "properties": {
+                                            "min": {
+                                                "type": "integer",
+                                                "minimum": 1
+                                            },
+                                            "max": {
+                                                "type": "integer",
+                                                "minimum": 1
+                                            },
+                                            "distribution": {
+                                                "type": "string",
+                                                "enum": ["uniform", "log2"]
+                                            }
+                                        },
+                                        "required": ["min", "max", "distribution"],
+                                        "additionalProperties": false
+                                    }
+                                ]
+                            },
+                            "minItems": 1
                         },
                         "alpha": {
                             "oneOf": [
@@ -158,11 +162,11 @@
                                 }
                             ]
                         },
-                        "max_iter": {
+                        "batch_size": {
                             "oneOf": [
                                 {
                                     "type": "integer",
-                                    "minimum": 0
+                                    "minimum": 1
                                 },
                                 {
                                     "type": "string",
@@ -173,11 +177,42 @@
                                     "properties": {
                                         "min": {
                                             "type": "integer",
-                                            "minimum": 0
+                                            "minimum": 1
                                         },
                                         "max": {
                                             "type": "integer",
-                                            "minimum": 0
+                                            "minimum": 1
+                                        },
+                                        "distribution": {
+                                            "type": "string",
+                                            "enum": ["uniform", "log2"]
+                                        }
+                                    },
+                                    "required": ["min", "max", "distribution"],
+                                    "additionalProperties": false
+                                }
+                            ]
+                        },
+                        "max_iter": {
+                            "oneOf": [
+                                {
+                                    "type": "integer",
+                                    "minimum": 1
+                                },
+                                {
+                                    "type": "string",
+                                    "pattern": "^[a-z_]+$"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "min": {
+                                            "type": "integer",
+                                            "minimum": 1
+                                        },
+                                        "max": {
+                                            "type": "integer",
+                                            "minimum": 1
                                         },
                                         "distribution": {
                                             "type": "string",
@@ -190,14 +225,14 @@
                             ]
                         }
                     },
-                    "required": ["hidden_layer_size", "alpha", "max_iter"],
+                    "required": ["hidden_layer_sizes", "alpha", "batch_size", "max_iter"],
                     "additionalProperties": false
                 }
             },
             "required": ["type", "params"],
             "additionalProperties": false
         },
-        
+
         "decision_tree": {
             "type": "object",
             "properties": {
@@ -275,7 +310,7 @@
             "required": ["type", "params"],
             "additionalProperties": false
         },
-        
+
         "random_forest": {
             "type": "object",
             "properties": {
@@ -384,9 +419,9 @@
             "required": ["type", "params"],
             "additionalProperties": false
         }
-    
+
     },
-    
+
     "oneOf": [
         { "$ref": "#/definitions/logistic_regression" },
         { "$ref": "#/definitions/neural_network" },
