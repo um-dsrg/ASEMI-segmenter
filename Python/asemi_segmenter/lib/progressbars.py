@@ -11,7 +11,7 @@ class ProgressBar(object):
     '''Class for keeping track of progress and displaying information about it.'''
 
     #########################################
-    def __init__(self, initial_iter, final_iter, max_iter_times=-1):
+    def __init__(self, initial_iter, final_iter, max_iter_times=-1, print_output=True, log_listener=lambda i, duration:None):
         '''
         Constructor.
 
@@ -19,6 +19,10 @@ class ProgressBar(object):
         :param int final_iter: The final iteration number.
         :param int max_iter_times: The number of iteration durations from the end to
             use to measure the average speed.
+        :param bool print_output: Whether to actually use Python prints.
+        :param callable listener: A listener for logging the progress of the progress bar.
+            Signature of the listener is (i, duration) -> None where i is the current
+            iteration number and duration is the duration of said iteration.
         '''
         self.initial_iter = initial_iter
         self.final_iter = final_iter
@@ -34,6 +38,8 @@ class ProgressBar(object):
             self.iter_times = list()
         self.total_iter_times = 0.0
         self.iter_times_count = 0
+        self.print_output = print_output
+        self.log_listener = log_listener
 
     #########################################
     def __show_bar(self):
@@ -84,7 +90,8 @@ class ProgressBar(object):
                 post_bar_line
                 )
 
-        print('\r'+line, end='')
+        if self.print_output:
+            print('\r'+line, end='')
 
     #########################################
     def init(self):
@@ -118,6 +125,7 @@ class ProgressBar(object):
                 if len(self.iter_times) == self.max_iter_times:
                     self.iter_times.pop(0)
                 self.iter_times.append(iter_duration)
+            self.log_listener(self.curr_iter, iter_duration)
         if self.max_iter_times != -1:
             self.total_iter_times = sum(self.iter_times)
             self.iter_times_count = len(self.iter_times)
@@ -130,4 +138,5 @@ class ProgressBar(object):
         '''
         Close the progress bar.
         '''
-        print()
+        if self.print_output:
+            print()

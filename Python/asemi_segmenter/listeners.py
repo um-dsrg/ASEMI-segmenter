@@ -93,6 +93,13 @@ class CliProgressListener(ProgressListener):
         self.last_prog_curr = None
         self.log_file_fullfname = log_file_fullfname
         self.text_width = text_width
+        if self.log_file_fullfname is not None:
+            def progressbar_listener(i, duration):
+                with open(self.log_file_fullfname, 'a', encoding='utf-8') as f:
+                    print('', i, duration, sep='\t', file=f)
+            self.progressbar_listener = progressbar_listener
+        else:
+            self.progressbar_listener = lambda i, duration:None
 
     #########################################
     def print_(self, text):
@@ -118,8 +125,17 @@ class CliProgressListener(ProgressListener):
 
     #########################################
     def current_progress_start(self, start, total, unstable_time=False):
-        self.prog = progressbars.ProgressBar(start, total, -1 if unstable_time else 5)
+        self.prog = progressbars.ProgressBar(
+            start,
+            total,
+            max_iter_times=-1 if unstable_time else 5,
+            print_output=True,
+            log_listener=self.progressbar_listener
+            )
         self.prog.init()
+        if self.log_file_fullfname is not None:
+            with open(self.log_file_fullfname, 'a', encoding='utf-8') as f:
+                print('', 'iteration', 'duration (s)', sep='\t', file=f)
         self.last_prog_curr = 0
 
     #########################################
