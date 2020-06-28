@@ -11,7 +11,7 @@ try:
     import pycuda.driver as drv
     import pycuda.compiler
     gpu_available = True
-except pycuda._driver.RuntimeError:
+except pycuda._driver.Error:
     gpu_available = False
 
 #########################################
