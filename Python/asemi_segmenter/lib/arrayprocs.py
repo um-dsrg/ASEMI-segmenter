@@ -138,7 +138,7 @@ def get_num_blocks_in_data(data_shape, block_shape, context_needed):
     return np.prod([
         math.ceil(d/(b - 2*context_needed))
         for (d, b) in zip(data_shape, block_shape)
-        ])
+        ]).tolist()
 
 #########################################
 def get_optimal_block_size(

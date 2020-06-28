@@ -1,6 +1,6 @@
 '''Module for progress observer model functions.'''
 import textwrap
-import tqdm
+from asemi_segmenter.lib import progressbars
 
 #########################################
 class ProgressListener(object):
@@ -56,13 +56,14 @@ class ProgressListener(object):
         pass
 
     #########################################
-    def current_progress_start(self, start, total):
+    def current_progress_start(self, start, total, unstable_time=False):
         '''
         Listener for initialising a progress bar for a sub-stage.
 
         :param int start: The starting iteration in the progress.
             Normally 0, but can be more if a checkpoint is resumed.
         :param int total: The total number of iterations in the sub-stage.
+        :param bool unstable_time: Whether the duration of each iteration is stable.
         '''
         pass
 
@@ -89,7 +90,7 @@ class CliProgressListener(ProgressListener):
     #########################################
     def __init__(self, log_file_fullfname=None, text_width=100):
         self.prog = None
-        self.prog_prev_value = 0
+        self.last_prog_curr = None
         self.log_file_fullfname = log_file_fullfname
         self.text_width = text_width
 
@@ -116,16 +117,18 @@ class CliProgressListener(ProgressListener):
         self.print_('ERROR: ' + text)
 
     #########################################
-    def current_progress_start(self, start, total):
-        self.prog = tqdm.tqdm(initial=start, total=total, smoothing=0.0)
-        self.prog_prev_value = start
+    def current_progress_start(self, start, total, unstable_time=False):
+        self.prog = progressbars.ProgressBar(start, total, -1 if unstable_time else 5)
+        self.prog.init()
+        self.last_prog_curr = 0
 
     #########################################
     def current_progress_update(self, curr):
-        self.prog.update(curr - self.prog_prev_value)
-        self.prog.refresh()
-        self.prog_prev_value = curr
+        self.prog.update(curr - self.last_prog_curr)
+        self.last_prog_curr = curr
 
     #########################################
     def current_progress_end(self):
         self.prog.close()
+        self.prog = None
+        self.last_prog_curr = None

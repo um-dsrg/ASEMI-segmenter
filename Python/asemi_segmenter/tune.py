@@ -317,7 +317,7 @@ def _tuning(
             raise skip
         start = checkpoint.get_next_to_process('global_tune_prog')
         try:
-            listener.current_progress_start(start, config_data['tuning']['num_global_iterations'])
+            listener.current_progress_start(start, config_data['tuning']['num_global_iterations'], unstable_time=True)
             for iteration in range(1, config_data['tuning']['num_global_iterations'] + 1):
                 evaluation.reset()
                 with times.Timer() as timeout_timer:
@@ -432,7 +432,7 @@ def _tuning(
             raise skip
         start = checkpoint.get_next_to_process('local_tune_prog')
         try:
-            listener.current_progress_start(start, config_data['tuning']['num_local_iterations'])
+            listener.current_progress_start(start, config_data['tuning']['num_local_iterations'], unstable_time=True)
             for iteration in range(1, config_data['tuning']['num_local_iterations'] + 1):
                 evaluation.reset()
                 with times.Timer() as timeout_timer:
