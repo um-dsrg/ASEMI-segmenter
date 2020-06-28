@@ -42,6 +42,12 @@ if __name__ == '__main__':
             help='Full path to file that is used to let the process save its progress and continue from where it left off in case of interruption (*.pkl). If left out then the process will run from beginning to end without saving any checkpoints.'
         )
     parser.add_argument(
+            '--checkpoint_namespace',
+            required=False,
+            default='preprocess',
+            help='Unique name for the group of checkpoints used by this command.'
+        )
+    parser.add_argument(
             '--reset_checkpoint',
             required=False,
             default='no',
@@ -94,7 +100,7 @@ if __name__ == '__main__':
             config=args.config_fullfname,
             result_data_fullfname=args.result_data_fullfname,
             checkpoint_fullfname=args.checkpoint_fullfname,
-            checkpoint_namespace='preprocess',
+            checkpoint_namespace=args.checkpoint_namespace,
             reset_checkpoint=args.reset_checkpoint == 'yes',
             checkpoint_init=dict(),
             max_processes=arrayprocs.get_num_processes(args.max_processes),

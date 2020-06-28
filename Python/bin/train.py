@@ -66,6 +66,12 @@ if __name__ == '__main__':
             help='Full path to file that is used to let the process save its progress and continue from where it left off in case of interruption (*.pkl). If left out then the process will run from beginning to end without saving any checkpoints.'
         )
     parser.add_argument(
+            '--checkpoint_namespace',
+            required=False,
+            default='train',
+            help='Unique name for the group of checkpoints used by this command.'
+        )
+    parser.add_argument(
             '--reset_checkpoint',
             required=False,
             default='no',
@@ -136,7 +142,7 @@ if __name__ == '__main__':
             trainingset_file_fullfname=args.trainingset_file_fullfname,
             train_sample_seed=args.train_sample_seed,
             checkpoint_fullfname=args.checkpoint_fullfname,
-            checkpoint_namespace='train',
+            checkpoint_namespace=args.checkpoint_namespace,
             reset_checkpoint=args.reset_checkpoint == 'yes',
             checkpoint_init=dict(),
             max_processes_featuriser=arrayprocs.get_num_processes(args.max_processes_featuriser),
