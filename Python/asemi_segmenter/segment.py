@@ -183,6 +183,9 @@ def _segmenting(
                     n_jobs=max_processes_featuriser
                     )
                 for j in range(num_simultaneous_slices):
+                    if i*num_simultaneous_slices + j >= num_slices:
+                        continue
+
                     if config_data['as_masks']:
                         for (label, mask) in zip(segmenter.classifier.labels, segmenter.segment_to_labels_iter(slice_features[j*slice_size:(j+1)*slice_size,:], config_data['soft_segmentation'], max_processes_classifier)):
                             save_slice(first_volume_slice_index + j, mask, label)
