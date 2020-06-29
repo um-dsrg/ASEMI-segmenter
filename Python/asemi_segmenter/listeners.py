@@ -128,7 +128,7 @@ class CliProgressListener(ProgressListener):
         self.prog = progressbars.ProgressBar(
             start,
             total,
-            max_iter_times=-1 if unstable_time else 5,
+            max_iter_times=5 if unstable_time else -1,
             print_output=True,
             log_listener=self.progressbar_listener
             )
@@ -136,7 +136,7 @@ class CliProgressListener(ProgressListener):
         if self.log_file_fullfname is not None:
             with open(self.log_file_fullfname, 'a', encoding='utf-8') as f:
                 print('', 'iteration', 'duration (s)', sep='\t', file=f)
-        self.last_prog_curr = 0
+        self.last_prog_curr = start
 
     #########################################
     def current_progress_update(self, curr):
