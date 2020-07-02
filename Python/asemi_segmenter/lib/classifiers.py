@@ -457,7 +457,7 @@ class Classifier(object):
         :return: A reference to output.
         :rtype: numpy.ndarray
         '''
-        self.sklearn_model.named_steps['classifier'].max_processes = max_processes
+        self.sklearn_model.named_steps['classifier'].n_jobs = max_processes
 
         if listener is not None and hasattr(self.sklearn_model.named_steps['classifier'], 'verbose'):
             if isinstance(self.sklearn_model.named_steps['classifier'].verbose, int):
@@ -493,7 +493,7 @@ class Classifier(object):
             feature vector and each column being a label.
         :rtype: numpy.ndarray
         '''
-        self.sklearn_model.named_steps['classifier'].max_processes = max_processes
+        self.sklearn_model.named_steps['classifier'].n_jobs = max_processes
         return self.sklearn_model.predict_proba(features_array)
 
     #########################################
