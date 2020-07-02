@@ -180,7 +180,7 @@ def _segmenting(
                     full_volume.get_scale_arrays(segmenter.featuriser.get_scales_needed()),
                     slice_range=slice(first_volume_slice_index, first_volume_slice_index+num_simultaneous_slices),
                     block_shape=best_block_shape,
-                    n_jobs=max_processes_featuriser
+                    max_processes=max_processes_featuriser
                     )
                 for j in range(num_simultaneous_slices):
                     if i*num_simultaneous_slices + j >= num_slices:

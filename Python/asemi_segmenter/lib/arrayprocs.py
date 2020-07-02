@@ -74,7 +74,7 @@ def get_num_processes(num_processes):
 
 #########################################
 def parallel_processer(
-        processor, processor_params, post_processor=lambda result: None, n_jobs=1,
+        processor, processor_params, post_processor=lambda result: None, max_processes=1,
         extra_params=(), progress_listener=lambda num_ready, num_new: None
     ):
     '''
@@ -95,7 +95,7 @@ def parallel_processer(
     :param callable post_processor: A function that takes in each result from `processor`
         individually and does something with the result. Result of this function is ignored. This
         is useful when `post_processor` has some side effect.
-    :param int n_jobs: Number of processes to use concurrently. See `get_num_processes` for an
+    :param int max_processes: Number of processes to use concurrently. See `get_num_processes` for an
         explanation.
     :param tuple extra_params: A tuple of extra parameters to pass to `processor` with every
         parameter set. This is meant to be always the same and is concatenated to the end of each
@@ -103,13 +103,13 @@ def parallel_processer(
     :param callable progress_listener: A function that receives the number of parameter sets that
         have been processed in total and the number of new parameter sets just processed.
     '''
-    n_jobs = get_num_processes(n_jobs)
+    max_processes = get_num_processes(max_processes)
     params_visited = 0
 
     #If max_nbytes is not None then you get out of space errors.
-    with joblib.Parallel(n_jobs, max_nbytes=None) as parallel:
+    with joblib.Parallel(max_processes, max_nbytes=None) as parallel:
         while True:
-            parallel_batch = itertools.islice(processor_params, n_jobs)
+            parallel_batch = itertools.islice(processor_params, max_processes)
             batch_size = 0
             for res in parallel(
                     joblib.delayed(processor)(*params, *extra_params)
@@ -315,7 +315,7 @@ def get_optimal_block_size(
 #########################################
 def process_array_in_blocks(
         in_array_scales, out_array, processor, block_shape, scales=None, in_ranges=None,
-        context_size=0, pad_value=0, n_jobs=1, extra_params=(),
+        context_size=0, pad_value=0, max_processes=1, extra_params=(),
         progress_listener=lambda num_ready, num_new: None
     ):
     '''
@@ -371,7 +371,7 @@ def process_array_in_blocks(
         the context.
     :param int pad_value: If using a context size and the current block is too close to the edge,
         then this value is used in place of values outside of the array (over the edge).
-    :param int n_jobs: Number of processes to run concurrently.
+    :param int max_processes: Number of processes to run concurrently.
     :param tuple extra_params: The extra parameters to pass to the processor.
     :param callable progress_listener: A function that receives information about the progress of
         the whole array processing.
@@ -519,7 +519,7 @@ def process_array_in_blocks(
         processor,
         get_processor_params(),
         post_processor=post_processor,
-        n_jobs=n_jobs,
+        max_processes=max_processes,
         extra_params=extra_params,
         progress_listener=progress_listener
         )
@@ -529,7 +529,7 @@ def process_array_in_blocks(
 #########################################
 def process_array_in_blocks_slice_range(
         in_array_scales, out_array, processor, block_shape, slice_range, scales=None,
-        in_ranges=None, context_size=0, pad_value=0, n_jobs=1, extra_params=(),
+        in_ranges=None, context_size=0, pad_value=0, max_processes=1, extra_params=(),
         progress_listener=lambda num_ready, num_new: None
     ):
     '''
@@ -552,7 +552,7 @@ def process_array_in_blocks_slice_range(
     :param list in_ranges: As explained in process_array_in_blocks.
     :param int context_size: As explained in process_array_in_blocks.
     :param int pad_value: As explained in process_array_in_blocks.
-    :param int n_jobs: As explained in process_array_in_blocks.
+    :param int max_processes: As explained in process_array_in_blocks.
     :param tuple extra_params: As explained in process_array_in_blocks.
     :param callable progress_listener: As explained in process_array_in_blocks.
     :return: A reference to out_array.
@@ -607,7 +607,7 @@ def process_array_in_blocks_slice_range(
         new_in_ranges,
         context_size,
         pad_value,
-        n_jobs,
+        max_processes,
         extra_params,
         progress_listener
         )

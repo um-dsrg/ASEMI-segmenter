@@ -98,7 +98,7 @@ class Featurisers(unittest.TestCase):
             scaled_data = { 0: rand.randint(0, 2**16-1, (5,15,15), np.uint16) }
             scaled_data[1] = downscales.downscale(scaled_data[0], downsample_kernel, 1)
 
-            for (radius, scale, num_bins, batch_size, n_jobs) in [
+            for (radius, scale, num_bins, batch_size, max_processes) in [
                     (2, 0, 16, 12, 1),
                     (1, 1, 16, 12, 1),
                     (2, 0, 16, 200, 1),
@@ -129,8 +129,8 @@ class Featurisers(unittest.TestCase):
                         slice_range = slice(slice_index, slice_index+num_slices)
 
                         true_slice_features = true_features[slice_range,:,:].reshape([-1, true_features.shape[-1]])
-                        slice_features = featuriser.featurise_slice(scaled_data, slice_range, block_shape=(batch_size, batch_size), n_jobs=n_jobs)
-                        np.testing.assert_equal(true_slice_features, slice_features, 'downsample_kernel={}, featuriser_params={}, batch_size={}, n_jobs={}, slice_range={}'.format(downsample_kernel.name, (radius, scale, num_bins), batch_size, n_jobs, slice_range))
+                        slice_features = featuriser.featurise_slice(scaled_data, slice_range, block_shape=(batch_size, batch_size), max_processes=max_processes)
+                        np.testing.assert_equal(true_slice_features, slice_features, 'downsample_kernel={}, featuriser_params={}, batch_size={}, max_processes={}, slice_range={}'.format(downsample_kernel.name, (radius, scale, num_bins), batch_size, max_processes, slice_range))
 
                         output = np.zeros([ slice_features.shape[0]+4, slice_features.shape[1]+4 ], featurisers.feature_dtype)
                         expected_output = np.zeros_like(output)
@@ -180,7 +180,7 @@ class Featurisers(unittest.TestCase):
             rand = np.random.RandomState(0)
             scaled_data = { 0: rand.randint(0, 2**16-1, (5,15,15), np.uint16) }
             scaled_data[1] = downscales.downscale(scaled_data[0], downsample_kernel, 1)
-            for (neighbouring_dims, radius, scale, batch_size, n_jobs) in [
+            for (neighbouring_dims, radius, scale, batch_size, max_processes) in [
                     ({0,1}, 2, 0, 12, 1),
                     ({0,1}, 1, 1, 12, 1),
                     ({0,1}, 2, 0, 200, 1),
@@ -221,8 +221,8 @@ class Featurisers(unittest.TestCase):
                         slice_range = slice(slice_index, slice_index+num_slices)
 
                         true_slice_features = true_features[slice_range,:,:].reshape([-1, true_features.shape[-1]])
-                        slice_features = featuriser.featurise_slice(scaled_data, slice_range, block_shape=(batch_size, batch_size), n_jobs=n_jobs)
-                        np.testing.assert_equal(true_slice_features, slice_features, 'downsample_kernel={}, featuriser_params={}, batch_size={}, n_jobs={}, slice_range={}'.format(downsample_kernel.name, (radius, scale), batch_size, n_jobs, slice_range))
+                        slice_features = featuriser.featurise_slice(scaled_data, slice_range, block_shape=(batch_size, batch_size), max_processes=max_processes)
+                        np.testing.assert_equal(true_slice_features, slice_features, 'downsample_kernel={}, featuriser_params={}, batch_size={}, max_processes={}, slice_range={}'.format(downsample_kernel.name, (radius, scale), batch_size, max_processes, slice_range))
 
                         output = np.zeros([ slice_features.shape[0]+4, slice_features.shape[1]+4 ], featurisers.feature_dtype)
                         expected_output = np.zeros_like(output)
@@ -269,7 +269,7 @@ class Featurisers(unittest.TestCase):
             rand = np.random.RandomState(0)
             scaled_data = { 0: rand.randint(0, 2**16-1, (5,15,15), np.uint16) }
             scaled_data[1] = downscales.downscale(scaled_data[0], downsample_kernel, 1)
-            for (name, featuriser_list, batch_size, n_jobs) in [
+            for (name, featuriser_list, batch_size, max_processes) in [
                     ('v-h', [ featurisers.VoxelFeaturiser(), featurisers.HistogramFeaturiser(2, 0, 16) ], 12, 1),
                 ]:
                 true_features = [
@@ -298,7 +298,7 @@ class Featurisers(unittest.TestCase):
 
                         true_slice_features = true_features[slice_range,:,:].reshape([-1, true_features.shape[-1]])
                         slice_features = featuriser.featurise_slice(scaled_data, slice_range, block_shape=(batch_size, batch_size))
-                        np.testing.assert_equal(true_slice_features, slice_features, 'downsample_kernel={}, name={}, batch_size={}, n_jobs={}, slice_range={}'.format(downsample_kernel.name, name, batch_size, n_jobs, slice_range))
+                        np.testing.assert_equal(true_slice_features, slice_features, 'downsample_kernel={}, name={}, batch_size={}, max_processes={}, slice_range={}'.format(downsample_kernel.name, name, batch_size, max_processes, slice_range))
 
                         output = np.zeros([ slice_features.shape[0]+4, slice_features.shape[1]+4 ], featurisers.feature_dtype)
                         expected_output = np.zeros_like(output)

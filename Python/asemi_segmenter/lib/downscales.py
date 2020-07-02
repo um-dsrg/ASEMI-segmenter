@@ -308,7 +308,7 @@ def downscale(in_array, downsample_kernel, scale, remove_pad=False, trim_front=N
 
 
 #########################################
-def downscale_in_blocks(in_array, out_array, block_shape, downsample_kernel, scale, n_jobs=1, progress_listener=lambda num_ready, num_new:None):
+def downscale_in_blocks(in_array, out_array, block_shape, downsample_kernel, scale, max_processes=1, progress_listener=lambda num_ready, num_new:None):
     '''
     Like downscale but for use with very large arrays that need to be processed in blocks.
 
@@ -318,7 +318,7 @@ def downscale_in_blocks(in_array, out_array, block_shape, downsample_kernel, sca
     :param tuple block_shape: The block shape to use.
     :param DownsampleKernel downsample_kernel: The downsample kernel to use.
     :param int scale: The scale to resize to.
-    :param int n_jobs: The number of concurrent processes to use.
+    :param int max_processes: The number of concurrent processes to use.
     :param callable progress_listener: A function that receives information about the progress of
         the downscale.
     :return: A reference to out_array.
@@ -355,7 +355,7 @@ def downscale_in_blocks(in_array, out_array, block_shape, downsample_kernel, sca
             block_shape,
             context_size=context_needed,
             pad_value=0,
-            n_jobs=n_jobs,
+            max_processes=max_processes,
             extra_params=(downsample_kernel, scale),
             progress_listener=progress_listener
         )

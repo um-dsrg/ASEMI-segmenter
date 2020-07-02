@@ -70,21 +70,21 @@ class ArrayProcs(unittest.TestCase):
                 arrayprocs.process_array_in_blocks(
                     scaled_data, out,
                     lambda params:(-params[0]['block'][params[0]['contextless_slices_wrt_block']], params[0]['contextless_slices_wrt_whole']),
-                    block_shape=[2]*3, context_size=1, n_jobs=1
+                    block_shape=[2]*3, context_size=1, max_processes=1
                 )
             with self.assertRaises(ValueError):
                 out[:,:,:] = 0
                 arrayprocs.process_array_in_blocks(
                     scaled_data, out,
                     lambda params:(-params[0]['block'][params[0]['contextless_slices_wrt_block']], params[0]['contextless_slices_wrt_whole']),
-                    block_shape=[2]*3, context_size=2, n_jobs=1
+                    block_shape=[2]*3, context_size=2, max_processes=1
                 )
             with self.assertRaises(ValueError):
                 out[:,:,:] = 0
                 arrayprocs.process_array_in_blocks(
                     scaled_data, out,
                     lambda params:(-params[0]['block'][params[0]['contextless_slices_wrt_block']], params[0]['contextless_slices_wrt_whole']),
-                    block_shape=[4]*3, context_size=2, n_jobs=1
+                    block_shape=[4]*3, context_size=2, max_processes=1
                 )
 
             def test_block_processor(params, scaled_data, block_shape, context_size, scale):
@@ -112,7 +112,7 @@ class ArrayProcs(unittest.TestCase):
             for scale in [ 0, 1, 2 ]:
                 out = np.zeros_like(scaled_data[scale])
 
-                for (block_shape, context_size, n_jobs) in [
+                for (block_shape, context_size, max_processes) in [
                         ([1]*3, 0, 1),
                         ([2]*3, 0, 1),
                         ([3]*3, 1, 1),
@@ -129,10 +129,10 @@ class ArrayProcs(unittest.TestCase):
                             arrayprocs.process_array_in_blocks(
                                     scaled_data, out,
                                     test_block_processor,
-                                    block_shape=block_shape, scales=[ scale ], context_size=context_size, n_jobs=n_jobs, extra_params=(scaled_data, block_shape, context_size, scale),
+                                    block_shape=block_shape, scales=[ scale ], context_size=context_size, max_processes=max_processes, extra_params=(scaled_data, block_shape, context_size, scale),
                                 ),
                             -scaled_data[scale],
-                            'downsample_kernel={}, scale={}, block_shape={}, context_size={}, n_jobs={}'.format(downsample_kernel.name, scale, block_shape, context_size, n_jobs)
+                            'downsample_kernel={}, scale={}, block_shape={}, context_size={}, max_processes={}'.format(downsample_kernel.name, scale, block_shape, context_size, max_processes)
                         )
 
         out = np.zeros([7,7,7,7*7*7], np.int32)
@@ -142,7 +142,7 @@ class ArrayProcs(unittest.TestCase):
                 arrayprocs.process_array_in_blocks(
                         { 0: scaled_data[0] }, out,
                         lambda params:(np.histogram(params[0]['block'], 7*7*7, (1, 7*7*7+1))[0], params[0]['contextless_slices_wrt_whole']+(slice(None),)),
-                        block_shape=[3]*3, context_size=1, n_jobs=1
+                        block_shape=[3]*3, context_size=1, max_processes=1
                     ),
                 np.array([
                         [
@@ -159,7 +159,7 @@ class ArrayProcs(unittest.TestCase):
                 arrayprocs.process_array_in_blocks(
                         { 0: scaled_data[0] }, out,
                         lambda params:(np.histogram(params[0]['block'], 7*7*7, (1, 7*7*7+1))[0], params[0]['contextless_slices_wrt_whole']+(slice(None),)),
-                        block_shape=[5]*3, context_size=2, n_jobs=1
+                        block_shape=[5]*3, context_size=2, max_processes=1
                     ),
                 np.array([
                         [
@@ -187,7 +187,7 @@ class ArrayProcs(unittest.TestCase):
                                         ], np.int32),
                                     params[0]['contextless_slices_wrt_whole']+(slice(None),)
                                 ),
-                        block_shape=[4]*3, context_size=1, n_jobs=1
+                        block_shape=[4]*3, context_size=1, max_processes=1
                     ),
                 np.array([
                         [
@@ -221,7 +221,7 @@ class ArrayProcs(unittest.TestCase):
                         arrayprocs.process_array_in_blocks_slice_range(
                                 scaled_data, out,
                                 processor,
-                                block_shape=[1]*2, slice_range=slice_range, context_size=0, n_jobs=1
+                                block_shape=[1]*2, slice_range=slice_range, context_size=0, max_processes=1
                             ),
                         expected_output,
                         'slice_range={}'.format(slice_range)
@@ -232,7 +232,7 @@ class ArrayProcs(unittest.TestCase):
                         arrayprocs.process_array_in_blocks_slice_range(
                                 scaled_data, out,
                                 processor,
-                                block_shape=[2]*2, slice_range=slice_range, context_size=0, n_jobs=1
+                                block_shape=[2]*2, slice_range=slice_range, context_size=0, max_processes=1
                             ),
                         expected_output,
                         'slice_range={}'.format(slice_range)
@@ -243,7 +243,7 @@ class ArrayProcs(unittest.TestCase):
                         arrayprocs.process_array_in_blocks_slice_range(
                                 scaled_data, out,
                                 processor,
-                                block_shape=[3]*2, slice_range=slice_range, context_size=1, n_jobs=1
+                                block_shape=[3]*2, slice_range=slice_range, context_size=1, max_processes=1
                             ),
                         expected_output,
                         'slice_range={}'.format(slice_range)
@@ -254,7 +254,7 @@ class ArrayProcs(unittest.TestCase):
                         arrayprocs.process_array_in_blocks_slice_range(
                                 scaled_data, out,
                                 processor,
-                                block_shape=[6]*2, slice_range=slice_range, context_size=2, n_jobs=1
+                                block_shape=[6]*2, slice_range=slice_range, context_size=2, max_processes=1
                             ),
                         expected_output,
                         'slice_range={}'.format(slice_range)
@@ -265,7 +265,7 @@ class ArrayProcs(unittest.TestCase):
                         arrayprocs.process_array_in_blocks_slice_range(
                                 scaled_data, out,
                                 processor,
-                                block_shape=[6]*2, slice_range=slice_range, context_size=2, n_jobs=2
+                                block_shape=[6]*2, slice_range=slice_range, context_size=2, max_processes=2
                             ),
                         expected_output,
                         'slice_range={}'.format(slice_range)
@@ -296,7 +296,7 @@ class ArrayProcs(unittest.TestCase):
                                             ], scaled_data[0].dtype),
                                         params[0]['contextless_slices_wrt_range']
                                     ),
-                                block_shape=[4]*2, slice_range=slice_range, context_size=1, n_jobs=1
+                                block_shape=[4]*2, slice_range=slice_range, context_size=1, max_processes=1
                             ),
                             expected_output,
                             'slice_range={}'.format(slice_range)

@@ -129,7 +129,7 @@ class Downscales(unittest.TestCase):
             for data_side in [ 17, 16 ]:
                 data = (np.arange(data_side**3) + 1).reshape([ data_side ]*3).astype(np.uint16)
                 for scale in [ 0, 1, 2 ]:
-                    for (batch_size, n_jobs) in [
+                    for (batch_size, max_processes) in [
                             (25 if downsample_kernel.name == 'gaussian' else 5, 1),
                             (200, 1),
                             (25 if downsample_kernel.name == 'gaussian' else 5, 2),
@@ -137,12 +137,12 @@ class Downscales(unittest.TestCase):
                         reduced = downscales.downscale(data, downsample_kernel, scale)
                         reduced_in_blocks = np.zeros(downscales.predict_new_shape(data.shape, scale), data.dtype)
 
-                        downscales.downscale_in_blocks(data, reduced_in_blocks, [ batch_size ]*3, downsample_kernel, scale, n_jobs=n_jobs)
+                        downscales.downscale_in_blocks(data, reduced_in_blocks, [ batch_size ]*3, downsample_kernel, scale, max_processes=max_processes)
 
                         np.testing.assert_equal(
                                 reduced,
                                 reduced_in_blocks,
-                                'downsample_kernel={}, data_side={}, scale={}, batch_size={}, n_jobs={}'.format(downsample_kernel.name, data_side, scale, batch_size, n_jobs)
+                                'downsample_kernel={}, data_side={}, scale={}, batch_size={}, max_processes={}'.format(downsample_kernel.name, data_side, scale, batch_size, max_processes)
                             )
 
     #########################################

@@ -39,7 +39,7 @@ def extract_features(preproc_volume_fullfname, featuriser_config, volume_slice_i
                 full_volume.get_scale_arrays(featuriser.get_scales_needed()),
                 slice_range=slice(volume_slice_index, volume_slice_index+volume_slice_count),
                 block_shape=best_block_shape,
-                n_jobs=max_processes_featuriser
+                max_processes=max_processes_featuriser
                 )
             )
 

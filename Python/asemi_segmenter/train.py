@@ -247,7 +247,7 @@ def _constructing_trainingset(
                         block_shape=best_block_shape,
                         output=training_set.get_features_array(),
                         output_start_row_index=i*slice_size,
-                        n_jobs=max_processes_featuriser
+                        max_processes=max_processes_featuriser
                         )
                 listener.current_progress_update(i+1)
             listener.current_progress_end()
@@ -259,7 +259,7 @@ def _constructing_trainingset(
 
 #########################################
 def _training_segmenter(
-        segmenter, training_set, checkpoint, max_processes_featuriser, max_processes_classifier, listener
+        segmenter, training_set, checkpoint, max_processes_classifier, listener
     ):
     '''Training segmenter stage.'''
     listener.log_output('> Training')
@@ -273,7 +273,7 @@ def _training_segmenter(
         sample_size_per_label = segmenter.train_config['training_set']['sample_size_per_label']
         if sample_size_per_label == -1:
             training_set = training_set.without_control_labels()
-        segmenter.train(training_set, max_processes_classifier)
+        segmenter.train(training_set, max_processes_classifier, lambda text:listener.log_output(text))
 
         training_set.close()
 
@@ -422,7 +422,7 @@ def main(
             listener.log_output(times.get_timestamp())
             listener.log_output('Training segmenter')
             with times.Timer() as timer:
-                () = _training_segmenter(segmenter, training_set, checkpoint, max_processes_featuriser, max_processes_classifier, listener)
+                () = _training_segmenter(segmenter, training_set, checkpoint, max_processes_classifier, listener)
             listener.log_output('Segmenter trained')
             listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
             listener.log_output('')

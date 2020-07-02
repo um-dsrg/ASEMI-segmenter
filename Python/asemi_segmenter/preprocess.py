@@ -121,7 +121,7 @@ def _dumping_slices_into_data_file(
                 ),
             enumerate(volume_fullfnames),
             post_processor=post_processor,
-            n_jobs=max_processes,
+            max_processes=max_processes,
             extra_params=(),
             progress_listener=lambda num_ready, num_new: (
                 listener.current_progress_update(num_ready)
@@ -164,7 +164,7 @@ def _downscaling_volume(
                 best_block_shape,
                 downsample_filter,
                 1,
-                n_jobs=max_processes,
+                max_processes=max_processes,
                 progress_listener=lambda num_ready, num_new:\
                     listener.current_progress_update(num_ready)
                 )

@@ -12,6 +12,7 @@ import sklearn.tree
 import sklearn.ensemble
 from asemi_segmenter.lib import validations
 from asemi_segmenter.lib import samplers
+from asemi_segmenter.lib import redirectors
 
 
 #########################################
@@ -446,39 +447,57 @@ class Classifier(object):
         raise NotImplementedError()
 
     #########################################
-    def train(self, training_set, n_jobs=1):
+    def train(self, training_set, max_processes=1, listener=None):
         '''
         Turn a slice from a volume into a matrix of feature vectors.
 
-        :param int n_jobs: The number of concurrent processes to use.
+        :param int max_processes: The number of concurrent processes to use.
+        :param callable listener: The listener to receive the sklearn verbose texts.
+            Listener should accept one string argument.
         :return: A reference to output.
         :rtype: numpy.ndarray
         '''
-        self.sklearn_model.n_jobs = n_jobs
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore', category=sklearn.exceptions.ConvergenceWarning)
-            self.sklearn_model.fit(
-                training_set.get_features_array(),
-                training_set.get_labels_array()
-                )
+        self.sklearn_model.named_steps['classifier'].max_processes = max_processes
+
+        if listener is not None and hasattr(self.sklearn_model.named_steps['classifier'], 'verbose'):
+            if isinstance(self.sklearn_model.named_steps['classifier'].verbose, int):
+                self.sklearn_model.named_steps['classifier'].verbose = 2
+            elif isinstance(self.sklearn_model.named_steps['classifier'].verbose, bool):
+                self.sklearn_model.named_steps['classifier'].verbose = True
+
+        with redirectors.PrintRedirector(listener):
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore', category=sklearn.exceptions.ConvergenceWarning)
+
+                self.sklearn_model.fit(
+                    training_set.get_features_array(),
+                    training_set.get_labels_array()
+                    )
+
+        if listener is not None and hasattr(self.sklearn_model.named_steps['classifier'], 'verbose'):
+            if isinstance(self.sklearn_model.named_steps['classifier'].verbose, int):
+                self.sklearn_model.named_steps['classifier'].verbose = 0
+            elif isinstance(self.sklearn_model.named_steps['classifier'].verbose, bool):
+                self.sklearn_model.named_steps['classifier'].verbose = False
+
 
     #########################################
-    def predict_label_probs(self, features_array, n_jobs=1):
+    def predict_label_probs(self, features_array, max_processes=1):
         '''
         Predict the probability of each label for each feature vector.
 
         :param numpy.ndarray features_array: 2D numpy array with each row being a feature vector
             to pass to the classifier.
-        :param int n_jobs: The number of concurrent processes to use.
+        :param int max_processes: The number of concurrent processes to use.
         :return: 2D numpy array with each row being the probabilities for the corresponding
             feature vector and each column being a label.
         :rtype: numpy.ndarray
         '''
-        self.sklearn_model.n_jobs = n_jobs
+        self.sklearn_model.named_steps['classifier'].max_processes = max_processes
         return self.sklearn_model.predict_proba(features_array)
 
     #########################################
-    def predict_label_onehots(self, features_array, n_jobs=1):
+    def predict_label_onehots(self, features_array, max_processes=1):
         '''
         Predict one hot vectors of each label for each feature vector.
 
@@ -487,43 +506,43 @@ class Classifier(object):
 
         :param numpy.ndarray features_array: 2D numpy array with each row being a feature vector
             to pass to the classifier.
-        :param int n_jobs: The number of concurrent processes to use.
+        :param int max_processes: The number of concurrent processes to use.
         :return: 2D numpy array with each row being the one hot vectors for the corresponding
             feature vector and each column being a label.
         :rtype: numpy.ndarray
         '''
-        probs = self.predict_label_probs(features_array, n_jobs)
+        probs = self.predict_label_probs(features_array, max_processes)
         label_indexes = np.argmax(probs, axis=1)
         probs[:, :] = 0.0
         probs[np.arange(probs.shape[0]), label_indexes] = 1.0
         return probs
 
     #########################################
-    def predict_label_indexes(self, features_array, n_jobs=1):
+    def predict_label_indexes(self, features_array, max_processes=1):
         '''
         Predict a label index for each feature vector.
 
         :param numpy.ndarray features_array: 2D numpy array with each row being a feature vector
             to pass to the classifier.
-        :param int n_jobs: The number of concurrent processes to use.
+        :param int max_processes: The number of concurrent processes to use.
         :return: An array of integers with each item being the label index for the corresponding feature vector.
         :rtype: numpy.ndarray
         '''
-        probs = self.predict_label_probs(features_array, n_jobs)
+        probs = self.predict_label_probs(features_array, max_processes)
         return np.argmax(probs, axis=1)
 
     #########################################
-    def predict_label_names(self, features_array, n_jobs=1):
+    def predict_label_names(self, features_array, max_processes=1):
         '''
         Predict a label name for each feature vector.
 
         :param numpy.ndarray features_array: 2D numpy array with each row being a feature vector
             to pass to the classifier.
-        :param int n_jobs: The number of concurrent processes to use.
+        :param int max_processes: The number of concurrent processes to use.
         :return: A list of string with each item being the label name for the corresponding feature vector.
         :rtype: list
         '''
-        label_indexes = self.predict_label_indexes(features_array, n_jobs)
+        label_indexes = self.predict_label_indexes(features_array, max_processes)
         return [self.labels[label_index] for label_index in label_indexes.tolist()]
 
 
@@ -553,6 +572,7 @@ class LogisticRegressionClassifier(Classifier):
                     multi_class='multinomial',
                     penalty='l1',
                     class_weight='balanced',
+                    verbose=0,
                     random_state=0
                     )
                 )
@@ -678,6 +698,7 @@ class NeuralNetworkClassifier(Classifier):
                     validation_fraction=0.1,
                     tol=1e-4,
                     max_iter=max_iter,
+                    verbose=False,
                     random_state=0
                     )
                 )
@@ -944,6 +965,7 @@ class RandomForestClassifier(Classifier):
                     max_depth=max_depth,
                     min_samples_leaf=min_samples_leaf,
                     class_weight='balanced',
+                    verbose=0,
                     random_state=0
                     )
                 )
