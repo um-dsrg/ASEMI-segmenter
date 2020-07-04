@@ -100,5 +100,5 @@
     --max_processes_featuriser 4 \
     --max_processes_classifier 4 \
     --max_batch_memory 1.0 \
-    --num_simultaneous_slices 2 \
+    --num_simultaneous_slices 6 \
     --use_gpu "no"

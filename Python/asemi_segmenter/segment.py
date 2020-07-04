@@ -175,7 +175,7 @@ def _segmenting(
         if i < start:
             continue
         with checkpoint.apply('segment_prog'):
-            if i%num_simultaneous_slices == 0:
+            if (i - start)%num_simultaneous_slices == 0:
                 slice_features = segmenter.featuriser.featurise_slice(
                     full_volume.get_scale_arrays(segmenter.featuriser.get_scales_needed()),
                     slice_range=slice(first_volume_slice_index, first_volume_slice_index+num_simultaneous_slices),
@@ -183,7 +183,7 @@ def _segmenting(
                     max_processes=max_processes_featuriser
                     )
                 for j in range(num_simultaneous_slices):
-                    if i*num_simultaneous_slices + j >= num_slices:
+                    if first_volume_slice_index + j >= num_slices:
                         continue
 
                     if config_data['as_masks']:
