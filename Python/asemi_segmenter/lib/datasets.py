@@ -82,8 +82,15 @@ class DataSet(object):
 
         new_dataset = DataSet(None)
         new_dataset.create(np.sum(valid_items_mask), self.data['features'].shape[1])
-        new_dataset.get_labels_array()[:] = self.data['labels'][valid_items_mask]
-        new_dataset.get_features_array()[:] = self.data['features'][valid_items_mask, :]
+
+        block_size = 100000
+        j = 0
+        for i in range(0, valid_items_mask.shape[0], block_size):
+            blocked_mask = valid_items_mask[i:i+block_size]
+            block_out_size = np.sum(blocked_mask)
+            new_dataset.get_labels_array()[j:j+block_out_size] = self.data['labels'][i:i+block_size][blocked_mask]
+            new_dataset.get_features_array()[j:j+block_out_size] = self.data['features'][i:i+block_size, :][blocked_mask, :]
+            j += block_out_size
 
         return new_dataset
 

@@ -104,7 +104,7 @@
     },
     "output": {
         "training_set": {
-            "sample_size_per_label": 100,
+            "sample_size_per_label": -1,
             "samples_to_skip_per_label": 0
         }
     }
