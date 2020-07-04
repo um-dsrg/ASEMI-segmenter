@@ -12,7 +12,6 @@ import sklearn.tree
 import sklearn.ensemble
 from asemi_segmenter.lib import validations
 from asemi_segmenter.lib import samplers
-from asemi_segmenter.lib import redirectors
 
 
 #########################################
@@ -447,34 +446,32 @@ class Classifier(object):
         raise NotImplementedError()
 
     #########################################
-    def train(self, training_set, max_processes=1, listener=None):
+    def train(self, training_set, max_processes=1, verbose_training=True):
         '''
         Turn a slice from a volume into a matrix of feature vectors.
 
         :param int max_processes: The number of concurrent processes to use.
-        :param callable listener: The listener to receive the sklearn verbose texts.
-            Listener should accept one string argument.
+        :param bool verbose_training: Whether to include sklearn's verbose texts.
         :return: A reference to output.
         :rtype: numpy.ndarray
         '''
         self.sklearn_model.named_steps['classifier'].n_jobs = max_processes
 
-        if listener is not None and hasattr(self.sklearn_model.named_steps['classifier'], 'verbose'):
+        if verbose_training and hasattr(self.sklearn_model.named_steps['classifier'], 'verbose'):
             if isinstance(self.sklearn_model.named_steps['classifier'].verbose, int):
                 self.sklearn_model.named_steps['classifier'].verbose = 2
             elif isinstance(self.sklearn_model.named_steps['classifier'].verbose, bool):
                 self.sklearn_model.named_steps['classifier'].verbose = True
 
-        with redirectors.PrintRedirector(listener):
-            with warnings.catch_warnings():
-                warnings.simplefilter('ignore', category=sklearn.exceptions.ConvergenceWarning)
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', category=sklearn.exceptions.ConvergenceWarning)
 
-                self.sklearn_model.fit(
-                    training_set.get_features_array(),
-                    training_set.get_labels_array()
-                    )
+            self.sklearn_model.fit(
+                training_set.get_features_array(),
+                training_set.get_labels_array()
+                )
 
-        if listener is not None and hasattr(self.sklearn_model.named_steps['classifier'], 'verbose'):
+        if verbose_training and hasattr(self.sklearn_model.named_steps['classifier'], 'verbose'):
             if isinstance(self.sklearn_model.named_steps['classifier'].verbose, int):
                 self.sklearn_model.named_steps['classifier'].verbose = 0
             elif isinstance(self.sklearn_model.named_steps['classifier'].verbose, bool):

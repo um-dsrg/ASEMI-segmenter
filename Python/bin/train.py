@@ -53,6 +53,13 @@ if __name__ == '__main__':
             help='Full path to file that is used to store the training set (*.hdf). Note that if this is left out then there is nothing to checkpoint.'
         )
     parser.add_argument(
+            '--verbose_training',
+            required=False,
+            default='no',
+            choices=['yes', 'no'],
+            help='Whether to show sklearn\'s verbose messages during training.'
+        )
+    parser.add_argument(
             '--train_sample_seed',
             required=False,
             default=None,
@@ -140,6 +147,7 @@ if __name__ == '__main__':
             config=args.config_fullfname,
             result_segmenter_fullfname=args.result_segmenter_fullfname,
             trainingset_file_fullfname=args.trainingset_file_fullfname,
+            verbose_training=args.verbose_training == 'yes',
             train_sample_seed=args.train_sample_seed,
             checkpoint_fullfname=args.checkpoint_fullfname,
             checkpoint_namespace=args.checkpoint_namespace,

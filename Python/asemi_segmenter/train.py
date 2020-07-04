@@ -259,7 +259,7 @@ def _constructing_trainingset(
 
 #########################################
 def _training_segmenter(
-        segmenter, training_set, checkpoint, max_processes_classifier, listener
+        segmenter, training_set, verbose_training, checkpoint, max_processes_classifier, listener
     ):
     '''Training segmenter stage.'''
     listener.log_output('> Training')
@@ -273,7 +273,7 @@ def _training_segmenter(
         sample_size_per_label = segmenter.train_config['training_set']['sample_size_per_label']
         if sample_size_per_label == -1:
             training_set = training_set.without_control_labels()
-        segmenter.train(training_set, max_processes_classifier, lambda text:listener.log_output(text))
+        segmenter.train(training_set, max_processes_classifier, verbose_training)
 
         training_set.close()
 
@@ -307,6 +307,7 @@ def main(
         config,
         result_segmenter_fullfname=None,
         trainingset_file_fullfname=None,
+        verbose_training=True,
         train_sample_seed=None,
         checkpoint_fullfname=None,
         checkpoint_namespace='train',
@@ -334,7 +335,11 @@ def main(
         json file containing the configuration or a dictionary specifying the configuration
         directly). See user guide for description of the train configuration.
     :type config: str or dict
-    :param str result_segmenter_fullfname: Full file name (with path) to pickle file to create. If None then it will not be saved.
+    :param str result_segmenter_fullfname: Full file name (with path) to pickle file to create.
+        If None then it will not be saved.
+    :param str trainingset_file_fullfname: Full file name (with path) HDF file storing training set.
+        If None then it will not be saved.
+    :param bool verbose_training: Whether to show sklearn's verbose messages during training.
     :param int train_sample_seed: Seed for the random number generator which samples voxels.
         If None then the random number generator will be non-deterministic.
     :param str checkpoint_fullfname: Full file name (with path) to checkpoint pickle.
@@ -422,7 +427,7 @@ def main(
             listener.log_output(times.get_timestamp())
             listener.log_output('Training segmenter')
             with times.Timer() as timer:
-                () = _training_segmenter(segmenter, training_set, checkpoint, max_processes_classifier, listener)
+                () = _training_segmenter(segmenter, training_set, verbose_training, checkpoint, max_processes_classifier, listener)
             listener.log_output('Segmenter trained')
             listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
             listener.log_output('')
