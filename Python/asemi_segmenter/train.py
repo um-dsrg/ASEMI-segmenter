@@ -208,26 +208,28 @@ def _constructing_trainingset(
                 subvolume_slice_labels.size,
                 segmenter.featuriser.get_feature_size()
                 )
-    training_set.load(as_readonly=False)
 
-    listener.log_output('> Constructing labels')
-    with checkpoint.apply('constructing_labels') as skip:
+    listener.log_output('> Constructing training set')
+    with checkpoint.apply('constructing_training_set') as skip:
         if skip is not None:
             listener.log_output('>> Skipped as was found checkpointed')
             raise skip
 
-        if sample_size_per_label != -1:
-            for (label_index, label_position) in enumerate(label_positions):
-                training_set.get_labels_array()[label_position] = label_index
-        else:
-            training_set.get_labels_array()[:] = subvolume_slice_labels
+        training_set.load(as_readonly=False)
 
-    listener.log_output('> Constructing features')
-    with checkpoint.apply('constructing_features') as skip:
-        if skip is not None:
-            listener.log_output('>> Skipped as was found checkpointed')
-            raise skip
+        listener.log_output('> Constructing labels')
+        with checkpoint.apply('constructing_labels') as skip:
+            if skip is not None:
+                listener.log_output('>> Skipped as was found checkpointed')
+                raise skip
 
+            if sample_size_per_label != -1:
+                for (label_index, label_position) in enumerate(label_positions):
+                    training_set.get_labels_array()[label_position] = label_index
+            else:
+                training_set.get_labels_array()[:] = subvolume_slice_labels
+
+        listener.log_output('> Constructing features')
         if sample_size_per_label != -1:
             segmenter.featuriser.featurise_voxels(
                 full_volume.get_scale_arrays(segmenter.featuriser.get_scales_needed()),
@@ -252,7 +254,7 @@ def _constructing_trainingset(
                 listener.current_progress_update(i+1)
             listener.current_progress_end()
 
-    training_set.close()
+        training_set.close()
 
     return ()
 
