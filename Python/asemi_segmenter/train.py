@@ -3,6 +3,7 @@
 import sys
 import random
 import json
+import pickle
 import numpy as np
 from asemi_segmenter import listeners
 from asemi_segmenter.lib import arrayprocs
@@ -390,70 +391,83 @@ def main(
             listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
             listener.log_output('')
 
-            ###################
+            with checkpoint.apply('overall') as skip:
+                if skip is not None:
+                    listener.log_output('Command skipped as was found checkpointed')
 
-            listener.overall_progress_update(2, 'Hashing subvolume slices')
+                    if result_segmenter_fullfname is not None:
+                        with open(result_segmenter_fullfname, 'rb') as f:
+                            pickled_data = pickle.load(f)
+                        segmenter = segmenters.load_segmenter_from_pickle_data(pickled_data, full_volume, use_gpu)
+                    else:
+                        segmenter = None
+
+                    raise skip
+
+                ###################
+
+                listener.overall_progress_update(2, 'Hashing subvolume slices')
+                listener.log_output(times.get_timestamp())
+                listener.log_output('Hashing subvolume slices')
+                with times.Timer() as timer:
+                    (volume_slice_indexes_in_subvolume,) = _hashing_subvolume_slices(full_volume, subvolume_fullfnames, hash_function, listener)
+                listener.log_output('Slices hashed')
+                listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
+                listener.log_output('')
+
+                ###################
+
+                listener.overall_progress_update(3, 'Constructing labels dataset')
+                listener.log_output(times.get_timestamp())
+                listener.log_output('Constructing labels dataset')
+                with times.Timer() as timer:
+                    (subvolume_slice_labels,) = _constructing_labels_dataset(labels_data)
+                listener.log_output('Labels dataset constructed')
+                listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
+                listener.log_output('')
+
+                ###################
+
+                listener.overall_progress_update(4, 'Constructing training set')
+                listener.log_output(times.get_timestamp())
+                listener.log_output('Constructing training set')
+                with times.Timer() as timer:
+                    () = _constructing_trainingset(full_volume, subvolume_fullfnames, volume_slice_indexes_in_subvolume, slice_shape, slice_size, subvolume_slice_labels, segmenter, training_set, train_sample_seed, checkpoint, best_block_shape, max_processes_featuriser, max_processes_classifier, max_batch_memory, listener)
+                listener.log_output('Training set constructed')
+                listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
+                listener.log_output('')
+
+                ###################
+
+                listener.overall_progress_update(5, 'Training segmenter')
+                listener.log_output(times.get_timestamp())
+                listener.log_output('Training segmenter')
+                with times.Timer() as timer:
+                    () = _training_segmenter(segmenter, training_set, verbose_training, checkpoint, max_processes_classifier, listener)
+                listener.log_output('Segmenter trained')
+                listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
+                listener.log_output('')
+
+                ###################
+
+                listener.overall_progress_update(6, 'Saving segmenter')
+                listener.log_output(times.get_timestamp())
+                listener.log_output('Saving segmenter')
+                with times.Timer() as timer:
+                    () = _saving_segmenter(segmenter, result_segmenter_fullfname, checkpoint, listener)
+                listener.log_output('Segmenter saved')
+                listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
+                listener.log_output('')
+
+            listener.log_output('Done')
+            listener.log_output('Entire process duration: {}'.format(
+                times.get_readable_duration(full_timer.duration)
+                ))
             listener.log_output(times.get_timestamp())
-            listener.log_output('Hashing subvolume slices')
-            with times.Timer() as timer:
-                (volume_slice_indexes_in_subvolume,) = _hashing_subvolume_slices(full_volume, subvolume_fullfnames, hash_function, listener)
-            listener.log_output('Slices hashed')
-            listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
-            listener.log_output('')
 
-            ###################
+            listener.overall_progress_end()
 
-            listener.overall_progress_update(3, 'Constructing labels dataset')
-            listener.log_output(times.get_timestamp())
-            listener.log_output('Constructing labels dataset')
-            with times.Timer() as timer:
-                (subvolume_slice_labels,) = _constructing_labels_dataset(labels_data)
-            listener.log_output('Labels dataset constructed')
-            listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
-            listener.log_output('')
-
-            ###################
-
-            listener.overall_progress_update(4, 'Constructing training set')
-            listener.log_output(times.get_timestamp())
-            listener.log_output('Constructing training set')
-            with times.Timer() as timer:
-                () = _constructing_trainingset(full_volume, subvolume_fullfnames, volume_slice_indexes_in_subvolume, slice_shape, slice_size, subvolume_slice_labels, segmenter, training_set, train_sample_seed, checkpoint, best_block_shape, max_processes_featuriser, max_processes_classifier, max_batch_memory, listener)
-            listener.log_output('Training set constructed')
-            listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
-            listener.log_output('')
-
-            ###################
-
-            listener.overall_progress_update(5, 'Training segmenter')
-            listener.log_output(times.get_timestamp())
-            listener.log_output('Training segmenter')
-            with times.Timer() as timer:
-                () = _training_segmenter(segmenter, training_set, verbose_training, checkpoint, max_processes_classifier, listener)
-            listener.log_output('Segmenter trained')
-            listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
-            listener.log_output('')
-
-            ###################
-
-            listener.overall_progress_update(6, 'Saving segmenter')
-            listener.log_output(times.get_timestamp())
-            listener.log_output('Saving segmenter')
-            with times.Timer() as timer:
-                () = _saving_segmenter(segmenter, result_segmenter_fullfname, checkpoint, listener)
-            listener.log_output('Segmenter saved')
-            listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
-            listener.log_output('')
-
-        listener.log_output('Done')
-        listener.log_output('Entire process duration: {}'.format(
-            times.get_readable_duration(full_timer.duration)
-            ))
-        listener.log_output(times.get_timestamp())
-
-        listener.overall_progress_end()
-
-        return segmenter
+            return segmenter
     except Exception as ex:
         listener.error_output(str(ex))
         if debug_mode:

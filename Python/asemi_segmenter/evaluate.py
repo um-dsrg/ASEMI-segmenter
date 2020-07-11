@@ -373,46 +373,51 @@ def main(
             listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
             listener.log_output('')
 
-            ###################
+            with checkpoint.apply('overall') as skip:
+                if skip is not None:
+                    listener.log_output('Command skipped as was found checkpointed')
+                    raise skip
 
-            listener.overall_progress_update(2, 'Hashing subvolume slices')
+                ###################
+
+                listener.overall_progress_update(2, 'Hashing subvolume slices')
+                listener.log_output(times.get_timestamp())
+                listener.log_output('Hashing subvolume slices')
+                with times.Timer() as timer:
+                    (volume_slice_indexes_in_subvolume,) = _hashing_subvolume_slices(full_volume, subvolume_fullfnames, hash_function, listener)
+                listener.log_output('Slices hashed')
+                listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
+                listener.log_output('')
+
+                ###################
+
+                listener.overall_progress_update(3, 'Constructing labels dataset')
+                listener.log_output(times.get_timestamp())
+                listener.log_output('Constructing labels dataset')
+                with times.Timer() as timer:
+                    (subvolume_slice_labels,) = _constructing_labels_dataset(labels_data)
+                listener.log_output('Labels dataset constructed')
+                listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
+                listener.log_output('')
+
+                ###################
+
+                listener.overall_progress_update(4, 'Evaluating')
+                listener.log_output(times.get_timestamp())
+                listener.log_output('Evaluating')
+                with times.Timer() as timer:
+                    () = _evaluating(full_volume, segmenter, slice_shape, slice_size, subvolume_fullfnames, volume_slice_indexes_in_subvolume, subvolume_slice_labels, evaluation, checkpoint, evaluation_results_file, results_dir, best_block_shape, max_processes_featuriser, max_processes_classifier, max_batch_memory, listener)
+                listener.log_output('Evaluated')
+                listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
+                listener.log_output('')
+
+            listener.log_output('Done')
+            listener.log_output('Entire process duration: {}'.format(
+                times.get_readable_duration(full_timer.duration)
+                ))
             listener.log_output(times.get_timestamp())
-            listener.log_output('Hashing subvolume slices')
-            with times.Timer() as timer:
-                (volume_slice_indexes_in_subvolume,) = _hashing_subvolume_slices(full_volume, subvolume_fullfnames, hash_function, listener)
-            listener.log_output('Slices hashed')
-            listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
-            listener.log_output('')
 
-            ###################
-
-            listener.overall_progress_update(3, 'Constructing labels dataset')
-            listener.log_output(times.get_timestamp())
-            listener.log_output('Constructing labels dataset')
-            with times.Timer() as timer:
-                (subvolume_slice_labels,) = _constructing_labels_dataset(labels_data)
-            listener.log_output('Labels dataset constructed')
-            listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
-            listener.log_output('')
-
-            ###################
-
-            listener.overall_progress_update(4, 'Evaluating')
-            listener.log_output(times.get_timestamp())
-            listener.log_output('Evaluating')
-            with times.Timer() as timer:
-                () = _evaluating(full_volume, segmenter, slice_shape, slice_size, subvolume_fullfnames, volume_slice_indexes_in_subvolume, subvolume_slice_labels, evaluation, checkpoint, evaluation_results_file, results_dir, best_block_shape, max_processes_featuriser, max_processes_classifier, max_batch_memory, listener)
-            listener.log_output('Evaluated')
-            listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
-            listener.log_output('')
-
-        listener.log_output('Done')
-        listener.log_output('Entire process duration: {}'.format(
-            times.get_readable_duration(full_timer.duration)
-            ))
-        listener.log_output(times.get_timestamp())
-
-        listener.overall_progress_end()
+            listener.overall_progress_end()
     except Exception as ex:
         listener.error_output(str(ex))
         if debug_mode:

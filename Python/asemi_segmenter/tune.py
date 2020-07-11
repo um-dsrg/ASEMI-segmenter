@@ -676,60 +676,72 @@ def main(
             listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
             listener.log_output('')
 
-            ###################
+            with checkpoint.apply('overall') as skip:
+                if skip is not None:
+                    listener.log_output('Command skipped as was found checkpointed')
 
-            listener.overall_progress_update(2, 'Hashing train subvolume slices')
-            listener.log_output(times.get_timestamp())
-            listener.log_output('Hashing train subvolume slices')
-            with times.Timer() as timer:
-                (volume_slice_indexes_in_train_subvolume,) = _hashing_train_subvolume_slices(full_volume, train_subvolume_fullfnames, hash_function, listener)
-            listener.log_output('Slices hashed')
-            listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
-            listener.log_output('')
+                    tuning_results_file.load()
+                    best_config = dict()
+                    best_config['featuriser'] = tuning_results_file.best_config['featuriser']
+                    best_config['classifier'] = tuning_results_file.best_config['classifier']
+                    best_config['training_set'] = config_data['output']['training_set']
 
-            ###################
+                    raise skip
 
-            listener.overall_progress_update(3, 'Hashing Evaluation subvolume slices')
-            listener.log_output(times.get_timestamp())
-            listener.log_output('Hashing evaluation subvolume slices')
-            with times.Timer() as timer:
-                (volume_slice_indexes_in_eval_subvolume,) = _hashing_eval_subvolume_slices(full_volume, eval_subvolume_fullfnames, hash_function, listener)
-            listener.log_output('Slices hashed')
-            listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
-            listener.log_output('')
+                ###################
 
-            ###################
+                listener.overall_progress_update(2, 'Hashing train subvolume slices')
+                listener.log_output(times.get_timestamp())
+                listener.log_output('Hashing train subvolume slices')
+                with times.Timer() as timer:
+                    (volume_slice_indexes_in_train_subvolume,) = _hashing_train_subvolume_slices(full_volume, train_subvolume_fullfnames, hash_function, listener)
+                listener.log_output('Slices hashed')
+                listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
+                listener.log_output('')
 
-            listener.overall_progress_update(4, 'Constructing labels dataset')
-            listener.log_output(times.get_timestamp())
-            listener.log_output('Constructing labels dataset')
-            with times.Timer() as timer:
-                (train_subvolume_slice_labels, eval_subvolume_slice_labels) = _constructing_labels_dataset(train_labels_data, eval_labels_data)
-            listener.log_output('Labels dataset constructed')
-            listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
-            listener.log_output('')
+                ###################
 
-            ###################
+                listener.overall_progress_update(3, 'Hashing Evaluation subvolume slices')
+                listener.log_output(times.get_timestamp())
+                listener.log_output('Hashing evaluation subvolume slices')
+                with times.Timer() as timer:
+                    (volume_slice_indexes_in_eval_subvolume,) = _hashing_eval_subvolume_slices(full_volume, eval_subvolume_fullfnames, hash_function, listener)
+                listener.log_output('Slices hashed')
+                listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
+                listener.log_output('')
 
-            listener.overall_progress_update(5, 'Tuning')
-            listener.log_output(times.get_timestamp())
-            listener.log_output('Tuning')
-            with times.Timer() as timer:
-                (best_config,) = _tuning(config_data, segmenter, slice_shape, slice_size, full_volume, train_subvolume_slice_labels, volume_slice_indexes_in_train_subvolume, eval_subvolume_slice_labels, volume_slice_indexes_in_eval_subvolume, training_set, evaluation, parameter_selection_timeout, tuning_results_file, features_table, train_sample_seed, eval_sample_seed, checkpoint, max_processes_featuriser, max_processes_classifier, max_batch_memory, listener, extra_result_col_names, extra_result_col_values)
-            listener.log_output('Tuned')
-            listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
-            listener.log_output('')
+                ###################
 
-            ###################
+                listener.overall_progress_update(4, 'Constructing labels dataset')
+                listener.log_output(times.get_timestamp())
+                listener.log_output('Constructing labels dataset')
+                with times.Timer() as timer:
+                    (train_subvolume_slice_labels, eval_subvolume_slice_labels) = _constructing_labels_dataset(train_labels_data, eval_labels_data)
+                listener.log_output('Labels dataset constructed')
+                listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
+                listener.log_output('')
 
-            listener.overall_progress_update(6, 'Saving best config')
-            listener.log_output(times.get_timestamp())
-            listener.log_output('Saving best config')
-            with times.Timer() as timer:
-                () = _saving_best_config(best_result_fullfname, best_config, listener)
-            listener.log_output('Saved')
-            listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
-            listener.log_output('')
+                ###################
+
+                listener.overall_progress_update(5, 'Tuning')
+                listener.log_output(times.get_timestamp())
+                listener.log_output('Tuning')
+                with times.Timer() as timer:
+                    (best_config,) = _tuning(config_data, segmenter, slice_shape, slice_size, full_volume, train_subvolume_slice_labels, volume_slice_indexes_in_train_subvolume, eval_subvolume_slice_labels, volume_slice_indexes_in_eval_subvolume, training_set, evaluation, parameter_selection_timeout, tuning_results_file, features_table, train_sample_seed, eval_sample_seed, checkpoint, max_processes_featuriser, max_processes_classifier, max_batch_memory, listener, extra_result_col_names, extra_result_col_values)
+                listener.log_output('Tuned')
+                listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
+                listener.log_output('')
+
+                ###################
+
+                listener.overall_progress_update(6, 'Saving best config')
+                listener.log_output(times.get_timestamp())
+                listener.log_output('Saving best config')
+                with times.Timer() as timer:
+                    () = _saving_best_config(best_result_fullfname, best_config, listener)
+                listener.log_output('Saved')
+                listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
+                listener.log_output('')
 
         listener.log_output('Done')
         listener.log_output('Entire process duration: {}'.format(

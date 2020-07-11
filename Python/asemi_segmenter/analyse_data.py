@@ -244,27 +244,32 @@ def main(
             listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
             listener.log_output('')
 
-            ###################
+            with checkpoint.apply('overall') as skip:
+                if skip is not None:
+                    listener.log_output('Command skipped as was found checkpointed')
+                    raise skip
 
-            listener.overall_progress_update(2, 'Analysing')
+                ###################
+
+                listener.overall_progress_update(2, 'Analysing')
+                listener.log_output(times.get_timestamp())
+                listener.log_output('Analysing')
+                with times.Timer() as timer:
+                    () = _analysing(
+                        subvolume_fullfnames, labels_data, config_data, highlight_radius,
+                        results_dir, data_sample_seed, checkpoint, listener
+                        )
+                listener.log_output('Analysed')
+                listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
+                listener.log_output('')
+
+            listener.log_output('Done')
+            listener.log_output('Entire process duration: {}'.format(
+                times.get_readable_duration(full_timer.duration)
+                ))
             listener.log_output(times.get_timestamp())
-            listener.log_output('Analysing')
-            with times.Timer() as timer:
-                () = _analysing(
-                    subvolume_fullfnames, labels_data, config_data, highlight_radius,
-                    results_dir, data_sample_seed, checkpoint, listener
-                    )
-            listener.log_output('Analysed')
-            listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
-            listener.log_output('')
 
-        listener.log_output('Done')
-        listener.log_output('Entire process duration: {}'.format(
-            times.get_readable_duration(full_timer.duration)
-            ))
-        listener.log_output(times.get_timestamp())
-
-        listener.overall_progress_end()
+            listener.overall_progress_end()
     except Exception as ex:
         listener.error_output(str(ex))
         if debug_mode:

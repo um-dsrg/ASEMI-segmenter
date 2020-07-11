@@ -279,24 +279,29 @@ def main(
             listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
             listener.log_output('')
 
-            ###################
+            with checkpoint.apply('overall') as skip:
+                if skip is not None:
+                    listener.log_output('Command skipped as was found checkpointed')
+                    raise skip
 
-            listener.overall_progress_update(2, 'Segmenting')
+                ###################
+
+                listener.overall_progress_update(2, 'Segmenting')
+                listener.log_output(times.get_timestamp())
+                listener.log_output('Segmenting')
+                with times.Timer() as timer:
+                    () = _segmenting(config_data, full_volume, slice_shape, segmenter, results_dir, label_names_fullfname, slice_indexes, best_block_shape, max_processes_featuriser, max_processes_classifier, max_batch_memory, checkpoint, num_simultaneous_slices, listener)
+                listener.log_output('Volume segmented')
+                listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
+                listener.log_output('')
+
+            listener.log_output('Done')
+            listener.log_output('Entire process duration: {}'.format(
+                times.get_readable_duration(full_timer.duration)
+                ))
             listener.log_output(times.get_timestamp())
-            listener.log_output('Segmenting')
-            with times.Timer() as timer:
-                () = _segmenting(config_data, full_volume, slice_shape, segmenter, results_dir, label_names_fullfname, slice_indexes, best_block_shape, max_processes_featuriser, max_processes_classifier, max_batch_memory, checkpoint, num_simultaneous_slices, listener)
-            listener.log_output('Volume segmented')
-            listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
-            listener.log_output('')
 
-        listener.log_output('Done')
-        listener.log_output('Entire process duration: {}'.format(
-            times.get_readable_duration(full_timer.duration)
-            ))
-        listener.log_output(times.get_timestamp())
-
-        listener.overall_progress_end()
+            listener.overall_progress_end()
     except Exception as ex:
         listener.error_output(str(ex))
         if debug_mode:

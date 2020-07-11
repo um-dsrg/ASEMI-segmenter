@@ -255,57 +255,62 @@ def main(
                 ))
             listener.log_output('')
 
-            ###################
+            with checkpoint.apply('overall') as skip:
+                if skip is not None:
+                    listener.log_output('Command skipped as was found checkpointed')
+                    raise skip
 
-            listener.overall_progress_update(2, 'Creating empty data file')
+                ###################
+
+                listener.overall_progress_update(2, 'Creating empty data file')
+                listener.log_output(times.get_timestamp())
+                listener.log_output('Creating empty data file')
+                with times.Timer() as timer:
+                    () = _creating_empty_data_file(config_data, full_volume, volume_fullfnames, slice_shape, checkpoint, listener)
+                listener.log_output('Empty data file created')
+                listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
+                listener.log_output('')
+
+                ###################
+
+                listener.overall_progress_update(3, 'Dumping slices into data file')
+                listener.log_output(times.get_timestamp())
+                listener.log_output('Dumping slices into data file')
+                with times.Timer() as timer:
+                    () = _dumping_slices_into_data_file(full_volume, volume_fullfnames, max_processes, checkpoint, listener)
+                listener.log_output('Slices dumped')
+                listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
+                listener.log_output('')
+
+                ###################
+
+                listener.overall_progress_update(4, 'Downscaling volume')
+                listener.log_output(times.get_timestamp())
+                listener.log_output('Downscaling volume')
+                with times.Timer() as timer:
+                    () = _downscaling_volume(config_data, full_volume, downsample_filter, max_processes, max_batch_memory, checkpoint, listener)
+                listener.log_output('Volume downscaled')
+                listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
+                listener.log_output('')
+
+                ###################
+
+                listener.overall_progress_update(5, 'Hashing volume slices')
+                listener.log_output(times.get_timestamp())
+                listener.log_output('Hashing volume slices')
+                with times.Timer() as timer:
+                    () = _hashing_volume_slices(full_volume, volume_fullfnames, hash_function, checkpoint, listener)
+                listener.log_output('Slices hashed')
+                listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
+                listener.log_output('')
+
+            listener.log_output('Done')
+            listener.log_output('Entire process duration: {}'.format(
+                times.get_readable_duration(full_timer.duration)
+                ))
             listener.log_output(times.get_timestamp())
-            listener.log_output('Creating empty data file')
-            with times.Timer() as timer:
-                () = _creating_empty_data_file(config_data, full_volume, volume_fullfnames, slice_shape, checkpoint, listener)
-            listener.log_output('Empty data file created')
-            listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
-            listener.log_output('')
 
-            ###################
-
-            listener.overall_progress_update(3, 'Dumping slices into data file')
-            listener.log_output(times.get_timestamp())
-            listener.log_output('Dumping slices into data file')
-            with times.Timer() as timer:
-                () = _dumping_slices_into_data_file(full_volume, volume_fullfnames, max_processes, checkpoint, listener)
-            listener.log_output('Slices dumped')
-            listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
-            listener.log_output('')
-
-            ###################
-
-            listener.overall_progress_update(4, 'Downscaling volume')
-            listener.log_output(times.get_timestamp())
-            listener.log_output('Downscaling volume')
-            with times.Timer() as timer:
-                () = _downscaling_volume(config_data, full_volume, downsample_filter, max_processes, max_batch_memory, checkpoint, listener)
-            listener.log_output('Volume downscaled')
-            listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
-            listener.log_output('')
-
-            ###################
-
-            listener.overall_progress_update(5, 'Hashing volume slices')
-            listener.log_output(times.get_timestamp())
-            listener.log_output('Hashing volume slices')
-            with times.Timer() as timer:
-                () = _hashing_volume_slices(full_volume, volume_fullfnames, hash_function, checkpoint, listener)
-            listener.log_output('Slices hashed')
-            listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
-            listener.log_output('')
-
-        listener.log_output('Done')
-        listener.log_output('Entire process duration: {}'.format(
-            times.get_readable_duration(full_timer.duration)
-            ))
-        listener.log_output(times.get_timestamp())
-
-        listener.overall_progress_end()
+            listener.overall_progress_end()
     except Exception as ex:
         listener.error_output(str(ex))
         if debug_mode:
