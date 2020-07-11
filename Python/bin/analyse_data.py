@@ -79,6 +79,13 @@ if __name__ == '__main__':
             help='Full path to file that is used to store a log of what is displayed on screen (*.txt).'
         )
     parser.add_argument(
+            '--print_output',
+            required=False,
+            default='yes',
+            choices=['yes', 'no'],
+            help='Whether to output to the screen (default is yes).'
+        )
+    parser.add_argument(
             '--debug_mode',
             required=False,
             default='no',
@@ -91,7 +98,7 @@ if __name__ == '__main__':
     args = None
     args = parser.parse_args()
     if args is not None:
-        listener = listeners.CliProgressListener(args.log_file_fullfname)
+        listener = listeners.CliProgressListener(args.log_file_fullfname, print_output=args.print_output == 'yes')
         listener.log_output('='*100)
         listener.log_output('version:  {}'.format(asemi_segmenter.__version__))
         listener.log_output('hostname: {}'.format(socket.gethostname()))

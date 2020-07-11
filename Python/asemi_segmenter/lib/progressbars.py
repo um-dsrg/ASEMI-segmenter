@@ -90,8 +90,7 @@ class ProgressBar(object):
                 post_bar_line
                 )
 
-        if self.print_output:
-            print('\r'+line, end='')
+        print('\r'+line, end='')
 
     #########################################
     def init(self):
@@ -104,7 +103,9 @@ class ProgressBar(object):
             self.iter_times = list()
         self.total_iter_times = 0.0
         self.iter_times_count = 0
-        self.__show_bar()
+
+        if self.print_output:
+            self.__show_bar()
 
     #########################################
     def update(self, iterations=1):
@@ -131,7 +132,8 @@ class ProgressBar(object):
             self.iter_times_count = len(self.iter_times)
         self.prev_time = time_now
 
-        self.__show_bar()
+        if self.print_output:
+            self.__show_bar()
 
     #########################################
     def close(self):
