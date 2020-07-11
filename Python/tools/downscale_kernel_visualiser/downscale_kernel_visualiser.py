@@ -58,7 +58,7 @@ def main():
     print('Running...')
 
     full_volume = volumes.FullVolume(args.volume_fullfname)
-    full_volume.load()
+    full_volume.load(as_readonly=True)
     in_array = full_volume.get_scale_array(0)[:]
 
     visualise(in_array, sigma=args.sigma)

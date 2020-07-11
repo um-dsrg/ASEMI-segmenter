@@ -99,11 +99,11 @@ def main():
     parser.add_argument('--scale', required=True, type=int,
         help='The scale of the volume to view.')
     args = parser.parse_args()
-    
+
     print('Running...')
-    
+
     full_volume = volumes.FullVolume(args.volume_fullfname)
-    full_volume.load()
+    full_volume.load(as_readonly=True)
     in_array = full_volume.get_scale_array(args.scale)[:]
 
     display_volume(in_array, relative_intensities=True, cross_section='corner')

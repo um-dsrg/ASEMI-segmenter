@@ -17,7 +17,7 @@ from asemi_segmenter.lib import arrayprocs
 #########################################
 def extract_features(preproc_volume_fullfname, featuriser_config, volume_slice_index, volume_slice_count, max_processes_featuriser, max_batch_memory, save_as=None, use_gpu=False):
     full_volume = volumes.FullVolume(preproc_volume_fullfname)
-    full_volume.load()
+    full_volume.load(as_readonly=True)
 
     featuriser = featurisers.load_featuriser_from_config(featuriser_config, use_gpu=use_gpu)
 

@@ -91,7 +91,7 @@ def _creating_empty_data_file(
             raise skip
         volume_shape = (len(volume_fullfnames), *slice_shape)
         full_volume.create(config_data, volume_shape)
-    full_volume.load()
+    full_volume.load(as_readonly=False)
 
     return ()
 
