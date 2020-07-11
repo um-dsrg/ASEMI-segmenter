@@ -169,7 +169,7 @@ def _evaluating(
             raise skip
         evaluation_results_file.create(segmenter.classifier.labels)
 
-    labels_palette = colours.LabelPalette(['unlabelled'] + segmenter.classifier.labels)
+    labels_palette = colours.LabelPalette([''] + segmenter.classifier.labels)
     images.save_image(
         os.path.join(results_dir, 'legend.tiff'),
         images.matplotlib_to_imagedata(labels_palette.get_legend()),

@@ -18,23 +18,25 @@ cmap = json.loads(
 #########################################
 class LabelPalette(object):
     '''Create a colour palette in 8-bit RGB, one colour for each label.'''
-    
+
     #########################################
     def __init__(self, label_names, skip_colours=0):
         '''
         Constructor.
-    
+
         :param list label_names: A list of label names in a desired order such that
             the index of the label name is the label index of that label.
         :param int skip_colours: The number of colours in the sequence to skip
             (colours are in a fixed sequence).
         '''
         self.label_names = label_names
-        
+
         self.names_palette = {
             label: tuple(cmap[i + skip_colours])
             for (i, label) in enumerate(label_names)
             }
+        if len(self.names_palette) != len(self.label_names):
+            raise ValueError('Cannot have duplicate label names.')
         self.index2colour = np.array([
             self.names_palette[label]
             for label in self.label_names
@@ -43,12 +45,12 @@ class LabelPalette(object):
             self.names_palette[label]: i + skip_colours
             for (i, label) in enumerate(self.label_names)
             }
-    
+
     #########################################
     def get_legend(self):
         '''
         Get a matplotlib figure showing a legend of colours to label names.
-        
+
         :return: Matplotlib figure with just a legend.
         :rtype: matplotlib.pyplot.Figure
         '''
@@ -65,14 +67,14 @@ class LabelPalette(object):
             prop={'size': 16}
             )
         ax.axis('off')
-        
+
         return fig
 
     #########################################
     def label_indexes_to_colours(self, label_indexes):
         '''
         Convert an array of label indexes to an 8-bit RGB array.
-        
+
         :param numpy.ndarray label_indexes: Numpy array (of any shape) of integer label
             indexes.
         :return: Numpy array of same shape as label_indexes plus an extra dimension for
@@ -80,12 +82,12 @@ class LabelPalette(object):
         :rtype: numpy.ndarray
         '''
         return self.index2colour[label_indexes]
-    
+
     #########################################
     def colours_to_label_indexes(self, colours):
         '''
         Convert an 8-bit RGB array to an array of label indexes.
-        
+
         :param numpy.ndarray colours: Numpy array (of any shape) of RGB channels.
         :return: Numpy array of same shape as colours minues the extra dimension
             for the RGB channels.

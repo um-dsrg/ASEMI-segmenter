@@ -111,7 +111,7 @@ def _analysing(
             listener.log_output('>> Skipped as was found checkpointed')
             raise skip
 
-        label_palette = colours.LabelPalette(['unlabelled'] + labels)
+        label_palette = colours.LabelPalette([''] + labels)
         images.save_image(
             os.path.join(results_dir, 'legend.tiff'),
             images.matplotlib_to_imagedata(label_palette.get_legend()),

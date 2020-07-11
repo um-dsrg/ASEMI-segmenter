@@ -56,7 +56,7 @@ def main():
     evaluation_results_file = results.EvaluationResultsFile(os.path.join(args.results_dir, 'results.txt'), evaluation)
     evaluation_results_file.create(labels)
 
-    labels_palette = colours.LabelPalette(['unlabelled'] + labels)
+    labels_palette = colours.LabelPalette([''] + labels)
     images.save_image(
         os.path.join(args.results_dir, 'legend.tiff'),
         images.matplotlib_to_imagedata(labels_palette.get_legend()),
