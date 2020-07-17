@@ -1,3 +1,5 @@
+#!/bin/bash
+
 python time_space_complexity.py \
     --train_config_fullfname "train_config.json" \
     --segment_config_fullfname "segment_config.json" \

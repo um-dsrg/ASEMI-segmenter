@@ -1,3 +1,5 @@
+#!/bin/bash
+
 python evaluate_masks.py \
     --groundtruth_labels \
         "../../example_volume/volume/all_labels_(not_expected)/air" \

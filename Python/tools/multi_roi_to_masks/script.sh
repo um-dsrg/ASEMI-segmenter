@@ -1,3 +1,5 @@
+#!/bin/bash
+
 python multi_roi_to_masks.py \
     --input "../masks_to_multi_roi/output" \
     --output "output" \

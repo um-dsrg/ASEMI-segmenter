@@ -1,3 +1,5 @@
+#!/bin/bash
+
 python masks_to_multi_roi.py \
     --input \
         "../../example_volume/output/segment/air" \

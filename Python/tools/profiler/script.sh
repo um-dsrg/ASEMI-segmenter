@@ -1,3 +1,5 @@
+#!/bin/bash
+
 python profiler.py \
     --volume_fullfname "../../example_volume/output/preprocess/volume.hdf" \
     --segmenter_fullfname "../../example_volume/output/train/segmenter.pkl" \
