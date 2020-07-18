@@ -135,5 +135,25 @@ def main():
 
     evaluation_results_file.conclude()
 
+    global_confusion_matrix = np.zeros(
+        (len(labels), len(labels)),
+        np.uint64
+        )
+    for i in range(num_slices):
+        with open(os.path.join(args.results_dir, 'slice_{}'.format(i + 1), 'confusion_matrix.txt'), 'r', encoding='utf-8') as f:
+            confusion_matrix = np.array([
+                [ int(str_freq) for str_freq in line.split('\t')[1:-1] ]
+                for line in f.read().strip().split('\n')[1:-1]
+                ],
+                np.uint64
+                )
+        global_confusion_matrix += confusion_matrix
+
+    results.save_confusion_matrix(
+        os.path.join(args.results_dir, 'global_confusion_matrix.txt'),
+        global_confusion_matrix,
+        labels
+        )
+
 if __name__ == '__main__':
    main()

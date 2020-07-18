@@ -294,6 +294,30 @@ def _evaluating(
             raise skip
         evaluation_results_file.conclude()
 
+    with checkpoint.apply('global_confusion_matrix') as skip:
+        if skip is not None:
+            raise skip
+
+        global_confusion_matrix = np.zeros(
+            (len(segmenter.classifier.labels), len(segmenter.classifier.labels)),
+            np.uint64
+            )
+        for (i, volume_slice_index) in enumerate(volume_slice_indexes_in_subvolume):
+            with open(os.path.join(results_dir, 'slice_{}'.format(i + 1), 'confusion_matrix.txt'), 'r', encoding='utf-8') as f:
+                confusion_matrix = np.array([
+                    [ int(str_freq) for str_freq in line.split('\t')[1:-1] ]
+                    for line in f.read().strip().split('\n')[1:-1]
+                    ],
+                    np.uint64
+                    )
+            global_confusion_matrix += confusion_matrix
+
+        results.save_confusion_matrix(
+            os.path.join(results_dir, 'global_confusion_matrix.txt'),
+            global_confusion_matrix,
+            segmenter.classifier.labels
+            )
+
     return ()
 
 
