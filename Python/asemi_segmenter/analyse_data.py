@@ -4,6 +4,7 @@ import sys
 import random
 import os
 import json
+import math
 import numpy as np
 from asemi_segmenter import listeners
 from asemi_segmenter.lib import datasets
@@ -11,6 +12,7 @@ from asemi_segmenter.lib import images
 from asemi_segmenter.lib import times
 from asemi_segmenter.lib import validations
 from asemi_segmenter.lib import volumes
+from asemi_segmenter.lib import files
 from asemi_segmenter.lib import colours
 from asemi_segmenter.lib import checkpoints
 
@@ -91,6 +93,10 @@ def _analysing(
     labels = sorted(label_data.name for label_data in labels_data)
     slice_shape = labels_data[0].shape
     slice_size = np.prod(labels_data[0].shape).tolist()
+    num_digits_in_filename = math.ceil(math.log10(len(subvolume_fullfnames)+1))
+
+    for i in range(len(subvolume_fullfnames)):
+        files.mkdir(os.path.join(results_dir, 'slice_{:0>{}d}'.format(i + 1, num_digits_in_filename)))
 
     listener.log_output('> Creating overlap matrices')
     with checkpoint.apply('overlap_matrices') as skip:
@@ -100,10 +106,20 @@ def _analysing(
 
         overlap_matrices = volumes.get_label_overlap(labels_data)
         for (i, overlap_matrix) in enumerate(overlap_matrices):
-            with open(os.path.join(results_dir, 'overlap_slice_{}.txt'.format(i + 1)), 'w', encoding='utf-8') as f:
+            with open(os.path.join(results_dir, 'slice_{:0>{}d}'.format(i + 1, num_digits_in_filename), 'overlap_matrix.txt'.format(i + 1)), 'w', encoding='utf-8') as f:
                 print('', *labels, sep='\t', file=f)
                 for label1 in labels:
                     print(label1, *[overlap_matrix[label1][label2] for label2 in labels], sep='\t', file=f)
+
+        global_overlap_matrix = {label: {label: 0 for label in labels} for label in labels}
+        for (i, overlap_matrix) in enumerate(overlap_matrices):
+            for label1 in labels:
+                for label2 in labels:
+                    global_overlap_matrix[label1][label2] += overlap_matrix[label1][label2]
+        with open(os.path.join(results_dir, 'global_overlap_matrix.txt'), 'w', encoding='utf-8') as f:
+            print('', *labels, sep='\t', file=f)
+            for label1 in labels:
+                print(label1, *[global_overlap_matrix[label1][label2] for label2 in labels], sep='\t', file=f)
 
     listener.log_output('> Visualising dataset')
     with checkpoint.apply('visualising_dataset') as skip:
@@ -120,13 +136,13 @@ def _analysing(
             )
 
         loaded_labels = volumes.load_labels(labels_data)
-        for slice_index in range(len(subvolume_fullfnames)):
+        for i in range(len(subvolume_fullfnames)):
             reshaped_slice_labels = np.reshape(
-                loaded_labels[slice_index*slice_size:(slice_index + 1)*slice_size],
+                loaded_labels[i*slice_size:(i + 1)*slice_size],
                 slice_shape
                 )
             images.save_image(
-                os.path.join(results_dir, 'full_slice_{}.tiff'.format(slice_index + 1)),
+                os.path.join(results_dir, 'slice_{:0>{}d}'.format(i + 1, num_digits_in_filename), 'true_labels.tiff'),
                 label_palette.label_indexes_to_colours(
                     np.where(
                         reshaped_slice_labels >= volumes.FIRST_CONTROL_LABEL,
@@ -169,7 +185,7 @@ def _analysing(
                     im[row-r:row+r+1, col-r:col+r+1, :] = colour
 
                 images.save_image(
-                    os.path.join(results_dir, 'samples_slice_{}.tiff'.format(i + 1)),
+                    os.path.join(results_dir, 'slice_{:0>{}d}'.format(i + 1, num_digits_in_filename), 'sampled_labels.tiff'),
                     im,
                     num_bits=8,
                     compress=True
