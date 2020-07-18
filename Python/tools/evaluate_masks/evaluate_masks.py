@@ -121,7 +121,8 @@ def main():
                 )
             confusion_map_saver.save(
                 os.path.join(args.results_dir, 'slice_{:0>{}d}'.format(i + 1, num_digits_in_filename), 'confusion_map_{}.tiff'.format(label)),
-                confusion_map
+                confusion_map,
+                label_index
                 )
 
         evaluation_results_file.add(

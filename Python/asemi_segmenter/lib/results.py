@@ -60,14 +60,24 @@ class ConfusionMapSaver(object):
         self.palette = colours.LabelPalette(label_names, skip_colours)
 
     #########################################
-    def save(self, fullfname, confusion_map):
+    def save(self, fullfname, confusion_map, curr_label_index, input_slice=None):
         '''
         Save a confusion map.
 
         :param str fullfname: The full file name (with path) of the image file.
         :param numpy.ndarray confusion_map: The numpy array containing the confusion map.
+        :param int curr_label_index: The label index that is currently being focussed on.
+        :param numpy.ndarray input_slice: The numpy array with the grey scale input slice.
+            If None then correct classifications will be given the colour of the
+            current label index, otherwise the input slice pixels will be used.
         '''
         image = self.palette.label_indexes_to_colours(confusion_map)
+        if input_slice is not None:
+            image = np.where(
+                np.repeat(np.reshape(confusion_map == curr_label_index, confusion_map.shape+(1,)), 3, axis=2),
+                np.repeat(np.reshape(images.convert_dtype(input_slice, 8), input_slice.shape+(1,)), 3, axis=2),
+                image
+                )
         images.save_image(fullfname, image, num_bits=8, compress=True)
 
 

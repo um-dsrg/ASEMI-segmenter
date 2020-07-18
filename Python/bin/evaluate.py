@@ -49,6 +49,13 @@ if __name__ == '__main__':
             help='Full path to results directory to contain results of this process.'
         )
     parser.add_argument(
+            '--confusion_map_with_input_slice',
+            required=False,
+            default='yes',
+            choices=['yes', 'no'],
+            help='Whether to use the input slice as a background for the confusion map. If false then the label colour of the label in question will be used. (default is yes).'
+        )
+    parser.add_argument(
             '--checkpoint_fullfname',
             required=False,
             default=None,
@@ -135,6 +142,7 @@ if __name__ == '__main__':
             subvolume_dir=args.subvolume_dir,
             label_dirs=args.label_dirs,
             results_dir=args.results_dir,
+            confusion_map_with_input_slice=args.confusion_map_with_input_slice == 'yes',
             checkpoint_fullfname=args.checkpoint_fullfname,
             checkpoint_namespace=args.checkpoint_namespace,
             reset_checkpoint=args.reset_checkpoint == 'yes',

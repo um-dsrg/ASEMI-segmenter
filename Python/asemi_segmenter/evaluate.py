@@ -24,7 +24,7 @@ from asemi_segmenter.lib import featurisers
 #########################################
 def _loading_data(
         segmenter, preproc_volume_fullfname, subvolume_dir, label_dirs, results_dir,
-        checkpoint_fullfname, checkpoint_namespace, reset_checkpoint, checkpoint_init,
+        confusion_map_with_input_slice, checkpoint_fullfname, checkpoint_namespace, reset_checkpoint, checkpoint_init,
         max_processes_featuriser, max_processes_classifier,
         max_batch_memory, use_gpu, listener
     ):
@@ -107,6 +107,7 @@ def _loading_data(
     hash_function.init(slice_shape, seed=0)
 
     listener.log_output('> Other parameters:')
+    listener.log_output('>> confusion_map_with_input_slice: {}'.format(confusion_map_with_input_slice))
     listener.log_output('>> reset_checkpoint: {}'.format(reset_checkpoint))
     listener.log_output('>> max_processes_featuriser: {}'.format(max_processes_featuriser))
     listener.log_output('>> max_processes_classifier: {}'.format(max_processes_classifier))
@@ -154,7 +155,7 @@ def _constructing_labels_dataset(
 
 #########################################
 def _evaluating(
-        full_volume, segmenter, slice_shape, slice_size, subvolume_fullfnames, volume_slice_indexes_in_subvolume, subvolume_slice_labels, evaluation, checkpoint, evaluation_results_file, results_dir, best_block_shape, max_processes_featuriser, max_processes_classifier, max_batch_memory, listener
+        full_volume, segmenter, slice_shape, slice_size, subvolume_fullfnames, volume_slice_indexes_in_subvolume, subvolume_slice_labels, evaluation, checkpoint, evaluation_results_file, results_dir, confusion_map_with_input_slice, best_block_shape, max_processes_featuriser, max_processes_classifier, max_batch_memory, listener
     ):
     '''Evaluating stage.'''
     num_digits_in_filename = math.ceil(math.log10(len(subvolume_fullfnames)+1))
@@ -276,7 +277,9 @@ def _evaluating(
                         )
                     confusion_map_saver.save(
                         os.path.join(results_dir, 'slice_{:0>{}d}'.format(i + 1, num_digits_in_filename), 'confusion_map_{}.tiff'.format(label)),
-                        confusion_map
+                        confusion_map,
+                        label_index,
+                        full_volume.get_scale_array(0)[volume_slice_index, :, :] if confusion_map_with_input_slice else None
                         )
 
             evaluation_results_file.add(
@@ -331,6 +334,7 @@ def main(
         subvolume_dir,
         label_dirs,
         results_dir,
+        confusion_map_with_input_slice=True,
         checkpoint_fullfname=None,
         checkpoint_namespace='evaluate',
         reset_checkpoint=False,
@@ -357,6 +361,9 @@ def main(
         the number of images in each directory being equal to the number of subvolume
         images.
     :param str results_dir: The path to the directory to contain the results of this command.
+    :param bool confusion_map_with_input_slice: Whether to use the input slice as a
+        background for the confusion map. If false then the label colour of the
+        label in question will be used.
     :param str checkpoint_fullfname: Full file name (with path) to checkpoint pickle.
         If None then no checkpointing is used.
     :param str checkpoint_namespace: Namespace for the checkpoint file.
@@ -393,7 +400,7 @@ def main(
             with times.Timer() as timer:
                 (full_volume, slice_shape, slice_size, segmenter, subvolume_fullfnames, labels_data, hash_function, evaluation, evaluation_results_file, best_block_shape, checkpoint) = _loading_data(
                     segmenter, preproc_volume_fullfname, subvolume_dir, label_dirs, results_dir,
-                    checkpoint_fullfname, checkpoint_namespace, reset_checkpoint,
+                    confusion_map_with_input_slice, checkpoint_fullfname, checkpoint_namespace, reset_checkpoint,
                     checkpoint_init, max_processes_featuriser, max_processes_classifier, max_batch_memory, use_gpu, listener
                     )
             listener.log_output('Data loaded')
@@ -433,7 +440,7 @@ def main(
                 listener.log_output(times.get_timestamp())
                 listener.log_output('Evaluating')
                 with times.Timer() as timer:
-                    () = _evaluating(full_volume, segmenter, slice_shape, slice_size, subvolume_fullfnames, volume_slice_indexes_in_subvolume, subvolume_slice_labels, evaluation, checkpoint, evaluation_results_file, results_dir, best_block_shape, max_processes_featuriser, max_processes_classifier, max_batch_memory, listener)
+                    () = _evaluating(full_volume, segmenter, slice_shape, slice_size, subvolume_fullfnames, volume_slice_indexes_in_subvolume, subvolume_slice_labels, evaluation, checkpoint, evaluation_results_file, results_dir, confusion_map_with_input_slice, best_block_shape, max_processes_featuriser, max_processes_classifier, max_batch_memory, listener)
                 listener.log_output('Evaluated')
                 listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
                 listener.log_output('')

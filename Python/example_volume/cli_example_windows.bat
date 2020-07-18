@@ -80,6 +80,7 @@ python ..\bin\evaluate.py ^
         "testing_set\labels\tissues" ^
         "testing_set\labels\bones" ^
     --results_dir "output\evaluate" ^
+    --confusion_map_with_input_slice "yes" ^
     --checkpoint_fullfname "output\checkpoint.json" ^
     --log_file_fullfname "output\log.txt" ^
     --max_processes_featuriser 4 ^
