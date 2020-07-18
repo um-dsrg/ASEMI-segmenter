@@ -2,6 +2,7 @@
 
 import pickle
 import os
+import math
 import numpy as np
 from asemi_segmenter import listeners
 from asemi_segmenter.lib import arrayprocs
@@ -156,6 +157,8 @@ def _evaluating(
         full_volume, segmenter, slice_shape, slice_size, subvolume_fullfnames, volume_slice_indexes_in_subvolume, subvolume_slice_labels, evaluation, checkpoint, evaluation_results_file, results_dir, best_block_shape, max_processes_featuriser, max_processes_classifier, max_batch_memory, listener
     ):
     '''Evaluating stage.'''
+    num_digits_in_filename = math.ceil(math.log10(len(subvolume_fullfnames)+1))
+
     listener.log_output('> Label sizes:')
     for (i, volume_slice_index) in enumerate(volume_slice_indexes_in_subvolume):
         listener.log_output('>> Subvolume slice #{} (volume slice #{})'.format(i + 1, volume_slice_index + 1))
@@ -186,7 +189,7 @@ def _evaluating(
         all_predicted_labels.append(
             labels_palette.colours_to_label_indexes(
                 images.load_image(
-                    os.path.join(results_dir, 'slice_{}'.format(i + 1), 'predicted_labels.tiff'),
+                    os.path.join(results_dir, 'slice_{:0>{}d}'.format(i + 1, num_digits_in_filename), 'predicted_labels.tiff'),
                     num_bits=8
                     )
                 ) - 1
@@ -217,14 +220,14 @@ def _evaluating(
 
                 slice_labels = subvolume_slice_labels[i*slice_size:(i+1)*slice_size]
 
-                files.mkdir(os.path.join(results_dir, 'slice_{}'.format(i + 1)))
+                files.mkdir(os.path.join(results_dir, 'slice_{:0>{}d}'.format(i + 1, num_digits_in_filename)))
 
                 reshaped_prediction = prediction.reshape(slice_shape)
                 reshaped_slice_labels = slice_labels.reshape(slice_shape)
 
                 for scale in segmenter.featuriser.get_scales_needed():
                     images.save_image(
-                        os.path.join(results_dir, 'slice_{}'.format(i + 1), 'input_slice_scale_{}.tiff'.format(scale)),
+                        os.path.join(results_dir, 'slice_{:0>{}d}'.format(i + 1, num_digits_in_filename), 'input_slice_scale_{}.tiff'.format(scale)),
                         full_volume.get_scale_array(scale)[
                             downscales.downscale_pos(volume_slice_index, scale),
                             :, :
@@ -233,7 +236,7 @@ def _evaluating(
                         )
 
                 images.save_image(
-                    os.path.join(results_dir, 'slice_{}'.format(i + 1), 'true_labels.tiff'),
+                    os.path.join(results_dir, 'slice_{:0>{}d}'.format(i + 1, num_digits_in_filename), 'true_labels.tiff'),
                     labels_palette.label_indexes_to_colours(
                         np.where(
                             reshaped_slice_labels >= volumes.FIRST_CONTROL_LABEL,
@@ -246,7 +249,7 @@ def _evaluating(
                     )
 
                 images.save_image(
-                    os.path.join(results_dir, 'slice_{}'.format(i + 1), 'predicted_labels.tiff'),
+                    os.path.join(results_dir, 'slice_{:0>{}d}'.format(i + 1, num_digits_in_filename), 'predicted_labels.tiff'),
                     labels_palette.label_indexes_to_colours(
                         reshaped_prediction + 1
                         ),
@@ -260,7 +263,7 @@ def _evaluating(
                     len(segmenter.classifier.labels)
                     )
                 results.save_confusion_matrix(
-                    os.path.join(results_dir, 'slice_{}'.format(i + 1), 'confusion_matrix.txt'),
+                    os.path.join(results_dir, 'slice_{:0>{}d}'.format(i + 1, num_digits_in_filename), 'confusion_matrix.txt'),
                     confusion_matrix,
                     segmenter.classifier.labels
                     )
@@ -272,7 +275,7 @@ def _evaluating(
                         label_index
                         )
                     confusion_map_saver.save(
-                        os.path.join(results_dir, 'slice_{}'.format(i + 1), 'confusion_map_{}.tiff'.format(label)),
+                        os.path.join(results_dir, 'slice_{:0>{}d}'.format(i + 1, num_digits_in_filename), 'confusion_map_{}.tiff'.format(label)),
                         confusion_map
                         )
 
@@ -303,7 +306,7 @@ def _evaluating(
             np.uint64
             )
         for (i, volume_slice_index) in enumerate(volume_slice_indexes_in_subvolume):
-            with open(os.path.join(results_dir, 'slice_{}'.format(i + 1), 'confusion_matrix.txt'), 'r', encoding='utf-8') as f:
+            with open(os.path.join(results_dir, 'slice_{:0>{}d}'.format(i + 1, num_digits_in_filename), 'confusion_matrix.txt'), 'r', encoding='utf-8') as f:
                 confusion_matrix = np.array([
                     [ int(str_freq) for str_freq in line.split('\t')[1:-1] ]
                     for line in f.read().strip().split('\n')[1:-1]

@@ -46,6 +46,7 @@ def main():
     num_slices = len(groundtruth_labels_data[0].fullfnames)
     slice_shape = groundtruth_labels_data[0].shape
     slice_size = slice_shape[0]*slice_shape[1]
+    num_digits_in_filename = math.ceil(math.log10(len(num_slices)+1))
 
     print('Loading groundtruth labels')
     all_groundtruths = volumes.load_labels(groundtruth_labels_data)
@@ -70,13 +71,13 @@ def main():
         groundtruth_slice_labels = all_groundtruths[i*slice_size:(i+1)*slice_size]
         predicted_slice_labels = all_predictions[i*slice_size:(i+1)*slice_size]
 
-        files.mkdir(os.path.join(args.results_dir, 'slice_{}'.format(i + 1)))
+        files.mkdir(os.path.join(args.results_dir, 'slice_{:0>{}d}'.format(i + 1, num_digits_in_filename)))
 
         reshaped_groundtruth_slice_labels = groundtruth_slice_labels.reshape(slice_shape)
         reshaped_prediction_slice_labels = predicted_slice_labels.reshape(slice_shape)
 
         images.save_image(
-            os.path.join(args.results_dir, 'slice_{}'.format(i + 1), 'true_labels.tiff'),
+            os.path.join(args.results_dir, 'slice_{:0>{}d}'.format(i + 1, num_digits_in_filename), 'true_labels.tiff'),
             labels_palette.label_indexes_to_colours(
                 np.where(
                     reshaped_groundtruth_slice_labels >= volumes.FIRST_CONTROL_LABEL,
@@ -89,7 +90,7 @@ def main():
             )
 
         images.save_image(
-            os.path.join(args.results_dir, 'slice_{}'.format(i + 1), 'predicted_labels.tiff'),
+            os.path.join(args.results_dir, 'slice_{:0>{}d}'.format(i + 1, num_digits_in_filename), 'predicted_labels.tiff'),
             labels_palette.label_indexes_to_colours(
                 np.where(
                     reshaped_prediction_slice_labels >= volumes.FIRST_CONTROL_LABEL,
@@ -107,7 +108,7 @@ def main():
             len(labels)
             )
         results.save_confusion_matrix(
-            os.path.join(args.results_dir, 'slice_{}'.format(i + 1), 'confusion_matrix.txt'),
+            os.path.join(args.results_dir, 'slice_{:0>{}d}'.format(i + 1, num_digits_in_filename), 'confusion_matrix.txt'),
             confusion_matrix,
             labels
             )
@@ -119,7 +120,7 @@ def main():
                 label_index
                 )
             confusion_map_saver.save(
-                os.path.join(args.results_dir, 'slice_{}'.format(i + 1), 'confusion_map_{}.tiff'.format(label)),
+                os.path.join(args.results_dir, 'slice_{:0>{}d}'.format(i + 1, num_digits_in_filename), 'confusion_map_{}.tiff'.format(label)),
                 confusion_map
                 )
 
@@ -140,7 +141,7 @@ def main():
         np.uint64
         )
     for i in range(num_slices):
-        with open(os.path.join(args.results_dir, 'slice_{}'.format(i + 1), 'confusion_matrix.txt'), 'r', encoding='utf-8') as f:
+        with open(os.path.join(args.results_dir, 'slice_{:0>{}d}'.format(i + 1, num_digits_in_filename), 'confusion_matrix.txt'), 'r', encoding='utf-8') as f:
             confusion_matrix = np.array([
                 [ int(str_freq) for str_freq in line.split('\t')[1:-1] ]
                 for line in f.read().strip().split('\n')[1:-1]

@@ -5,6 +5,7 @@
 
 import sys
 import os
+import math
 import PIL.Image
 import numpy as np
 import argparse
@@ -122,10 +123,20 @@ def main():
         mp.Process(target=worker, args=(queue_in, queue_out, args.soft)).start()
 
     # iterate through each slice
+    num_digits_in_filename = math.ceil(math.log10(N+1))
     for (i, images) in enumerate(zip(*filestack)):
         print("Scheduling %d of %d..." % (i+1, N))
         paths = [os.path.join(a,b) for a,b in zip(args.input, images)]
-        queue_in.put((i, paths, os.path.join(args.output, "%05d.tiff" % (i+1))))
+        queue_in.put(
+            (
+                i,
+                paths,
+                os.path.join(
+                    args.output,
+                    "{:0>{}d}.tiff".format(i + 1, num_digits_in_filename)
+                    )
+                )
+            )
 
     # wait on completion
     for i in range(N):
