@@ -376,7 +376,8 @@ def _tuning(
                                     )
                             training_set = training_set.without_control_labels()
 
-                        segmenter.train(training_set, max_processes_classifier)
+                        with times.Timer() as training_timer:
+                            segmenter.train(training_set, max_processes_classifier)
 
                         iou_lists = [[] for _ in range(len(segmenter.classifier.labels))]
                         if eval_sample_size_per_label != -1:
@@ -396,10 +397,12 @@ def _tuning(
                                 features_table=features_table
                                 )
 
-                            prediction = segmenter.segment_to_label_indexes(eval_set.get_features_array(), max_processes_classifier)
+                            with times.Timer() as classification_timer:
+                                prediction = segmenter.segment_to_label_indexes(eval_set.get_features_array(), max_processes_classifier)
 
                             evaluation.evaluate(prediction, eval_set.get_labels_array())
                         else:
+                            classification_timer = times.Timer()
                             for (i, volume_slice_index) in enumerate(volume_slice_indexes_in_eval_subvolume):
                                 slice_features = segmenter.featuriser.featurise_slice(
                                     full_volume.get_scale_arrays(segmenter.featuriser.get_scales_needed()),
@@ -408,7 +411,8 @@ def _tuning(
                                     max_processes=max_processes_featuriser
                                     )
 
-                                prediction = segmenter.segment_to_label_indexes(slice_features, max_processes_classifier)
+                                with classification_timer:
+                                    prediction = segmenter.segment_to_label_indexes(slice_features, max_processes_classifier)
 
                                 evaluation.evaluate(prediction, eval_subvolume_slice_labels[i*slice_size:(i+1)*slice_size])
 
@@ -416,6 +420,8 @@ def _tuning(
                         'global',
                         iteration,
                         segmenter.get_config(),
+                        training_timer.duration,
+                        classification_timer.duration,
                         sub_timer.duration,
                         extra_col_values
                         )
@@ -492,7 +498,8 @@ def _tuning(
                                     )
                             training_set = training_set.without_control_labels()
 
-                        segmenter.train(training_set, max_processes_classifier)
+                        with times.Timer() as training_timer:
+                            segmenter.train(training_set, max_processes_classifier)
 
                         iou_lists = [[] for _ in range(len(segmenter.classifier.labels))]
                         if eval_sample_size_per_label != -1:
@@ -512,10 +519,12 @@ def _tuning(
                                 features_table=features_table
                                 )
 
-                            prediction = segmenter.segment_to_label_indexes(eval_set.get_features_array(), max_processes_classifier)
+                            with times.Timer() as classification_timer:
+                                prediction = segmenter.segment_to_label_indexes(eval_set.get_features_array(), max_processes_classifier)
 
                             evaluation.evaluate(prediction, eval_set.get_labels_array())
                         else:
+                            classification_timer = times.Timer()
                             for (i, volume_slice_index) in enumerate(volume_slice_indexes_in_eval_subvolume):
                                 slice_features = segmenter.featuriser.featurise_slice(
                                     full_volume.get_scale_arrays(segmenter.featuriser.get_scales_needed()),
@@ -524,7 +533,8 @@ def _tuning(
                                     max_processes=max_processes_featuriser
                                     )
 
-                                prediction = segmenter.segment_to_label_indexes(slice_features, max_processes_classifier)
+                                with classification_timer:
+                                    prediction = segmenter.segment_to_label_indexes(slice_features, max_processes_classifier)
 
                                 evaluation.evaluate(prediction, eval_subvolume_slice_labels[i*slice_size:(i+1)*slice_size])
 
@@ -532,6 +542,8 @@ def _tuning(
                         'local',
                         last_global_iteration + iteration,
                         segmenter.get_config(),
+                        training_timer.duration,
+                        classification_timer.duration,
                         sub_timer.duration,
                         extra_col_values
                         )

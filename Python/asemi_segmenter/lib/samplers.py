@@ -237,7 +237,7 @@ class ConstantSampler(Sampler):
 
         :param generic value: The new value.
         '''
-        pass
+        self.initialised = True
 
     #########################################
     def resample(self):
@@ -312,6 +312,7 @@ class IntegerSampler(Sampler):
             if math.log2(value)%1 != 0:
                 raise ValueError('New value is not a power of 2.')
         self.value = value
+        self.initialised = True
 
     #########################################
     def resample(self):
@@ -322,7 +323,6 @@ class IntegerSampler(Sampler):
             'uniform': (lambda:self.rng.randint(self.min, self.max)),
             'log2':    (lambda:2**self.rng.randint(int(math.log2(self.min)), int(math.log2(self.max))))
             }[self.distribution]())
-        self.initialised = True
 
 
 #########################################
@@ -387,6 +387,7 @@ class FloatSampler(Sampler):
         if value < self.min or value > self.max:
             raise ValueError('New value is not within given range.')
         self.value = value
+        self.initialised = True
 
     #########################################
     def resample(self):
@@ -397,4 +398,3 @@ class FloatSampler(Sampler):
             'uniform': (lambda:self.min + self.base*self.rng.randint(0, self.divisions)),
             'log':     (lambda:self.min*math.exp(self.base*self.rng.randint(0, self.divisions)))
             }[self.distribution]())
-        self.initialised = True

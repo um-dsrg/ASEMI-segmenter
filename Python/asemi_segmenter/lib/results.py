@@ -273,6 +273,8 @@ class TuningResultsFile(object):
                 'min {}'.format(self.evaluation.name),
                 'stddev {}'.format(self.evaluation.name),
                 *['{} {}'.format(label, self.evaluation.name) for label in labels],
+                'training duration (s)',
+                'classification duration (s)',
                 'total duration (s)',
                 *extra_col_names,
                 sep='\t', file=f
@@ -288,6 +290,8 @@ class TuningResultsFile(object):
                 if self.evaluation.is_percentage:
                     global_score = global_score[:-1]
                 global_score = float(global_score)
+                if self.evaluation.is_percentage:
+                    global_score /= 100
                 if global_score > self.best_globalscore:
                     self.best_globalscore = global_score
                     best_jsonconfig = json_config
@@ -295,13 +299,15 @@ class TuningResultsFile(object):
             self.best_config = json.loads(best_jsonconfig)
 
     #########################################
-    def add(self, phase, iteration, config, total_duration, extra_col_values=[]):
+    def add(self, phase, iteration, config, training_duration, classification_duration, total_duration, extra_col_values=[]):
         '''
         Add a new result to the file.
 
         :param str phase: The tuning phase which is either 'global' or 'local'.
         :param int iteration: The iteration number of the tuning (continues on change of phase).
         :param dict config: The configuation dictionary used to produce these results.
+        :param float training_duration: Duration of training.
+        :param float classification_duration: Duration of label classification.
         :param float total_duration: The total duration to compute the row.
         :param list extra_col_values: A list of extra columns to add.
         '''
@@ -344,6 +350,8 @@ class TuningResultsFile(object):
                         )
                     for result in label_scores
                     ],
+                '{:.1f}'.format(training_duration),
+                '{:.1f}'.format(classification_duration),
                 '{:.1f}'.format(total_duration),
                 *extra_col_values,
                 sep='\t', file=f
