@@ -188,7 +188,7 @@ class Segmenter(object):
         :param str fname: The full file name (with path) of the pickle file.
         '''
         pickle_data = {
-            'sklearn_model': self.classifier.sklearn_model,
+            'sklearn_model': self.classifier.get_picklable(),
             'labels': self.classifier.labels,
             'config': self.get_config()
             }

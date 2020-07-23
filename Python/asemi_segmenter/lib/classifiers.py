@@ -446,6 +446,16 @@ class Classifier(object):
         raise NotImplementedError()
 
     #########################################
+    def get_picklable(self):
+        '''
+        Get the classifier's inner model in a picklable form.
+
+        :return: The picklable object.
+        :rtype: object
+        '''
+        raise NotImplementedError()
+
+    #########################################
     def train(self, training_set, max_processes=1, verbose_training=True):
         '''
         Turn a slice from a volume into a matrix of feature vectors.
@@ -664,6 +674,16 @@ class LogisticRegressionClassifier(Classifier):
         '''
         return (self.c, self.max_iter)
 
+    #########################################
+    def get_picklable(self):
+        '''
+        Get the classifier's inner model in a picklable form.
+
+        :return: The picklable object.
+        :rtype: object
+        '''
+        return self.sklearn_model
+
 
 #########################################
 class NeuralNetworkClassifier(Classifier):
@@ -819,6 +839,16 @@ class NeuralNetworkClassifier(Classifier):
         '''
         return (tuple(self.hidden_layer_sizes), self.alpha, self.batch_size, self.max_iter)
 
+    #########################################
+    def get_picklable(self):
+        '''
+        Get the classifier's inner model in a picklable form.
+
+        :return: The picklable object.
+        :rtype: object
+        '''
+        return self.sklearn_model
+
 
 #########################################
 class DecisionTreeClassifier(Classifier):
@@ -935,6 +965,16 @@ class DecisionTreeClassifier(Classifier):
         :rtype: tuple
         '''
         return (self.max_depth, self.min_samples_leaf)
+
+    #########################################
+    def get_picklable(self):
+        '''
+        Get the classifier's inner model in a picklable form.
+
+        :return: The picklable object.
+        :rtype: object
+        '''
+        return self.sklearn_model
 
 
 #########################################
@@ -1066,3 +1106,14 @@ class RandomForestClassifier(Classifier):
         :rtype: tuple
         '''
         return (self.n_estimators, self.max_depth, self.min_samples_leaf)
+
+
+    #########################################
+    def get_picklable(self):
+        '''
+        Get the classifier's inner model in a picklable form.
+
+        :return: The picklable object.
+        :rtype: object
+        '''
+        return self.sklearn_model
