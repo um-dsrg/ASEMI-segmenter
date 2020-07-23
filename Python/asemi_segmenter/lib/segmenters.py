@@ -99,7 +99,7 @@ class Segmenter(object):
         self.classifier.set_sampler_values(config['classifier'])
 
     #########################################
-    def train(self, training_set, max_processes=1, listener=None):
+    def train(self, training_set, max_processes=1, verbose_training=False):
         '''
         Train the classifier using a provided training set.
 
@@ -110,10 +110,9 @@ class Segmenter(object):
             classifier where the features were constructed using the featuriser in this
             object.
         :param int max_processes: Number of processes to use.
-        :param callable listener: The listener to receive the sklearn verbose texts.
-            Listener should accept one string argument.
+        :param bool verbose_training: Whether to include sklearn's verbose texts.
         '''
-        self.classifier.train(training_set, max_processes, listener)
+        self.classifier.train(training_set, max_processes, verbose_training)
 
     #########################################
     def segment_to_label_indexes(self, features, max_processes=1):

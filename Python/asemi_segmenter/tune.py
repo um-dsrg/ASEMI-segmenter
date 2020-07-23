@@ -377,7 +377,7 @@ def _tuning(
                             training_set = training_set.without_control_labels()
 
                         with times.Timer() as training_timer:
-                            segmenter.train(training_set, max_processes_classifier)
+                            segmenter.train(training_set, max_processes_classifier, verbose_training=False)
 
                         iou_lists = [[] for _ in range(len(segmenter.classifier.labels))]
                         if eval_sample_size_per_label != -1:
@@ -499,7 +499,7 @@ def _tuning(
                             training_set = training_set.without_control_labels()
 
                         with times.Timer() as training_timer:
-                            segmenter.train(training_set, max_processes_classifier)
+                            segmenter.train(training_set, max_processes_classifier, verbose_training=False)
 
                         iou_lists = [[] for _ in range(len(segmenter.classifier.labels))]
                         if eval_sample_size_per_label != -1:

@@ -477,7 +477,6 @@ class Classifier(object):
             elif isinstance(self.sklearn_model.named_steps['classifier'].verbose, bool):
                 self.sklearn_model.named_steps['classifier'].verbose = False
 
-
     #########################################
     def predict_label_probs(self, features_array, max_processes=1):
         '''
