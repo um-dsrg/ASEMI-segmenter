@@ -10,6 +10,9 @@ import sklearn.linear_model
 import sklearn.neural_network
 import sklearn.tree
 import sklearn.ensemble
+with warnings.catch_warnings():
+    warnings.simplefilter('ignore', category=FutureWarning)
+    import tensorflow as tf
 from asemi_segmenter.lib import validations
 from asemi_segmenter.lib import samplers
 
@@ -390,6 +393,311 @@ def load_classifier_from_config(labels, config, sklearn_model=None, sampler_fact
 
     else:
         raise NotImplementedError('Classifier {} not implemented.'.format(config['type']))
+
+
+#########################################
+class SklearnLikeTensorflowNeuralNet(object):
+    '''
+    A feedforward neural network implemented in Tensorflow v1.
+
+    This implements the same interface as sklearn's MLPClassifier. It uses
+    leaky ReLU as activation functions, Adam as an optimiser, early stopping
+    on the validation accuracy with a patience of 3 as a terminating condition,
+    and the output is a softmax.
+    '''
+
+    #########################################
+    @staticmethod
+    def load_from_pickle(pickled_obj):
+        '''
+        Construct and load a usable neural network from its pickled version.
+
+        :param dict pickled_obj: The object returned by get_picklable().
+        :rtype: SklearnLikeTensorflowNeuralNet
+        :return: A neural network with its model parameters and hyperparameters set.
+        '''
+        model = SklearnLikeTensorflowNeuralNet(
+            hidden_layer_sizes=pickled_obj['hidden_layer_sizes'],
+            dropout_rate=pickled_obj['dropout_rate'],
+            init_stddev=pickled_obj['init_stddev'],
+            validation_fraction=pickled_obj['validation_fraction'],
+            batch_size=pickled_obj['batch_size'],
+            max_iter=pickled_obj['max_iter'],
+            verbose=pickled_obj['verbose'],
+            random_state=pickled_obj['random_state']
+            )
+        model._create_model(pickled_obj['num_inputs'], pickled_obj['num_outputs'])
+        model.set_model_params(pickled_obj['params'])
+        model._train_history = pickled_obj['train_history']
+        return model
+
+    #########################################
+    def __init__(self, hidden_layer_sizes, dropout_rate, init_stddev, validation_fraction, batch_size, max_iter, verbose, random_state):
+        '''
+        Constructor.
+
+        :param list hidden_layer_sizes: The ith element represents the number
+            of neurons in the ith hidden layer.
+        :param float dropout_rate: The fraction of neurons to randomly drop in
+            every layer for every training item.
+        :param float init_stddev: The standard deviation to use in a normal
+            random number generator to set the weights of the neural network.
+        :param float validation_fraction: The proportion of training data to set
+            aside as validation set for early stopping.
+        :param int batch_size: Size of minibatches during optimisation.
+        :param int max_iter: Maximum number of iterations. The optimiser
+            iterates until the early stopping condition or this number of
+            iterations. Note that this determines the number of epochs (how many
+            times each data point will be used), not the number of gradient
+            steps.
+        :param bool verbose: Whether to print progress messages to stdout.
+        :param int random_state: Determines random number generation for weights
+            initialization, train-validation split, and batch sampling. Pass an
+            int for reproducible results across multiple function calls.
+        '''
+        self.hidden_layer_sizes = hidden_layer_sizes
+        self.dropout_rate = dropout_rate
+        self.init_stddev = init_stddev
+        self.validation_fraction = validation_fraction
+        self.batch_size = batch_size
+        self.max_iter = max_iter
+        self.verbose = verbose
+        self.random_state = random_state
+        self._num_inputs = None
+        self._num_outputs = None
+        self._in_vecs = None
+        self._dropout = None
+        self._targets = None
+        self._params = []
+        self._out_probs = None
+        self._error = None
+        self._optimiser_step = None
+        self._init = None
+        self._sess = None
+        self._train_history = list()
+
+    #########################################
+    def _create_model(self, num_inputs, num_outputs):
+        '''Internal convenience function for creating the Tensorflow graph.'''
+        self._num_inputs = num_inputs
+        self._num_outputs = num_outputs
+        graph = tf.Graph()
+        with graph.as_default():
+            self._in_vecs = tf.placeholder(tf.float32, [None, num_inputs], 'in_vecs')
+            self._targets = tf.placeholder(tf.int32, [None], 'targets')
+            self._dropout = tf.placeholder(tf.bool, [], 'dropout')
+
+            self._params = []
+            dropout_keep_prob = tf.cond(self._dropout, lambda:tf.constant(1.0-self.dropout_rate, tf.float32), lambda:tf.constant(1.0, tf.float32))
+
+            prev_layer_size = num_inputs
+            prev_layer = self._in_vecs
+            for (i, layer_size) in enumerate(self.hidden_layer_sizes):
+                with tf.variable_scope('hidden{}'.format(i)):
+                    W = tf.get_variable('W', [prev_layer_size, layer_size], tf.float32, tf.zeros_initializer())
+                    W_in = tf.placeholder(tf.float32, [prev_layer_size, layer_size], 'W_in')
+                    W_setter = tf.assign(W, W_in)
+                    self._params.append((W, W_in, W_setter))
+
+                    b = tf.get_variable('b', [layer_size], tf.float32, tf.zeros_initializer())
+                    b_in = tf.placeholder(tf.float32, [layer_size], 'b_in')
+                    b_setter = tf.assign(b, b_in)
+                    self._params.append((b, b_in, b_setter))
+
+                    prev_layer_size = layer_size
+                    prev_layer = tf.nn.dropout(tf.nn.leaky_relu(tf.matmul(prev_layer, W) + b), dropout_keep_prob)
+
+            with tf.variable_scope('output'):
+                W = tf.get_variable('W', [prev_layer_size, num_outputs], tf.float32, tf.zeros_initializer())
+                W_in = tf.placeholder(tf.float32, [prev_layer_size, num_outputs], 'W_in')
+                W_setter = tf.assign(W, W_in)
+                self._params.append((W, W_in, W_setter))
+
+                b = tf.get_variable('b', [num_outputs], tf.float32, tf.zeros_initializer())
+                b_in = tf.placeholder(tf.float32, [num_outputs], 'b_in')
+                b_setter = tf.assign(b, b_in)
+                self._params.append((b, b_in, b_setter))
+
+                logits = tf.matmul(prev_layer, W) + b
+                self._out_probs = tf.nn.softmax(logits)
+
+            self._error = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(labels=self._targets, logits=logits))
+
+            self._optimiser_step = tf.train.AdamOptimizer().minimize(self._error)
+
+            self._init = tf.global_variables_initializer()
+
+            graph.finalize()
+
+            self._sess = tf.Session()
+
+    #########################################
+    def close(self):
+        '''Close the Tensorflow session.'''
+        if self._sess is not None:
+            self._sess.close()
+
+    #########################################
+    def get_model_params(self):
+        '''
+        Get the weights and biases of the trained neural network in the order of
+        layer 1 (closest to input) weights, layer 1 biases, layer 2 weights,
+        layer 2 biases, etc.
+
+        :rtype: list
+        :return: A list of numpy arrays.
+        '''
+        return [self._sess.run(p) for (p, p_in, p_setter) in self._params]
+
+    #########################################
+    def set_model_params(self, params):
+        '''
+        Set the model's weights and biases using a list returned by
+        get_model_params().
+
+        :param list params: A list of numpy arrays.
+        '''
+        if self._sess is None:
+            num_inputs = params[0].shape[0]
+            num_outputs = params[-1].shape[0]
+            self._create_model(num_inputs, num_outputs)
+        for ((p, p_in, p_setter), p_val) in zip(self._params, params):
+            self._sess.run(p_setter, { p_in: p_val })
+
+    #########################################
+    def fit(self, X, y):
+        '''
+        Fit the model to data matrix X and target(s) y.
+
+        :param numpy.ndarray X: The input data (n_samples, n_features).
+        :param numpy.ndarray y: The target value class labels (n_samples,).
+        '''
+        num_inputs = X.shape[1]
+        num_outputs = y.max() + 1
+        self._create_model(num_inputs, num_outputs)
+
+        self._sess.run(self._init, { })
+
+        rng = random.Random(self.random_state)
+
+        (X_train, X_val, y_train, y_val) = sklearn.model_selection.train_test_split(
+            X, y,
+            test_size=self.validation_fraction,
+            stratify=y,
+            random_state=rng.randrange(2**32)
+            )
+
+        params_rng = np.random.RandomState(rng.randrange(2**32))
+        for (p, p_in, p_setter) in self._params:
+            if len(p.get_shape()) == 2:
+                self._sess.run(p_setter, {
+                    p_in: params_rng.normal(0.0, self.init_stddev, size=p.get_shape().as_list())
+                    })
+
+        sgd_rng = np.random.RandomState(rng.randrange(2**32))
+        best_val_acc = 0.0
+        best_params = None
+        epochs_since_last_best_val_acc = 0
+        self._train_history = list()
+        if self.verbose:
+            print('\tepoch\tvalidation accuracy')
+        for epoch in range(1, self.max_iter + 1):
+            indexes = np.arange(len(X_train))
+            sgd_rng.shuffle(indexes)
+            for i in range(int(np.ceil(len(indexes)/self.batch_size))):
+                minibatch_indexes = indexes[i*self.batch_size:(i+1)*self.batch_size].tolist()
+                self._sess.run([ self._optimiser_step ], {
+                    self._in_vecs: X_train[minibatch_indexes],
+                    self._dropout: True,
+                    self._targets: y_train[minibatch_indexes]
+                    })
+
+            val_acc = np.sum(self.predict(X_val) == y_val)/len(X_val)
+            if val_acc > best_val_acc:
+                best_val_acc = val_acc
+                best_params = self.get_model_params()
+                epochs_since_last_best_val_acc = 0
+            else:
+                epochs_since_last_best_val_acc += 1
+
+            self._train_history.append(val_acc)
+            if self.verbose:
+                print('\t{}\t{:.2%}'.format(epoch, val_acc))
+
+            if epochs_since_last_best_val_acc >= 3:
+                break
+
+        self.set_model_params(best_params)
+
+    #########################################
+    def predict_proba(self, X):
+        '''
+        Probability estimates.
+
+        :param numpy.ndarray X: The input data.
+        :rtype numpy.ndarray
+        :return: The predicted probability of the sample for each class in the
+            model.
+        '''
+        return self._sess.run(self._out_probs, { self._in_vecs: X, self._dropout: False })
+
+    #########################################
+    def predict_log_proba(self, X):
+        '''
+        Return the log of probability estimates.
+
+        :param numpy.ndarray X: The input data.
+        :rtype numpy.ndarray
+        :return: The predicted log-probability of the sample for each class in
+            the model.
+        '''
+        return np.log(self.predict_proba(X))
+
+    #########################################
+    def predict(self, X):
+        '''
+        Predict using the multi-layer perceptron classifier.
+
+        :param numpy.ndarray X: The input data.
+        :rtype numpy.ndarray
+        :return: The predicted classes (n_samples,).
+        '''
+        return np.argmax(self.predict_proba(X), axis=1)
+
+    #########################################
+    def get_training_history(self):
+        '''
+        Get the training curve of the model in terms of validation accuracy for
+        each epoch.
+
+        :rtype: list
+        :return: The training history.
+        '''
+        return self._train_history
+
+    #########################################
+    def get_picklable(self):
+        '''
+        Get the classifier's hyperparameters and trained parameters in a
+        picklable form.
+
+        :rtype: dict
+        :return: The picklable object.
+        '''
+        return {
+            'hidden_layer_sizes': self.hidden_layer_sizes,
+            'dropout_rate': self.dropout_rate,
+            'init_stddev': self.init_stddev,
+            'validation_fraction': self.validation_fraction,
+            'batch_size': self.batch_size,
+            'max_iter': self.max_iter,
+            'verbose': self.verbose,
+            'random_state': self.random_state,
+            'num_inputs': self._num_inputs,
+            'num_outputs': self._num_outputs,
+            'params': self.get_model_params(),
+            'train_history': self._train_history
+            }
 
 
 #########################################
