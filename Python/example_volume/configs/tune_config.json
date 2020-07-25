@@ -62,7 +62,7 @@
         }
     },
     "classifier": {
-        "type": "neural_network",
+        "type": "tensorflow_neural_network",
         "params": {
             "hidden_layer_sizes": [
                 {
@@ -76,7 +76,13 @@
                     "distribution": "log2"
                 }
             ],
-            "alpha": {
+            "dropout_rate": {
+                "min": 0.0001,
+                "max": 1.0,
+                "divisions": 10,
+                "distribution": "log"
+            },
+            "init_stddev": {
                 "min": 0.0001,
                 "max": 1.0,
                 "divisions": 10,

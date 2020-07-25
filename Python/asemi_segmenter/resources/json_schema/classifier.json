@@ -418,6 +418,189 @@
             },
             "required": ["type", "params"],
             "additionalProperties": false
+        },
+
+        "tensorflow_neural_network": {
+            "type": "object",
+            "properties": {
+                "type": { "const": "tensorflow_neural_network" },
+                "params": {
+                    "type": "object",
+                    "properties": {
+                        "hidden_layer_sizes": {
+                            "type": "array",
+                            "items": {
+                                "oneOf": [
+                                    {
+                                        "type": "integer",
+                                        "minimum": 1
+                                    },
+                                    {
+                                        "type": "string",
+                                        "pattern": "^[a-z_]+$"
+                                    },
+                                    {
+                                        "type": "object",
+                                        "properties": {
+                                            "min": {
+                                                "type": "integer",
+                                                "minimum": 1
+                                            },
+                                            "max": {
+                                                "type": "integer",
+                                                "minimum": 1
+                                            },
+                                            "distribution": {
+                                                "type": "string",
+                                                "enum": ["uniform", "log2"]
+                                            }
+                                        },
+                                        "required": ["min", "max", "distribution"],
+                                        "additionalProperties": false
+                                    }
+                                ]
+                            },
+                            "minItems": 1
+                        },
+                        "dropout_rate": {
+                            "oneOf": [
+                                {
+                                    "type": "number",
+                                    "minimum": 0.0
+                                },
+                                {
+                                    "type": "string",
+                                    "pattern": "^[a-z_]+$"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "min": {
+                                            "type": "number",
+                                            "minimum": 0.0
+                                        },
+                                        "max": {
+                                            "type": "number",
+                                            "minimum": 0.0
+                                        },
+                                        "divisions": {
+                                            "type": "integer",
+                                            "minimum": 1
+                                        },
+                                        "distribution": {
+                                            "type": "string",
+                                            "enum": ["uniform", "log"]
+                                        }
+                                    },
+                                    "required": ["min", "max", "divisions", "distribution"],
+                                    "additionalProperties": false
+                                }
+                            ]
+                        },
+                        "init_stddev": {
+                            "oneOf": [
+                                {
+                                    "type": "number",
+                                    "exclusiveMinimum": 0.0
+                                },
+                                {
+                                    "type": "string",
+                                    "pattern": "^[a-z_]+$"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "min": {
+                                            "type": "number",
+                                            "exclusiveMinimum": 0.0
+                                        },
+                                        "max": {
+                                            "type": "number",
+                                            "exclusiveMinimum": 0.0
+                                        },
+                                        "divisions": {
+                                            "type": "integer",
+                                            "minimum": 1
+                                        },
+                                        "distribution": {
+                                            "type": "string",
+                                            "enum": ["uniform", "log"]
+                                        }
+                                    },
+                                    "required": ["min", "max", "divisions", "distribution"],
+                                    "additionalProperties": false
+                                }
+                            ]
+                        },
+                        "batch_size": {
+                            "oneOf": [
+                                {
+                                    "type": "integer",
+                                    "minimum": 1
+                                },
+                                {
+                                    "type": "string",
+                                    "pattern": "^[a-z_]+$"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "min": {
+                                            "type": "integer",
+                                            "minimum": 1
+                                        },
+                                        "max": {
+                                            "type": "integer",
+                                            "minimum": 1
+                                        },
+                                        "distribution": {
+                                            "type": "string",
+                                            "enum": ["uniform", "log2"]
+                                        }
+                                    },
+                                    "required": ["min", "max", "distribution"],
+                                    "additionalProperties": false
+                                }
+                            ]
+                        },
+                        "max_iter": {
+                            "oneOf": [
+                                {
+                                    "type": "integer",
+                                    "minimum": 1
+                                },
+                                {
+                                    "type": "string",
+                                    "pattern": "^[a-z_]+$"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "min": {
+                                            "type": "integer",
+                                            "minimum": 1
+                                        },
+                                        "max": {
+                                            "type": "integer",
+                                            "minimum": 1
+                                        },
+                                        "distribution": {
+                                            "type": "string",
+                                            "enum": ["uniform", "log2"]
+                                        }
+                                    },
+                                    "required": ["min", "max", "distribution"],
+                                    "additionalProperties": false
+                                }
+                            ]
+                        }
+                    },
+                    "required": ["hidden_layer_sizes", "dropout_rate", "init_stddev", "batch_size", "max_iter"],
+                    "additionalProperties": false
+                }
+            },
+            "required": ["type", "params"],
+            "additionalProperties": false
         }
 
     },
@@ -426,6 +609,7 @@
         { "$ref": "#/definitions/logistic_regression" },
         { "$ref": "#/definitions/neural_network" },
         { "$ref": "#/definitions/decision_tree" },
-        { "$ref": "#/definitions/random_forest" }
+        { "$ref": "#/definitions/random_forest" },
+        { "$ref": "#/definitions/tensorflow_neural_network" }
     ]
 }

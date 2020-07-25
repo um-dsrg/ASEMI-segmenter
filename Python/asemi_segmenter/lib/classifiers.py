@@ -1,7 +1,9 @@
 '''Module containing classifiers to classify voxels into labels.'''
 
+import os
 import random
 import warnings
+import contextlib
 import numpy as np
 import sklearn
 import sklearn.preprocessing
@@ -11,8 +13,10 @@ import sklearn.neural_network
 import sklearn.tree
 import sklearn.ensemble
 with warnings.catch_warnings():
+    os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
     warnings.simplefilter('ignore', category=FutureWarning)
     import tensorflow as tf
+    tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 from asemi_segmenter.lib import validations
 from asemi_segmenter.lib import samplers
 
@@ -391,6 +395,152 @@ def load_classifier_from_config(labels, config, sklearn_model=None, sampler_fact
 
         return RandomForestClassifier(labels, n_estimators, max_depth, min_samples_leaf, sklearn_model)
 
+    elif config['type'] == 'tensorflow_neural_network':
+        hidden_layer_sizes = list()
+        dropout_rate = None
+        init_stddev = None
+        batch_size = None
+        max_iter = None
+
+        if sampler_factory is not None:
+            for i in range(len(config['params']['hidden_layer_sizes'])):
+                if isinstance(config['params']['hidden_layer_sizes'][i], dict):
+                    hidden_layer_sizes.append(sampler_factory.create_integer_sampler(
+                        config['params']['hidden_layer_sizes'][i]['min'],
+                        config['params']['hidden_layer_sizes'][i]['max'],
+                        config['params']['hidden_layer_sizes'][i]['distribution']
+                        ))
+                elif isinstance(config['params']['hidden_layer_sizes'][i], str):
+                    hidden_layer_sizes.append(sampler_factory.get_named_sampler(
+                        config['params']['hidden_layer_sizes'][i],
+                        'integer'
+                        ))
+                else:
+                    hidden_layer_sizes.append(sampler_factory.create_constant_sampler(
+                        config['params']['hidden_layer_sizes'][i]
+                        ))
+        else:
+            for i in range(len(config['params']['hidden_layer_sizes'])):
+                if isinstance(config['params']['hidden_layer_sizes'][i], dict):
+                    raise ValueError('hidden_layer_sizes item {} must be a constant not a range.'.format(i))
+                hidden_layer_sizes.append(config['params']['hidden_layer_sizes'][i])
+
+        if sampler_factory is not None:
+            if isinstance(config['params']['dropout_rate'], dict):
+                dropout_rate = sampler_factory.create_float_sampler(
+                    config['params']['dropout_rate']['min'],
+                    config['params']['dropout_rate']['max'],
+                    config['params']['dropout_rate']['divisions'],
+                    config['params']['dropout_rate']['distribution']
+                    )
+            elif isinstance(config['params']['dropout_rate'], str):
+                dropout_rate = sampler_factory.get_named_sampler(
+                    config['params']['dropout_rate'],
+                    'float'
+                    )
+            else:
+                dropout_rate = sampler_factory.create_constant_sampler(
+                    config['params']['dropout_rate']
+                    )
+        else:
+            if isinstance(config['params']['dropout_rate'], dict):
+                raise ValueError('dropout_rate must be a constant not a range.')
+            dropout_rate = config['params']['dropout_rate']
+
+        if sampler_factory is not None:
+            if isinstance(config['params']['init_stddev'], dict):
+                init_stddev = sampler_factory.create_float_sampler(
+                    config['params']['init_stddev']['min'],
+                    config['params']['init_stddev']['max'],
+                    config['params']['init_stddev']['divisions'],
+                    config['params']['init_stddev']['distribution']
+                    )
+            elif isinstance(config['params']['init_stddev'], str):
+                init_stddev = sampler_factory.get_named_sampler(
+                    config['params']['init_stddev'],
+                    'float'
+                    )
+            else:
+                init_stddev = sampler_factory.create_constant_sampler(
+                    config['params']['init_stddev']
+                    )
+        else:
+            if isinstance(config['params']['init_stddev'], dict):
+                raise ValueError('init_stddev must be a constant not a range.')
+            init_stddev = config['params']['init_stddev']
+
+        if sampler_factory is not None:
+            if isinstance(config['params']['batch_size'], dict):
+                batch_size = sampler_factory.create_integer_sampler(
+                    config['params']['batch_size']['min'],
+                    config['params']['batch_size']['max'],
+                    config['params']['batch_size']['distribution']
+                    )
+            elif isinstance(config['params']['batch_size'], str):
+                batch_size = sampler_factory.get_named_sampler(
+                    config['params']['batch_size'],
+                    'integer'
+                    )
+            else:
+                batch_size = sampler_factory.create_constant_sampler(
+                    config['params']['batch_size']
+                    )
+        else:
+            if isinstance(config['params']['batch_size'], dict):
+                raise ValueError('batch_size must be a constant not a range.')
+            batch_size = config['params']['batch_size']
+
+        if sampler_factory is not None:
+            if isinstance(config['params']['max_iter'], dict):
+                max_iter = sampler_factory.create_integer_sampler(
+                    config['params']['max_iter']['min'],
+                    config['params']['max_iter']['max'],
+                    config['params']['max_iter']['distribution']
+                    )
+            elif isinstance(config['params']['max_iter'], str):
+                max_iter = sampler_factory.get_named_sampler(
+                    config['params']['max_iter'],
+                    'integer'
+                    )
+            else:
+                max_iter = sampler_factory.create_constant_sampler(
+                    config['params']['max_iter']
+                    )
+        else:
+            if isinstance(config['params']['max_iter'], dict):
+                raise ValueError('max_iter must be a constant not a range.')
+            max_iter = config['params']['max_iter']
+
+        if sklearn_model is not None:
+            if not isinstance(sklearn_model, dict):
+                raise ValueError('sklearn_model is invalid as it is not a dictionary.')
+            if set(sklearn_model.keys()) != {'preprocessor', 'classifier'}:
+                raise ValueError('sklearn_model is invalid as dictionary keys are not as expected.')
+            if not isinstance(sklearn_model['preprocessor'], sklearn.preprocessing.StandardScaler):
+                raise ValueError('sklearn_model is invalid as preprocessor type is not StandardScaler.')
+            if not isinstance(sklearn_model['classifier'], dict):
+                raise ValueError('sklearn_model is invalid as classifier data is not a dictionary.')
+            if sklearn_model['classifier']['num_outputs'] != len(labels):
+                raise ValueError(
+                    'sklearn_model is invalid as the number of classes is not as declared (declared={}, ' \
+                    'actual={}).'.format(
+                        len(labels),
+                        sklearn_model['classifier']['num_outputs']
+                        )
+                    )
+            if sklearn_model['classifier']['hidden_layer_sizes'] != hidden_layer_sizes:
+                raise ValueError('sklearn_model is invalid as hidden_layer_sizes is not as declared.')
+            if sklearn_model['classifier']['dropout_rate'] != dropout_rate:
+                raise ValueError('sklearn_model is invalid as dropout_rate is not as declared.')
+            if sklearn_model['classifier']['init_stddev'] != init_stddev:
+                raise ValueError('sklearn_model is invalid as init_stddev is not as declared.')
+            if sklearn_model['classifier']['batch_size'] != batch_size:
+                raise ValueError('sklearn_model is invalid as batch_size is not as declared.')
+            if sklearn_model['classifier']['max_iter'] != max_iter:
+                raise ValueError('sklearn_model is invalid as max_iter is not as declared.')
+
+        return TensorflowNeuralNetworkClassifier(labels, hidden_layer_sizes, dropout_rate, init_stddev, batch_size, max_iter, sklearn_model)
+
     else:
         raise NotImplementedError('Classifier {} not implemented.'.format(config['type']))
 
@@ -408,11 +558,12 @@ class SklearnLikeTensorflowNeuralNet(object):
 
     #########################################
     @staticmethod
-    def load_from_pickle(pickled_obj):
+    def load_from_pickle(pickled_obj, use_gpu=False):
         '''
         Construct and load a usable neural network from its pickled version.
 
         :param dict pickled_obj: The object returned by get_picklable().
+        :param bool use_gpu: Whether to use the GPU.
         :rtype: SklearnLikeTensorflowNeuralNet
         :return: A neural network with its model parameters and hyperparameters set.
         '''
@@ -424,7 +575,8 @@ class SklearnLikeTensorflowNeuralNet(object):
             batch_size=pickled_obj['batch_size'],
             max_iter=pickled_obj['max_iter'],
             verbose=pickled_obj['verbose'],
-            random_state=pickled_obj['random_state']
+            random_state=pickled_obj['random_state'],
+            use_gpu=use_gpu
             )
         model._create_model(pickled_obj['num_inputs'], pickled_obj['num_outputs'])
         model.set_model_params(pickled_obj['params'])
@@ -432,7 +584,7 @@ class SklearnLikeTensorflowNeuralNet(object):
         return model
 
     #########################################
-    def __init__(self, hidden_layer_sizes, dropout_rate, init_stddev, validation_fraction, batch_size, max_iter, verbose, random_state):
+    def __init__(self, hidden_layer_sizes, dropout_rate, init_stddev, validation_fraction, batch_size, max_iter, verbose, random_state, use_gpu=False):
         '''
         Constructor.
 
@@ -454,6 +606,7 @@ class SklearnLikeTensorflowNeuralNet(object):
         :param int random_state: Determines random number generation for weights
             initialization, train-validation split, and batch sampling. Pass an
             int for reproducible results across multiple function calls.
+        :param bool use_gpu: Whether to use the GPU.
         '''
         self.hidden_layer_sizes = hidden_layer_sizes
         self.dropout_rate = dropout_rate
@@ -463,6 +616,7 @@ class SklearnLikeTensorflowNeuralNet(object):
         self.max_iter = max_iter
         self.verbose = verbose
         self.random_state = random_state
+        self.use_gpu = use_gpu
         self._num_inputs = None
         self._num_outputs = None
         self._in_vecs = None
@@ -483,53 +637,54 @@ class SklearnLikeTensorflowNeuralNet(object):
         self._num_outputs = num_outputs
         graph = tf.Graph()
         with graph.as_default():
-            self._in_vecs = tf.placeholder(tf.float32, [None, num_inputs], 'in_vecs')
-            self._targets = tf.placeholder(tf.int32, [None], 'targets')
-            self._dropout = tf.placeholder(tf.bool, [], 'dropout')
+            with tf.device('/cpu:0') if not self.use_gpu else contextlib.suppress():
+                self._in_vecs = tf.placeholder(tf.float32, [None, num_inputs], 'in_vecs')
+                self._targets = tf.placeholder(tf.int32, [None], 'targets')
+                self._dropout = tf.placeholder(tf.bool, [], 'dropout')
 
-            self._params = []
-            dropout_keep_prob = tf.cond(self._dropout, lambda:tf.constant(1.0-self.dropout_rate, tf.float32), lambda:tf.constant(1.0, tf.float32))
+                self._params = []
+                dropout_keep_prob = tf.cond(self._dropout, lambda:tf.constant(1.0-self.dropout_rate, tf.float32), lambda:tf.constant(1.0, tf.float32))
 
-            prev_layer_size = num_inputs
-            prev_layer = self._in_vecs
-            for (i, layer_size) in enumerate(self.hidden_layer_sizes):
-                with tf.variable_scope('hidden{}'.format(i)):
-                    W = tf.get_variable('W', [prev_layer_size, layer_size], tf.float32, tf.zeros_initializer())
-                    W_in = tf.placeholder(tf.float32, [prev_layer_size, layer_size], 'W_in')
+                prev_layer_size = num_inputs
+                prev_layer = self._in_vecs
+                for (i, layer_size) in enumerate(self.hidden_layer_sizes):
+                    with tf.variable_scope('hidden{}'.format(i)):
+                        W = tf.get_variable('W', [prev_layer_size, layer_size], tf.float32, tf.zeros_initializer())
+                        W_in = tf.placeholder(tf.float32, [prev_layer_size, layer_size], 'W_in')
+                        W_setter = tf.assign(W, W_in)
+                        self._params.append((W, W_in, W_setter))
+
+                        b = tf.get_variable('b', [layer_size], tf.float32, tf.zeros_initializer())
+                        b_in = tf.placeholder(tf.float32, [layer_size], 'b_in')
+                        b_setter = tf.assign(b, b_in)
+                        self._params.append((b, b_in, b_setter))
+
+                        prev_layer_size = layer_size
+                        prev_layer = tf.nn.dropout(tf.nn.leaky_relu(tf.matmul(prev_layer, W) + b), dropout_keep_prob)
+
+                with tf.variable_scope('output'):
+                    W = tf.get_variable('W', [prev_layer_size, num_outputs], tf.float32, tf.zeros_initializer())
+                    W_in = tf.placeholder(tf.float32, [prev_layer_size, num_outputs], 'W_in')
                     W_setter = tf.assign(W, W_in)
                     self._params.append((W, W_in, W_setter))
 
-                    b = tf.get_variable('b', [layer_size], tf.float32, tf.zeros_initializer())
-                    b_in = tf.placeholder(tf.float32, [layer_size], 'b_in')
+                    b = tf.get_variable('b', [num_outputs], tf.float32, tf.zeros_initializer())
+                    b_in = tf.placeholder(tf.float32, [num_outputs], 'b_in')
                     b_setter = tf.assign(b, b_in)
                     self._params.append((b, b_in, b_setter))
 
-                    prev_layer_size = layer_size
-                    prev_layer = tf.nn.dropout(tf.nn.leaky_relu(tf.matmul(prev_layer, W) + b), dropout_keep_prob)
+                    logits = tf.matmul(prev_layer, W) + b
+                    self._out_probs = tf.nn.softmax(logits)
 
-            with tf.variable_scope('output'):
-                W = tf.get_variable('W', [prev_layer_size, num_outputs], tf.float32, tf.zeros_initializer())
-                W_in = tf.placeholder(tf.float32, [prev_layer_size, num_outputs], 'W_in')
-                W_setter = tf.assign(W, W_in)
-                self._params.append((W, W_in, W_setter))
+                self._error = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(labels=self._targets, logits=logits))
 
-                b = tf.get_variable('b', [num_outputs], tf.float32, tf.zeros_initializer())
-                b_in = tf.placeholder(tf.float32, [num_outputs], 'b_in')
-                b_setter = tf.assign(b, b_in)
-                self._params.append((b, b_in, b_setter))
+                self._optimiser_step = tf.train.AdamOptimizer().minimize(self._error)
 
-                logits = tf.matmul(prev_layer, W) + b
-                self._out_probs = tf.nn.softmax(logits)
+                self._init = tf.global_variables_initializer()
 
-            self._error = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(labels=self._targets, logits=logits))
+                graph.finalize()
 
-            self._optimiser_step = tf.train.AdamOptimizer().minimize(self._error)
-
-            self._init = tf.global_variables_initializer()
-
-            graph.finalize()
-
-            self._sess = tf.Session()
+                self._sess = tf.Session()
 
     #########################################
     def close(self):
@@ -1425,3 +1580,182 @@ class RandomForestClassifier(Classifier):
         :rtype: object
         '''
         return self.sklearn_model
+
+
+#########################################
+class TensorflowNeuralNetworkClassifier(Classifier):
+    '''
+    A custom made neural network that uses Tensorflow.
+    '''
+
+    #########################################
+    @staticmethod
+    def __MAKE_MODEL(hidden_layer_sizes, dropout_rate, init_stddev, batch_size, max_iter):
+        '''Make an sklearn model from parameters.'''
+        return sklearn.pipeline.Pipeline([
+            (
+                'preprocessor',
+                sklearn.preprocessing.StandardScaler()
+                ),
+            (
+                'classifier',
+                SklearnLikeTensorflowNeuralNet(
+                    hidden_layer_sizes=hidden_layer_sizes,
+                    dropout_rate=dropout_rate,
+                    init_stddev=init_stddev,
+                    validation_fraction=0.1,
+                    batch_size=batch_size,
+                    max_iter=max_iter,
+                    verbose=False,
+                    random_state=0
+                    )
+                )
+            ])
+
+    #########################################
+    def __init__(self, labels, hidden_layer_sizes, dropout_rate, init_stddev, batch_size, max_iter, sklearn_model=None):
+        '''
+        Constructor.
+
+        :param list labels: List of labels to be classified.
+        :param hidden_layer_sizes: The amount of neural units in each
+            hidden layer.
+        :type hidden_layer_sizes: list or samplers.Sampler
+        :param dropout: The amount to regularise the model such that
+            0.5 is the greatest amount and 0.0 is no regularisation.
+        :type dropout: float or samplers.Sampler
+        :param init_stddev: The standard deviation of the random normal number
+            generator to use (with mean 0) for initialising the weights.
+        :type dropout: float or samplers.Sampler
+        :param batch_size: The number of training items in each
+            minibatch.
+        :type batch_size: int or samplers.Sampler
+        :param max_iter: The number of iterations to spend on
+            training.
+        :type max_iter: int or samplers.Sampler
+        :param sklearn_model: The pretrained sklearn model to use, if any.
+            If None then an untrained model will be created. Otherwise
+            it is validated against the given parameters.
+        :type sklearn_model: None or sklearn_LogisticRegression
+        '''
+        super().__init__(
+            labels,
+            (
+                sklearn.pipeline.Pipeline([
+                    ('preprocessor', sklearn_model['preprocessor']),
+                    ('classifier', SklearnLikeTensorflowNeuralNet.load_from_pickle(sklearn_model['classifier']))
+                    ])
+                if sklearn_model is not None
+                else self.__MAKE_MODEL(hidden_layer_sizes, dropout_rate, init_stddev, batch_size, max_iter)
+                if (
+                    not any(isinstance(hidden_layer_sizes, samplers.Sampler) for hidden_layer_size in hidden_layer_sizes)
+                    and not isinstance(dropout_rate, samplers.Sampler)
+                    and not isinstance(init_stddev, samplers.Sampler)
+                    and not isinstance(batch_size, samplers.Sampler)
+                    and not isinstance(max_iter, samplers.Sampler)
+                    )
+                else None
+                )
+            )
+
+        self.hidden_layer_sizes = [None]*len(hidden_layer_sizes)
+        self.dropout_rate = None
+        self.init_stddev = None
+        self.batch_size = None
+        self.max_iter = None
+        self.hidden_layer_sizes_samplers = [None]*len(hidden_layer_sizes)
+        self.dropout_rate_sampler = None
+        self.init_stddev_sampler = None
+        self.batch_size_sampler = None
+        self.max_iter_sampler = None
+        for i in range(len(hidden_layer_sizes)):
+            if isinstance(hidden_layer_sizes[i], samplers.Sampler):
+                self.hidden_layer_sizes_samplers[i] = hidden_layer_sizes[i]
+            else:
+                self.hidden_layer_sizes[i] = hidden_layer_sizes[i]
+        if isinstance(dropout_rate, samplers.Sampler):
+            self.dropout_rate_sampler = dropout_rate
+        else:
+            self.dropout_rate = dropout_rate
+        if isinstance(init_stddev, samplers.Sampler):
+            self.init_stddev_sampler = init_stddev
+        else:
+            self.init_stddev = init_stddev
+        if isinstance(batch_size, samplers.Sampler):
+            self.batch_size_sampler = batch_size
+        else:
+            self.batch_size = batch_size
+        if isinstance(max_iter, samplers.Sampler):
+            self.max_iter_sampler = max_iter
+        else:
+            self.max_iter = max_iter
+
+    #########################################
+    def refresh_parameters(self):
+        '''
+        Refresh parameter values and resulting sklearn model from the samplers provided.
+        '''
+        for i in range(len(self.hidden_layer_sizes)):
+            self.hidden_layer_sizes[i] = self.hidden_layer_sizes_samplers[i].get_value()
+        self.dropout_rate = self.dropout_rate_sampler.get_value()
+        self.init_stddev = self.init_stddev_sampler.get_value()
+        self.batch_size = self.batch_size_sampler.get_value()
+        self.max_iter = self.max_iter_sampler.get_value()
+
+        self.sklearn_model = self.__MAKE_MODEL(self.hidden_layer_sizes, self.dropout_rate, self.init_stddev, self.batch_size, self.max_iter)
+
+    #########################################
+    def set_sampler_values(self, config):
+        '''
+        Set the values of the samplers provided according to a config.
+
+        :param dict config: The configuration dictionary for the classifier parameters.
+        '''
+        for i in range(len(self.hidden_layer_sizes)):
+            self.hidden_layer_sizes_samplers[i].set_value(config['params']['hidden_layer_sizes'][i])
+        self.dropout_rate_sampler.set_value(config['params']['dropout_rate'])
+        self.init_stddev_sampler.set_value(config['params']['init_stddev'])
+        self.batch_size_sampler.set_value(config['params']['batch_size'])
+        self.max_iter_sampler.set_value(config['params']['max_iter'])
+
+    #########################################
+    def get_config(self):
+        '''
+        Get the dictionary configuration of the classifier's parameters.
+
+        :return: The dictionary configuration.
+        :rtype: dict
+        '''
+        return {
+            'type': 'tensorflow_neural_network',
+            'params': {
+                'hidden_layer_sizes': self.hidden_layer_sizes,
+                'dropout_rate': self.dropout_rate,
+                'init_stddev': self.init_stddev,
+                'batch_size': self.batch_size,
+                'max_iter': self.max_iter
+                }
+            }
+
+    #########################################
+    def get_params(self):
+        '''
+        Get the classifier's parameters as nested tuples.
+
+        :return: The parameters.
+        :rtype: tuple
+        '''
+        return (tuple(self.hidden_layer_sizes), self.dropout_rate, self.init_stddev, self.batch_size, self.max_iter)
+
+    #########################################
+    def get_picklable(self):
+        '''
+        Get the classifier's inner model in a picklable form.
+
+        :return: The picklable object.
+        :rtype: object
+        '''
+        return {
+            'preprocessor': self.sklearn_model.named_steps['preprocessor'],
+            'classifier': self.sklearn_model.named_steps['classifier'].get_picklable()
+            }
