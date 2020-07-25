@@ -55,7 +55,7 @@ class Segmenter(object):
 
         validations.validate_json_with_schema_file(train_config, 'train.json')
         featuriser = featurisers.load_featuriser_from_config(train_config['featuriser'], self.sampler_factory, use_gpu)
-        classifier = classifiers.load_classifier_from_config(labels, train_config['classifier'], sklearn_model, self.sampler_factory)
+        classifier = classifiers.load_classifier_from_config(labels, train_config['classifier'], sklearn_model, self.sampler_factory, use_gpu)
 
         scales_needed = featuriser.get_scales_needed()
         if None not in scales_needed and not scales_needed <= full_volume.get_scales():

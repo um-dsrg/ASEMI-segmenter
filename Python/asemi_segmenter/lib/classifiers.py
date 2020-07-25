@@ -22,7 +22,7 @@ from asemi_segmenter.lib import samplers
 
 
 #########################################
-def load_classifier_from_config(labels, config, sklearn_model=None, sampler_factory=None):
+def load_classifier_from_config(labels, config, sklearn_model=None, sampler_factory=None, use_gpu=False):
     '''
     Load a classifier from a configuration dictionary.
 
@@ -31,6 +31,7 @@ def load_classifier_from_config(labels, config, sklearn_model=None, sampler_fact
     :param sklearn_model sklearn_model: Trained sklearn model if available.
     :param samplers.SamplerFactory sampler_factory: The factory to use to create samplers
         for the featuriser parameters. If None then only constant parameters can be used.
+    :param bool use_gpu: Whether to use the GPU.
     :return: A classifier object.
     :rtype: Classifier
     '''
@@ -539,7 +540,7 @@ def load_classifier_from_config(labels, config, sklearn_model=None, sampler_fact
             if sklearn_model['classifier']['max_iter'] != max_iter:
                 raise ValueError('sklearn_model is invalid as max_iter is not as declared.')
 
-        return TensorflowNeuralNetworkClassifier(labels, hidden_layer_sizes, dropout_rate, init_stddev, batch_size, max_iter, sklearn_model)
+        return TensorflowNeuralNetworkClassifier(labels, hidden_layer_sizes, dropout_rate, init_stddev, batch_size, max_iter, sklearn_model, use_gpu)
 
     else:
         raise NotImplementedError('Classifier {} not implemented.'.format(config['type']))
@@ -1590,7 +1591,7 @@ class TensorflowNeuralNetworkClassifier(Classifier):
 
     #########################################
     @staticmethod
-    def __MAKE_MODEL(hidden_layer_sizes, dropout_rate, init_stddev, batch_size, max_iter):
+    def __MAKE_MODEL(hidden_layer_sizes, dropout_rate, init_stddev, batch_size, max_iter, use_gpu=False):
         '''Make an sklearn model from parameters.'''
         return sklearn.pipeline.Pipeline([
             (
@@ -1607,13 +1608,14 @@ class TensorflowNeuralNetworkClassifier(Classifier):
                     batch_size=batch_size,
                     max_iter=max_iter,
                     verbose=False,
-                    random_state=0
+                    random_state=0,
+                    use_gpu=use_gpu
                     )
                 )
             ])
 
     #########################################
-    def __init__(self, labels, hidden_layer_sizes, dropout_rate, init_stddev, batch_size, max_iter, sklearn_model=None):
+    def __init__(self, labels, hidden_layer_sizes, dropout_rate, init_stddev, batch_size, max_iter, sklearn_model=None, use_gpu=False):
         '''
         Constructor.
 
@@ -1637,16 +1639,17 @@ class TensorflowNeuralNetworkClassifier(Classifier):
             If None then an untrained model will be created. Otherwise
             it is validated against the given parameters.
         :type sklearn_model: None or sklearn_LogisticRegression
+        :param bool use_gpu: Whether to use the GPU.
         '''
         super().__init__(
             labels,
             (
                 sklearn.pipeline.Pipeline([
                     ('preprocessor', sklearn_model['preprocessor']),
-                    ('classifier', SklearnLikeTensorflowNeuralNet.load_from_pickle(sklearn_model['classifier']))
+                    ('classifier', SklearnLikeTensorflowNeuralNet.load_from_pickle(sklearn_model['classifier'], use_gpu))
                     ])
                 if sklearn_model is not None
-                else self.__MAKE_MODEL(hidden_layer_sizes, dropout_rate, init_stddev, batch_size, max_iter)
+                else self.__MAKE_MODEL(hidden_layer_sizes, dropout_rate, init_stddev, batch_size, max_iter, use_gpu)
                 if (
                     not any(isinstance(hidden_layer_sizes, samplers.Sampler) for hidden_layer_size in hidden_layer_sizes)
                     and not isinstance(dropout_rate, samplers.Sampler)
@@ -1689,6 +1692,7 @@ class TensorflowNeuralNetworkClassifier(Classifier):
             self.max_iter_sampler = max_iter
         else:
             self.max_iter = max_iter
+        self.use_gpu = use_gpu
 
     #########################################
     def refresh_parameters(self):
@@ -1702,7 +1706,7 @@ class TensorflowNeuralNetworkClassifier(Classifier):
         self.batch_size = self.batch_size_sampler.get_value()
         self.max_iter = self.max_iter_sampler.get_value()
 
-        self.sklearn_model = self.__MAKE_MODEL(self.hidden_layer_sizes, self.dropout_rate, self.init_stddev, self.batch_size, self.max_iter)
+        self.sklearn_model = self.__MAKE_MODEL(self.hidden_layer_sizes, self.dropout_rate, self.init_stddev, self.batch_size, self.max_iter, self.use_gpu)
 
     #########################################
     def set_sampler_values(self, config):
