@@ -19,6 +19,7 @@ with warnings.catch_warnings():
     tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 from asemi_segmenter.lib import validations
 from asemi_segmenter.lib import samplers
+from asemi_segmenter.lib import times
 
 
 #########################################
@@ -756,34 +757,37 @@ class SklearnLikeTensorflowNeuralNet(object):
         epochs_since_last_best_val_acc = 0
         self._train_history = list()
         if self.verbose:
-            print('\tepoch\tvalidation accuracy')
+            print('epoch | val. acc. | new best? |    duration')
+            print('------+-----------+-----------+------------')
         for epoch in range(1, self.max_iter + 1):
-            indexes = np.arange(len(X_train))
-            sgd_rng.shuffle(indexes)
-            for i in range(int(np.ceil(len(indexes)/self.batch_size))):
-                minibatch_indexes = indexes[i*self.batch_size:(i+1)*self.batch_size].tolist()
-                self._sess.run([ self._optimiser_step ], {
-                    self._in_vecs: X_train[minibatch_indexes],
-                    self._dropout: True,
-                    self._targets: y_train[minibatch_indexes]
-                    })
+            with times.Timer() as timer:
+                indexes = np.arange(len(X_train))
+                sgd_rng.shuffle(indexes)
+                for i in range(int(np.ceil(len(indexes)/self.batch_size))):
+                    minibatch_indexes = indexes[i*self.batch_size:(i+1)*self.batch_size].tolist()
+                    self._sess.run([ self._optimiser_step ], {
+                        self._in_vecs: X_train[minibatch_indexes],
+                        self._dropout: True,
+                        self._targets: y_train[minibatch_indexes]
+                        })
 
-            #Passing in the whole validation set at once can result in out of memory GPU errors.
-            predictions = np.empty_like(y_val)
-            for i in range(int(np.ceil(len(y_val)/self.batch_size))):
-                predictions[i*self.batch_size:(i+1)*self.batch_size] = self.predict(X_val[i*self.batch_size:(i+1)*self.batch_size])
+                #Passing in the whole validation set at once can result in out of memory GPU errors.
+                predictions = np.empty_like(y_val)
+                for i in range(int(np.ceil(len(y_val)/self.batch_size))):
+                    predictions[i*self.batch_size:(i+1)*self.batch_size] = self.predict(X_val[i*self.batch_size:(i+1)*self.batch_size])
 
-            val_acc = np.sum(predictions == y_val)/len(X_val)
-            if val_acc > best_val_acc:
-                best_val_acc = val_acc
-                best_params = self.get_model_params()
-                epochs_since_last_best_val_acc = 0
-            else:
-                epochs_since_last_best_val_acc += 1
+                val_acc = np.sum(predictions == y_val)/len(X_val)
+                if val_acc > best_val_acc:
+                    best_val_acc = val_acc
+                    best_params = self.get_model_params()
+                    epochs_since_last_best_val_acc = 0
+                else:
+                    epochs_since_last_best_val_acc += 1
 
-            self._train_history.append(val_acc)
+                self._train_history.append(val_acc)
+
             if self.verbose:
-                print('\t{}\t{:.2%}'.format(epoch, val_acc))
+                print('{: >5d} | {: >9.2%} | {: >9s} | {: >11s}'.format(epoch, val_acc, 'yes' if epochs_since_last_best_val_acc == 0 else 'no', times.get_readable_duration(timer.duration)))
 
             if epochs_since_last_best_val_acc >= 3:
                 break
