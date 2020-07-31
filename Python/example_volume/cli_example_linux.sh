@@ -64,7 +64,7 @@
     --config_fullfname "output/tune/best_result.json" \
     --result_segmenter_fullfname "output/train/segmenter.pkl" \
     --trainingset_file_fullfname "output/train/trainingset.hdf" \
-    --verbose_training "no" \
+    --verbose_training "yes" \
     --train_sample_seed 0 \
     --checkpoint_fullfname "output/checkpoint.json" \
     --log_file_fullfname "output/log.txt" \

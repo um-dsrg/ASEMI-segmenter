@@ -768,7 +768,12 @@ class SklearnLikeTensorflowNeuralNet(object):
                     self._targets: y_train[minibatch_indexes]
                     })
 
-            val_acc = np.sum(self.predict(X_val) == y_val)/len(X_val)
+            #Passing in the whole validation set at once can result in out of memory GPU errors.
+            predictions = np.empty_like(y_val)
+            for i in range(int(np.ceil(len(y_val)/self.batch_size))):
+                predictions[i*self.batch_size:(i+1)*self.batch_size] = self.predict(X_val[i*self.batch_size:(i+1)*self.batch_size])
+
+            val_acc = np.sum(predictions == y_val)/len(X_val)
             if val_acc > best_val_acc:
                 best_val_acc = val_acc
                 best_params = self.get_model_params()

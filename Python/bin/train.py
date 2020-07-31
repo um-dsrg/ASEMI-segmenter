@@ -55,7 +55,7 @@ if __name__ == '__main__':
     parser.add_argument(
             '--verbose_training',
             required=False,
-            default='no',
+            default='yes',
             choices=['yes', 'no'],
             help='Whether to show sklearn\'s verbose messages during training.'
         )
