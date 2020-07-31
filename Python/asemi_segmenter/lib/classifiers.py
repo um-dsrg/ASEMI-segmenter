@@ -576,6 +576,7 @@ class SklearnLikeTensorflowNeuralNet(object):
             validation_fraction=pickled_obj['validation_fraction'],
             batch_size=pickled_obj['batch_size'],
             max_iter=pickled_obj['max_iter'],
+            patience=pickled_obj['patience'],
             verbose=pickled_obj['verbose'],
             random_state=pickled_obj['random_state'],
             use_gpu=use_gpu
@@ -586,7 +587,7 @@ class SklearnLikeTensorflowNeuralNet(object):
         return model
 
     #########################################
-    def __init__(self, hidden_layer_sizes, dropout_rate, init_stddev, validation_fraction, batch_size, max_iter, verbose, random_state, use_gpu=False):
+    def __init__(self, hidden_layer_sizes, dropout_rate, init_stddev, validation_fraction, batch_size, max_iter, patience, verbose, random_state, use_gpu=False):
         '''
         Constructor.
 
@@ -604,6 +605,7 @@ class SklearnLikeTensorflowNeuralNet(object):
             iterations. Note that this determines the number of epochs (how many
             times each data point will be used), not the number of gradient
             steps.
+        :param int patience: Early stopping patience.
         :param bool verbose: Whether to print progress messages to stdout.
         :param int random_state: Determines random number generation for weights
             initialization, train-validation split, and batch sampling. Pass an
@@ -616,6 +618,7 @@ class SklearnLikeTensorflowNeuralNet(object):
         self.validation_fraction = validation_fraction
         self.batch_size = batch_size
         self.max_iter = max_iter
+        self.patience = patience
         self.verbose = verbose
         self.random_state = random_state
         self.use_gpu = use_gpu
@@ -789,7 +792,7 @@ class SklearnLikeTensorflowNeuralNet(object):
             if self.verbose:
                 print('{: >5d} | {: >9.2%} | {: >9s} | {: >11s}'.format(epoch, val_acc, 'yes' if epochs_since_last_best_val_acc == 0 else 'no', times.get_readable_duration(timer.duration)))
 
-            if epochs_since_last_best_val_acc >= 3:
+            if epochs_since_last_best_val_acc >= self.patience:
                 break
 
         self.set_model_params(best_params)
@@ -856,6 +859,7 @@ class SklearnLikeTensorflowNeuralNet(object):
             'validation_fraction': self.validation_fraction,
             'batch_size': self.batch_size,
             'max_iter': self.max_iter,
+            'patience': self.patience,
             'verbose': self.verbose,
             'random_state': self.random_state,
             'num_inputs': self._num_inputs,
@@ -1616,6 +1620,7 @@ class TensorflowNeuralNetworkClassifier(Classifier):
                     validation_fraction=0.1,
                     batch_size=batch_size,
                     max_iter=max_iter,
+                    patience=3,
                     verbose=False,
                     random_state=0,
                     use_gpu=use_gpu
