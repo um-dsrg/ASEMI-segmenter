@@ -46,7 +46,12 @@ def _loading_data(
         validations.check_filename(segmenter, '.pkl', True)
         with open(segmenter, 'rb') as f:
             pickled_data = pickle.load(f)
-        segmenter = segmenters.load_segmenter_from_pickle_data(pickled_data, full_volume, use_gpu)
+        segmenter = segmenters.load_segmenter_from_pickle_data(
+            pickled_data,
+            full_volume,
+            max_batch_memory=max_batch_memory,
+            use_gpu=use_gpu
+            )
 
     listener.log_output('> Subvolume')
     listener.log_output('>> {}'.format(subvolume_dir))

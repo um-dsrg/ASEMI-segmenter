@@ -23,16 +23,17 @@ from asemi_segmenter.lib import times
 
 
 #########################################
-def load_classifier_from_config(labels, config, sklearn_model=None, sampler_factory=None, use_gpu=False):
+def load_classifier_from_config(labels, config, max_batch_memory, use_gpu, sklearn_model=None, sampler_factory=None):
     '''
     Load a classifier from a configuration dictionary.
 
     :param list labels: List of labels to recognise.
     :param dict config: Configuration of the classifier.
+    :param float max_batch_memory: The maximum number of gigabytes of memory to use.
+    :param bool use_gpu: Whether to use the GPU.
     :param sklearn_model sklearn_model: Trained sklearn model if available.
     :param samplers.SamplerFactory sampler_factory: The factory to use to create samplers
         for the featuriser parameters. If None then only constant parameters can be used.
-    :param bool use_gpu: Whether to use the GPU.
     :return: A classifier object.
     :rtype: Classifier
     '''
@@ -541,7 +542,7 @@ def load_classifier_from_config(labels, config, sklearn_model=None, sampler_fact
             if sklearn_model['classifier']['max_iter'] != max_iter:
                 raise ValueError('sklearn_model is invalid as max_iter is not as declared.')
 
-        return TensorflowNeuralNetworkClassifier(labels, hidden_layer_sizes, dropout_rate, init_stddev, batch_size, max_iter, sklearn_model, use_gpu)
+        return TensorflowNeuralNetworkClassifier(labels, hidden_layer_sizes, dropout_rate, init_stddev, batch_size, max_iter, max_batch_memory, use_gpu, sklearn_model)
 
     else:
         raise NotImplementedError('Classifier {} not implemented.'.format(config['type']))
@@ -560,11 +561,12 @@ class SklearnLikeTensorflowNeuralNet(object):
 
     #########################################
     @staticmethod
-    def load_from_pickle(pickled_obj, use_gpu=False):
+    def load_from_pickle(pickled_obj, max_batch_memory, use_gpu):
         '''
         Construct and load a usable neural network from its pickled version.
 
         :param dict pickled_obj: The object returned by get_picklable().
+        :param float max_batch_memory: The maximum number of gigabytes of memory to use.
         :param bool use_gpu: Whether to use the GPU.
         :rtype: SklearnLikeTensorflowNeuralNet
         :return: A neural network with its model parameters and hyperparameters set.
@@ -579,6 +581,7 @@ class SklearnLikeTensorflowNeuralNet(object):
             patience=pickled_obj['patience'],
             verbose=pickled_obj['verbose'],
             random_state=pickled_obj['random_state'],
+            max_batch_memory=max_batch_memory,
             use_gpu=use_gpu
             )
         model._create_model(pickled_obj['num_inputs'], pickled_obj['num_outputs'])
@@ -587,7 +590,7 @@ class SklearnLikeTensorflowNeuralNet(object):
         return model
 
     #########################################
-    def __init__(self, hidden_layer_sizes, dropout_rate, init_stddev, validation_fraction, batch_size, max_iter, patience, verbose, random_state, use_gpu=False):
+    def __init__(self, hidden_layer_sizes, dropout_rate, init_stddev, validation_fraction, batch_size, max_iter, patience, verbose, random_state, max_batch_memory, use_gpu):
         '''
         Constructor.
 
@@ -610,6 +613,7 @@ class SklearnLikeTensorflowNeuralNet(object):
         :param int random_state: Determines random number generation for weights
             initialization, train-validation split, and batch sampling. Pass an
             int for reproducible results across multiple function calls.
+        :param float max_batch_memory: The maximum number of gigabytes of memory to use.
         :param bool use_gpu: Whether to use the GPU.
         '''
         self.hidden_layer_sizes = hidden_layer_sizes
@@ -621,6 +625,7 @@ class SklearnLikeTensorflowNeuralNet(object):
         self.patience = patience
         self.verbose = verbose
         self.random_state = random_state
+        self.max_batch_memory = max_batch_memory
         self.use_gpu = use_gpu
         self._num_inputs = None
         self._num_outputs = None
@@ -634,6 +639,7 @@ class SklearnLikeTensorflowNeuralNet(object):
         self._init = None
         self._sess = None
         self._train_history = list()
+        self._max_batch_size = None
 
     #########################################
     def _create_model(self, num_inputs, num_outputs):
@@ -690,6 +696,8 @@ class SklearnLikeTensorflowNeuralNet(object):
                 graph.finalize()
 
                 self._sess = tf.Session()
+
+        self._max_batch_size = int(self.max_batch_memory*1024**3)//(max(num_inputs, *self.hidden_layer_sizes, num_outputs)*np.dtype(np.float32).itemsize)
 
     #########################################
     def close(self):
@@ -774,11 +782,7 @@ class SklearnLikeTensorflowNeuralNet(object):
                         self._targets: y_train[minibatch_indexes]
                         })
 
-                #Passing in the whole validation set at once can result in out of memory GPU errors.
-                predictions = np.empty_like(y_val)
-                for i in range(int(np.ceil(len(y_val)/self.batch_size))):
-                    predictions[i*self.batch_size:(i+1)*self.batch_size] = self.predict(X_val[i*self.batch_size:(i+1)*self.batch_size])
-
+                predictions = self.predict(X_val)
                 val_acc = np.sum(predictions == y_val)/len(X_val)
                 if val_acc > best_val_acc:
                     best_val_acc = val_acc
@@ -807,7 +811,16 @@ class SklearnLikeTensorflowNeuralNet(object):
         :return: The predicted probability of the sample for each class in the
             model.
         '''
-        return self._sess.run(self._out_probs, { self._in_vecs: X, self._dropout: False })
+        predictions = np.empty((len(X), self._num_outputs), np.float32)
+        for i in range(int(np.ceil(len(X)/self._max_batch_size))):
+            predictions[i*self._max_batch_size:(i+1)*self._max_batch_size] = self._sess.run(
+                self._out_probs,
+                {
+                    self._in_vecs: X[i*self._max_batch_size:(i+1)*self._max_batch_size],
+                    self._dropout: False
+                    }
+                )
+        return predictions
 
     #########################################
     def predict_log_proba(self, X):
@@ -1604,7 +1617,7 @@ class TensorflowNeuralNetworkClassifier(Classifier):
 
     #########################################
     @staticmethod
-    def __MAKE_MODEL(hidden_layer_sizes, dropout_rate, init_stddev, batch_size, max_iter, use_gpu=False):
+    def __MAKE_MODEL(hidden_layer_sizes, dropout_rate, init_stddev, batch_size, max_iter, max_batch_memory, use_gpu):
         '''Make an sklearn model from parameters.'''
         return sklearn.pipeline.Pipeline([
             (
@@ -1623,13 +1636,14 @@ class TensorflowNeuralNetworkClassifier(Classifier):
                     patience=3,
                     verbose=False,
                     random_state=0,
+                    max_batch_memory=max_batch_memory,
                     use_gpu=use_gpu
                     )
                 )
             ])
 
     #########################################
-    def __init__(self, labels, hidden_layer_sizes, dropout_rate, init_stddev, batch_size, max_iter, sklearn_model=None, use_gpu=False):
+    def __init__(self, labels, hidden_layer_sizes, dropout_rate, init_stddev, batch_size, max_iter, max_batch_memory, use_gpu, sklearn_model=None):
         '''
         Constructor.
 
@@ -1649,21 +1663,22 @@ class TensorflowNeuralNetworkClassifier(Classifier):
         :param max_iter: The number of iterations to spend on
             training.
         :type max_iter: int or samplers.Sampler
+        :param float max_batch_memory: The maximum number of gigabytes of memory to use.
+        :param bool use_gpu: Whether to use the GPU.
         :param sklearn_model: The pretrained sklearn model to use, if any.
             If None then an untrained model will be created. Otherwise
             it is validated against the given parameters.
         :type sklearn_model: None or sklearn_LogisticRegression
-        :param bool use_gpu: Whether to use the GPU.
         '''
         super().__init__(
             labels,
             (
                 sklearn.pipeline.Pipeline([
                     ('preprocessor', sklearn_model['preprocessor']),
-                    ('classifier', SklearnLikeTensorflowNeuralNet.load_from_pickle(sklearn_model['classifier'], use_gpu))
+                    ('classifier', SklearnLikeTensorflowNeuralNet.load_from_pickle(sklearn_model['classifier'], max_batch_memory, use_gpu))
                     ])
                 if sklearn_model is not None
-                else self.__MAKE_MODEL(hidden_layer_sizes, dropout_rate, init_stddev, batch_size, max_iter, use_gpu)
+                else self.__MAKE_MODEL(hidden_layer_sizes, dropout_rate, init_stddev, batch_size, max_iter, max_batch_memory, use_gpu)
                 if (
                     not any(isinstance(hidden_layer_sizes, samplers.Sampler) for hidden_layer_size in hidden_layer_sizes)
                     and not isinstance(dropout_rate, samplers.Sampler)
@@ -1706,6 +1721,7 @@ class TensorflowNeuralNetworkClassifier(Classifier):
             self.max_iter_sampler = max_iter
         else:
             self.max_iter = max_iter
+        self.max_batch_memory = max_batch_memory
         self.use_gpu = use_gpu
 
     #########################################
@@ -1720,7 +1736,7 @@ class TensorflowNeuralNetworkClassifier(Classifier):
         self.batch_size = self.batch_size_sampler.get_value()
         self.max_iter = self.max_iter_sampler.get_value()
 
-        self.sklearn_model = self.__MAKE_MODEL(self.hidden_layer_sizes, self.dropout_rate, self.init_stddev, self.batch_size, self.max_iter, self.use_gpu)
+        self.sklearn_model = self.__MAKE_MODEL(self.hidden_layer_sizes, self.dropout_rate, self.init_stddev, self.batch_size, self.max_iter, self.max_batch_memory, self.use_gpu)
 
     #########################################
     def set_sampler_values(self, config):

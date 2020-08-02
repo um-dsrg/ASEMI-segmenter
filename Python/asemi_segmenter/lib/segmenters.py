@@ -8,12 +8,13 @@ from asemi_segmenter.lib import samplers
 
 
 #########################################
-def load_segmenter_from_pickle_data(pickle_data, full_volume, use_gpu=False):
+def load_segmenter_from_pickle_data(pickle_data, full_volume, max_batch_memory, use_gpu):
     '''
     Load a segmenter from pickled data.
 
     :param dict pickle_data: The loaded contents of a segmenter pickle.
     :param FullVolume full_volume: The full volume object containing the voxels to work on.
+    :param float max_batch_memory: The maximum number of gigabytes of memory to use.
     :param bool use_gpu: Whether to use the GPU to compute features.
     :return: A loaded segmenter object.
     :rtype: Segmenter
@@ -28,8 +29,9 @@ def load_segmenter_from_pickle_data(pickle_data, full_volume, use_gpu=False):
         pickle_data['labels'],
         full_volume,
         pickle_data['config'],
-        sklearn_model=pickle_data['sklearn_model'],
-        use_gpu=use_gpu
+        max_batch_memory=max_batch_memory,
+        use_gpu=use_gpu,
+        sklearn_model=pickle_data['sklearn_model']
         )
 
 
@@ -38,24 +40,25 @@ class Segmenter(object):
     '''An object that puts together everything needed to segment a volume after it has been processed.'''
 
     #########################################
-    def __init__(self, labels, full_volume, train_config, sklearn_model=None, sampler_factory=None, use_gpu=False):
+    def __init__(self, labels, full_volume, train_config, max_batch_memory, use_gpu, sklearn_model=None, sampler_factory=None):
         '''
         Constructor.
 
         :param list labels: List of labels for the classifier.
         :param FullVolume full_volume: Full volume on which the segmenter will be working.
         :param dict train_config: Loaded configuration of the training method.
+        :param bool use_gpu: Whether to use the GPU to compute features.
+        :param float max_batch_memory: The maximum number of gigabytes of memory to use.
         :param sklearn_model sklearn_model: sklearn model to use for machine learning, if
             pretrained.
         :param samplers.SamplerFactory sampler_factory: The factory to create samplers
             to randomly generate parameters.
-        :param bool use_gpu: Whether to use the GPU to compute features.
         '''
         self.sampler_factory = sampler_factory
 
         validations.validate_json_with_schema_file(train_config, 'train.json')
         featuriser = featurisers.load_featuriser_from_config(train_config['featuriser'], self.sampler_factory, use_gpu)
-        classifier = classifiers.load_classifier_from_config(labels, train_config['classifier'], sklearn_model, self.sampler_factory, use_gpu)
+        classifier = classifiers.load_classifier_from_config(labels, train_config['classifier'], max_batch_memory, use_gpu, sklearn_model, self.sampler_factory)
 
         scales_needed = featuriser.get_scales_needed()
         if None not in scales_needed and not scales_needed <= full_volume.get_scales():

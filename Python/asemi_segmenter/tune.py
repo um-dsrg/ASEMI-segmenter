@@ -123,8 +123,9 @@ def _loading_data(
             'classifier': config_data['classifier'],
             'training_set': config_data['training_set']
             },
-        sampler_factory=sampler_factory,
-        use_gpu=use_gpu
+        max_batch_memory=max_batch_memory,
+        use_gpu=use_gpu,
+        sampler_factory=sampler_factory
         )
     listener.log_output('>> Search space size: {}'.format(sampler_factory.get_sample_space_size()))
 
