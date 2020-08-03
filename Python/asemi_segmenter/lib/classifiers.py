@@ -695,7 +695,9 @@ class SklearnLikeTensorflowNeuralNet(object):
 
                 graph.finalize()
 
-                self._sess = tf.Session()
+                config = tf.ConfigProto()
+                config.gpu_options.allow_growth = True
+                self._sess = tf.Session(config=config)
 
         self._max_batch_size = int(self.max_batch_memory*1024**3)//(max(num_inputs, *self.hidden_layer_sizes, num_outputs)*np.dtype(np.float32).itemsize)
 
