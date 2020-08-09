@@ -666,11 +666,12 @@ def main(
     '''
     full_volume = None
     try:
-        with times.Timer() as full_timer:
-            listener.overall_progress_start(6)
+        listener.overall_progress_start(6)
 
-            listener.log_output('Starting tuning process')
-            listener.log_output('')
+        listener.log_output('Starting tuning process')
+        listener.log_output('')
+
+        with times.Timer() as full_timer:
 
             ###################
 

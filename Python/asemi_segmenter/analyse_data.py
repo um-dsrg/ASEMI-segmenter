@@ -239,11 +239,12 @@ def main(
     :param bool debug_mode: Whether to show full error messages or just simple ones.
     '''
     try:
-        with times.Timer() as full_timer:
-            listener.overall_progress_start(2)
+        listener.overall_progress_start(2)
 
-            listener.log_output('Starting data analysis process')
-            listener.log_output('')
+        listener.log_output('Starting data analysis process')
+        listener.log_output('')
+
+        with times.Timer() as full_timer:
 
             ###################
 
@@ -279,13 +280,13 @@ def main(
                 listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
                 listener.log_output('')
 
-            listener.log_output('Done')
-            listener.log_output('Entire process duration: {}'.format(
-                times.get_readable_duration(full_timer.duration)
-                ))
-            listener.log_output(times.get_timestamp())
+        listener.log_output('Done')
+        listener.log_output('Entire process duration: {}'.format(
+            times.get_readable_duration(full_timer.duration)
+            ))
+        listener.log_output(times.get_timestamp())
 
-            listener.overall_progress_end()
+        listener.overall_progress_end()
     except Exception as ex:
         listener.error_output(str(ex))
         if debug_mode:
