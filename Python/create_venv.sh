@@ -2,7 +2,7 @@
 #
 # Copyright © 2020 Johann A. Briffa
 
-python3 -m venv venv
+python3 -m venv --prompt ASEMI venv
 
 source venv/bin/activate && \
 pip install wheel && \
