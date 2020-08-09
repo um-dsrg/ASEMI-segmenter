@@ -352,6 +352,8 @@ class FloatSampler(Sampler):
                 raise ValueError('When distribution is logarithmic, min must be a positive number (not {}).'.format(min))
             if max <= 0:
                 raise ValueError('When distribution is logarithmic, max must be a positive number (not {}).'.format(max))
+        if divisions < 1:
+            raise ValueError('divisions must be positive.')
 
         self.min = min
         self.max = max
@@ -359,13 +361,19 @@ class FloatSampler(Sampler):
         self.distribution = distribution
         self.rng = random.Random(seed)
         if self.distribution == 'uniform':
-            # base = (max - min)/divs
+            # base = (max - min)/(divs - 1)
             # y = min + base*i
-            self.base = (self.max - self.min)/self.divisions
+            if self.divisions > 1:
+                self.base = (self.max - self.min)/(self.divisions - 1)
+            else:
+                self.base = 0.0
         elif self.distribution == 'log':
-            # base = (log(max) - log(min))/divs
+            # base = (log(max) - log(min))/(divs - 1)
             # y = min*exp(base*i)
-            self.base = (math.log(self.max) - math.log(self.min))/self.divisions
+            if self.divisions > 1:
+                self.base = (math.log(self.max) - math.log(self.min))/(self.divisions - 1)
+            else:
+                self.base = 0.0
 
     #########################################
     def get_sample_space_size(self):
@@ -375,7 +383,7 @@ class FloatSampler(Sampler):
         :return: The number of different values.
         :rtype: int
         '''
-        return self.divisions + 1
+        return self.divisions
 
     #########################################
     def set_value(self, value):
@@ -395,6 +403,6 @@ class FloatSampler(Sampler):
         Generate a new random value.
         '''
         self.set_value({
-            'uniform': (lambda:self.min + self.base*self.rng.randint(0, self.divisions)),
-            'log':     (lambda:self.min*math.exp(self.base*self.rng.randint(0, self.divisions)))
+            'uniform': (lambda:self.min + self.base*self.rng.randint(0, self.divisions - 1)),
+            'log':     (lambda:self.min*math.exp(self.base*self.rng.randint(0, self.divisions - 1)))
             }[self.distribution]())

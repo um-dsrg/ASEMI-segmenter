@@ -77,15 +77,15 @@
                 }
             ],
             "dropout_rate": {
-                "min": 0.0001,
-                "max": 1.0,
-                "divisions": 10,
-                "distribution": "log"
+                "min": 0.0,
+                "max": 0.5,
+                "divisions": 6,
+                "distribution": "uniform"
             },
             "init_stddev": {
                 "min": 0.0001,
                 "max": 1.0,
-                "divisions": 10,
+                "divisions": 5,
                 "distribution": "log"
             },
             "batch_size": {
