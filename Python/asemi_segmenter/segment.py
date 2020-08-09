@@ -113,8 +113,14 @@ def _loading_data(
         raise ValueError('num_simultaneous_slices must be a positive number.')
     if slice_indexes is not None and not isinstance(slice_indexes, range) and num_simultaneous_slices > 1:
         raise ValueError('num_simultaneous_slices can only be more than 1 when segmenting whole volume or range of slices.')
+    if slice_indexes is None:
+        slice_indexes = range(full_volume.get_shape()[0])
+    elif isinstance(slice_indexes, range):
+        slice_indexes = range(slice_indexes.start - 1, slice_indexes.stop - 1)
+    else:
+        slice_indexes = [i - 1 for i in slice_indexes]
 
-    return (config_data, full_volume, slice_shape, segmenter, best_block_shape, checkpoint)
+    return (config_data, full_volume, slice_shape, slice_indexes, segmenter, best_block_shape, checkpoint)
 
 
 #########################################
@@ -124,7 +130,6 @@ def _segmenting(
     '''Segmenting stage.'''
     if slice_indexes is None:
         num_slices = full_volume.get_shape()[0]
-        slice_indexes = range(num_slices)
     elif isinstance(slice_indexes, range):
         num_slices = slice_indexes.stop - slice_indexes.start
     else:
@@ -238,8 +243,9 @@ def main(
         whether a particular pixel belongs to said label or not.
     :param str label_names_fullfname: Full file name (with path) to text file in which to store
         label names.
-    :param list slice_indexes: The integer indexes (0-based) of slices in the volume to
+    :param slice_indexes: The integer indexes (1-based) of slices in the volume to
         segment. If None then all slices are segmented.
+    :type slice_indexes: list or range or None
     :param str checkpoint_fullfname: Full file name (with path) to checkpoint pickle.
         If None then no checkpointing is used.
     :param str checkpoint_namespace: Namespace for the checkpoint file.
@@ -275,7 +281,7 @@ def main(
             listener.log_output(times.get_timestamp())
             listener.log_output('Loading data')
             with times.Timer() as timer:
-                (config_data, full_volume, slice_shape, segmenter, best_block_shape, checkpoint) = _loading_data(
+                (config_data, full_volume, slice_shape, slice_indexes, segmenter, best_block_shape, checkpoint) = _loading_data(
                     segmenter, preproc_volume_fullfname, config, results_dir, label_names_fullfname,
                     slice_indexes, checkpoint_fullfname, checkpoint_namespace, reset_checkpoint,
                     checkpoint_init, max_processes_featuriser, max_processes_classifier, max_batch_memory, num_simultaneous_slices, use_gpu, listener
