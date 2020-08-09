@@ -188,7 +188,7 @@ def _segmenting(
                     max_processes=max_processes_featuriser
                     )
                 for j in range(num_simultaneous_slices):
-                    if first_volume_slice_index + j >= num_slices:
+                    if first_volume_slice_index + j >= full_volume.get_shape()[0]:
                         continue
 
                     if config_data['as_masks']:

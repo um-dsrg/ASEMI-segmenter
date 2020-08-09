@@ -57,7 +57,7 @@ if __name__ == '__main__':
             required=False,
             default='yes',
             choices=['yes', 'no'],
-            help='Whether to show sklearn\'s verbose messages during training.'
+            help='Whether to show sklearn\'s verbose messages during training (default is yes).'
         )
     parser.add_argument(
             '--train_sample_seed',
