@@ -116,9 +116,9 @@ def _loading_data(
     if slice_indexes is None:
         slice_indexes = range(full_volume.get_shape()[0])
     elif isinstance(slice_indexes, range):
-        slice_indexes = range(slice_indexes.start - 1, slice_indexes.stop - 1)
+        slice_indexes = range(slice_indexes.start - 1, slice_indexes.stop)
     else:
-        slice_indexes = [i - 1 for i in slice_indexes]
+        slice_indexes = sorted(i - 1 for i in set(slice_indexes))
 
     return (config_data, full_volume, slice_shape, slice_indexes, segmenter, best_block_shape, checkpoint)
 
@@ -130,10 +130,13 @@ def _segmenting(
     '''Segmenting stage.'''
     if slice_indexes is None:
         num_slices = full_volume.get_shape()[0]
+        last_slice_index = num_slices - 1
     elif isinstance(slice_indexes, range):
         num_slices = slice_indexes.stop - slice_indexes.start
+        last_slice_index = slice_indexes.stop - 1
     else:
         num_slices = len(slice_indexes)
+        last_slice_index = max(slice_indexes)
 
     slice_size = slice_shape[0]*slice_shape[1]
 
@@ -188,12 +191,12 @@ def _segmenting(
             if (i - start)%num_simultaneous_slices == 0:
                 slice_features = segmenter.featuriser.featurise_slice(
                     full_volume.get_scale_arrays(segmenter.featuriser.get_scales_needed()),
-                    slice_range=slice(first_volume_slice_index, first_volume_slice_index+num_simultaneous_slices),
+                    slice_range=slice(first_volume_slice_index, min(first_volume_slice_index+num_simultaneous_slices, last_slice_index + 1)),
                     block_shape=best_block_shape,
                     max_processes=max_processes_featuriser
                     )
                 for j in range(num_simultaneous_slices):
-                    if first_volume_slice_index + j >= full_volume.get_shape()[0]:
+                    if first_volume_slice_index + j > last_slice_index:
                         continue
 
                     if config_data['as_masks']:
@@ -244,7 +247,8 @@ def main(
     :param str label_names_fullfname: Full file name (with path) to text file in which to store
         label names.
     :param slice_indexes: The integer indexes (1-based) of slices in the volume to
-        segment. If None then all slices are segmented.
+        segment. If range then both start and stop are 1-based and inclusive. If
+        None then all slices are segmented.
     :type slice_indexes: list or range or None
     :param str checkpoint_fullfname: Full file name (with path) to checkpoint pickle.
         If None then no checkpointing is used.

@@ -48,6 +48,20 @@ if __name__ == '__main__':
             default=None,
             help='Full path to text file to create with names of labels (*.txt).'
         )
+    group = parser.add_mutually_exclusive_group(required=False)
+    group.add_argument(
+            '--slice_indexes',
+            nargs='+',
+            type=int,
+            help='The individual slice indexes (1-based) to segment in the volume.'
+        )
+    group.add_argument(
+            '--slice_range',
+            nargs=2,
+            type=int,
+            metavar=('START', 'STOP'),
+            help='The range of slice indexes (1-based) to segment in the volume (both inclusive).'
+        )
     parser.add_argument(
             '--checkpoint_fullfname',
             required=False,
@@ -142,6 +156,11 @@ if __name__ == '__main__':
             config=args.config_fullfname,
             results_dir=args.results_dir,
             label_names_fullfname=args.label_names_fullfname,
+            slice_indexes=(
+                None if args.slice_indexes is None and args.slice_range is None
+                else args.slice_indexes if args.slice_range is None
+                else range(args.slice_range[0], args.slice_range[1])
+                ),
             checkpoint_fullfname=args.checkpoint_fullfname,
             checkpoint_namespace=args.checkpoint_namespace,
             reset_checkpoint=args.reset_checkpoint == 'yes',
