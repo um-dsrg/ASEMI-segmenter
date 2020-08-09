@@ -111,8 +111,8 @@ def _loading_data(
         listener.log_output('>> slice_indexes: {}'.format(slice_indexes))
     if num_simultaneous_slices < 1:
         raise ValueError('num_simultaneous_slices must be a positive number.')
-    if slice_indexes is not None and num_simultaneous_slices > 1:
-        raise ValueError('num_simultaneous_slices can only be more than 1 when segmenting whole volume.')
+    if slice_indexes is not None and not isinstance(slice_indexes, range) and num_simultaneous_slices > 1:
+        raise ValueError('num_simultaneous_slices can only be more than 1 when segmenting whole volume or range of slices.')
 
     return (config_data, full_volume, slice_shape, segmenter, best_block_shape, checkpoint)
 
