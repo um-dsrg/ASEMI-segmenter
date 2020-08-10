@@ -139,7 +139,8 @@ class SamplerFactory(object):
         '''
         Resample a randomly selected generated sampler.
         '''
-        self.rand.choice(self.samplers).resample()
+        chosen_sampler = self.rand.choice(self.samplers)
+        chosen_sampler.resample()
 
     #########################################
     def resample_all(self):

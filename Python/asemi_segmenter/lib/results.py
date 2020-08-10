@@ -1,6 +1,7 @@
 '''Module with functions related to saving results.'''
 
 import json
+import copy
 import numpy as np
 from asemi_segmenter.lib import colours
 from asemi_segmenter.lib import images
@@ -317,7 +318,7 @@ class TuningResultsFile(object):
         (label_scores, global_score) = self.evaluation.get_global_results()
         if global_score > self.best_globalscore:
             self.best_globalscore = global_score
-            self.best_config = config
+            self.best_config = copy.deepcopy(config)
 
         with open(self.results_fullfname, 'a', encoding='utf-8') as f:
             print(
