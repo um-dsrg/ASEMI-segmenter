@@ -268,7 +268,7 @@ def _constructing_trainingset(
 
 #########################################
 def _training_segmenter(
-        segmenter, training_set, verbose_training, checkpoint, max_processes_classifier, listener
+        segmenter, training_set, verbose_training, result_segmenter_fullfname, checkpoint, max_processes_classifier, listener
     ):
     '''Training segmenter stage.'''
     listener.log_output('> Training')
@@ -286,24 +286,11 @@ def _training_segmenter(
 
         training_set.close()
 
-    return ()
-
-
-#########################################
-def _saving_segmenter(
-        segmenter, result_segmenter_fullfname, checkpoint, listener
-    ):
-    '''Saving segmenter stage.'''
-    if result_segmenter_fullfname is not None:
-        listener.log_output('> Saving')
-        with checkpoint.apply('saving') as skip:
-            if skip is not None:
-                listener.log_output('>> Skipped as was found checkpointed')
-                raise skip
-
+        if result_segmenter_fullfname is not None:
+            listener.log_output('> Saving')
             segmenter.save(result_segmenter_fullfname)
-    else:
-        listener.log_output('> Segmenter not to be saved')
+        else:
+            listener.log_output('> Segmenter not to be saved')
 
     return ()
 
@@ -375,7 +362,7 @@ def main(
     full_volume = None
     training_set = None
     try:
-        listener.overall_progress_start(6)
+        listener.overall_progress_start(5)
 
         listener.log_output('Starting training process')
         listener.log_output('')
@@ -455,19 +442,8 @@ def main(
                 listener.log_output(times.get_timestamp())
                 listener.log_output('Training segmenter')
                 with times.Timer() as timer:
-                    () = _training_segmenter(segmenter, training_set, verbose_training, checkpoint, max_processes_classifier, listener)
+                    () = _training_segmenter(segmenter, training_set, verbose_training, result_segmenter_fullfname, checkpoint, max_processes_classifier, listener)
                 listener.log_output('Segmenter trained')
-                listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
-                listener.log_output('')
-
-                ###################
-
-                listener.overall_progress_update(6, 'Saving segmenter')
-                listener.log_output(times.get_timestamp())
-                listener.log_output('Saving segmenter')
-                with times.Timer() as timer:
-                    () = _saving_segmenter(segmenter, result_segmenter_fullfname, checkpoint, listener)
-                listener.log_output('Segmenter saved')
                 listener.log_output('Duration: {}'.format(times.get_readable_duration(timer.duration)))
                 listener.log_output('')
 
