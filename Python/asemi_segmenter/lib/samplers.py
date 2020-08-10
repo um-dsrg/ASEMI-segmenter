@@ -18,6 +18,7 @@ class SamplerFactory(object):
         self.seed = seed
         self.rand = random.Random(seed)
         self.samplers = list()
+        self.mutable_samplers = list()
         self.named_samplers = dict()
 
     #########################################
@@ -65,6 +66,7 @@ class SamplerFactory(object):
             seed=self.rand.random()
             )
         self.samplers.append(sampler)
+        self.mutable_samplers.append(sampler)
         if name is not None:
             if name in self.named_samplers:
                 raise ValueError('The variable name {} already exists.'.format(name))
@@ -96,6 +98,7 @@ class SamplerFactory(object):
             seed=self.rand.random()
             )
         self.samplers.append(sampler)
+        self.mutable_samplers.append(sampler)
         if name is not None:
             if name in self.named_samplers:
                 raise ValueError('The variable name {} already exists.'.format(name))
@@ -139,7 +142,7 @@ class SamplerFactory(object):
         '''
         Resample a randomly selected generated sampler.
         '''
-        chosen_sampler = self.rand.choice(self.samplers)
+        chosen_sampler = self.rand.choice(self.mutable_samplers)
         chosen_sampler.resample()
 
     #########################################
