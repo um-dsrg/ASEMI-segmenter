@@ -182,30 +182,35 @@ def _segmenting(
             compress=True
             )
 
-    start = checkpoint.get_next_to_process('segment_prog')
-    listener.current_progress_start(start, num_slices)
-    for (i, first_volume_slice_index) in enumerate(slice_indexes):
-        if i < start:
-            continue
-        with checkpoint.apply('segment_prog'):
-            if (i - start)%num_simultaneous_slices == 0:
-                slice_features = segmenter.featuriser.featurise_slice(
-                    full_volume.get_scale_arrays(segmenter.featuriser.get_scales_needed()),
-                    slice_range=slice(first_volume_slice_index, min(first_volume_slice_index+num_simultaneous_slices, last_slice_index + 1)),
-                    block_shape=best_block_shape,
-                    max_processes=max_processes_featuriser
-                    )
-                for j in range(num_simultaneous_slices):
-                    if first_volume_slice_index + j > last_slice_index:
-                        continue
+    with checkpoint.apply('segment') as skip:
+        if skip is not None:
+            listener.log_output('> Skipped as was found checkpointed')
+            raise skip
 
-                    if config_data['as_masks']:
-                        for (label, mask) in zip(segmenter.classifier.labels, segmenter.segment_to_labels_iter(slice_features[j*slice_size:(j+1)*slice_size,:], config_data['soft_segmentation'], max_processes_classifier)):
-                            save_slice(first_volume_slice_index + j, mask, label)
-                    else:
-                        save_slice(first_volume_slice_index + j, segmenter.segment_to_label_indexes(slice_features[j*slice_size:(j+1)*slice_size,:], max_processes_classifier))
-        listener.current_progress_update(i+1)
-    listener.current_progress_end()
+        start = checkpoint.get_next_to_process('segment_prog')
+        listener.current_progress_start(start, num_slices)
+        for (i, first_volume_slice_index) in enumerate(slice_indexes):
+            if i < start:
+                continue
+            with checkpoint.apply('segment_prog'):
+                if (i - start)%num_simultaneous_slices == 0:
+                    slice_features = segmenter.featuriser.featurise_slice(
+                        full_volume.get_scale_arrays(segmenter.featuriser.get_scales_needed()),
+                        slice_range=slice(first_volume_slice_index, min(first_volume_slice_index+num_simultaneous_slices, last_slice_index + 1)),
+                        block_shape=best_block_shape,
+                        max_processes=max_processes_featuriser
+                        )
+                    for j in range(num_simultaneous_slices):
+                        if first_volume_slice_index + j > last_slice_index:
+                            continue
+
+                        if config_data['as_masks']:
+                            for (label, mask) in zip(segmenter.classifier.labels, segmenter.segment_to_labels_iter(slice_features[j*slice_size:(j+1)*slice_size,:], config_data['soft_segmentation'], max_processes_classifier)):
+                                save_slice(first_volume_slice_index + j, mask, label)
+                        else:
+                            save_slice(first_volume_slice_index + j, segmenter.segment_to_label_indexes(slice_features[j*slice_size:(j+1)*slice_size,:], max_processes_classifier))
+            listener.current_progress_update(i+1)
+        listener.current_progress_end()
 
     return ()
 
