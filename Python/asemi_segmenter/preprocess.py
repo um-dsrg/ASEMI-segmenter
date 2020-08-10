@@ -137,38 +137,45 @@ def _downscaling_volume(
     ):
     '''Downscaling volume stage.'''
     context_needed = downsample_filter.get_context_needed(1)
-    for scale in range(1, config_data['num_downsamples']+1):
-        listener.log_output('> Downscaling volume to scale {}'.format(scale))
-        with checkpoint.apply('downscale_{}'.format(scale)) as skip:
-            if skip is not None:
-                listener.log_output('>> Skipped as was found checkpointed')
-                raise skip
-            best_block_shape = arrayprocs.get_optimal_block_size(
-                full_volume.get_scale_array(scale-1).shape,
-                full_volume.get_dtype(),
-                context_needed,
-                max_processes,
-                max_batch_memory,
-                num_implicit_slices=None
-                )
-            listener.current_progress_start(
-                0, arrayprocs.get_num_blocks_in_data(
+    with checkpoint.apply('downscale') as skip:
+        if skip is not None:
+            listener.log_output('>> Skipped as was found checkpointed')
+            raise skip
+
+        start = checkpoint.get_next_to_process('downscale_prog')
+        for (i, scale) in enumerate(range(1, config_data['num_downsamples']+1)):
+            listener.log_output('> Downscaling volume to scale {}'.format(scale))
+
+            if i < start:
+                listener.log_output('>> Skipping as was found checkpointed')
+                continue
+            with checkpoint.apply('downscale_prog'):
+                best_block_shape = arrayprocs.get_optimal_block_size(
                     full_volume.get_scale_array(scale-1).shape,
-                    best_block_shape,
-                    context_needed
+                    full_volume.get_dtype(),
+                    context_needed,
+                    max_processes,
+                    max_batch_memory,
+                    num_implicit_slices=None
                     )
-                )
-            downscales.downscale_in_blocks(
-                full_volume.get_scale_array(scale-1),
-                full_volume.get_scale_array(scale),
-                best_block_shape,
-                downsample_filter,
-                1,
-                max_processes=max_processes,
-                progress_listener=lambda num_ready, num_new:\
-                    listener.current_progress_update(num_ready)
-                )
-            listener.current_progress_end()
+                listener.current_progress_start(
+                    0, arrayprocs.get_num_blocks_in_data(
+                        full_volume.get_scale_array(scale-1).shape,
+                        best_block_shape,
+                        context_needed
+                        )
+                    )
+                downscales.downscale_in_blocks(
+                    full_volume.get_scale_array(scale-1),
+                    full_volume.get_scale_array(scale),
+                    best_block_shape,
+                    downsample_filter,
+                    1,
+                    max_processes=max_processes,
+                    progress_listener=lambda num_ready, num_new:\
+                        listener.current_progress_update(num_ready)
+                    )
+                listener.current_progress_end()
 
     return ()
 
