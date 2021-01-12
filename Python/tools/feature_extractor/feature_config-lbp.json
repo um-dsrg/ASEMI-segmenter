@@ -1,0 +1,31 @@
+{
+		"type": "composite",
+		"params": {
+			"featuriser_list": [
+				{
+					"type": "lbp",
+					"params": {
+						"orientation": "xy",
+						"radius": 32,
+						"scale": 0
+					}
+				},
+				{
+					"type": "lbp",
+					"params": {
+						"orientation": "xz",
+						"radius": 32,
+						"scale": 0
+					}
+				},
+				{
+					"type": "lbp",
+					"params": {
+						"orientation": "yz",
+						"radius": 32,
+						"scale": 0
+					}
+				}
+			]
+		}
+	}
