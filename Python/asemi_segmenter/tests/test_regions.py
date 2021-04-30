@@ -1,3 +1,23 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+#
+# Copyright © 2020 Marc Tanti
+#
+# This file is part of ASEMI-segmenter.
+#
+# ASEMI-segmenter is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# ASEMI-segmenter is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with ASEMI-segmenter.  If not, see <http://www.gnu.org/licenses/>.
+
 import unittest
 import numpy as np
 import os
@@ -6,244 +26,244 @@ from asemi_segmenter.lib import regions
 
 #########################################
 class Regions(unittest.TestCase):
-    
+
     #########################################
     def test_get_subarray_1d(self):
         data = np.array([1,2,3])
-        
+
         np.testing.assert_equal(
                 regions.get_subarray_1d(data, slice(1,2)),
                 np.array([2])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_subarray_1d(data, slice(0,3)),
                 np.array([1,2,3])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_subarray_1d(data, slice(0,2)),
                 np.array([1,2])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_subarray_1d(data, slice(1,3)),
                 np.array([2,3])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_subarray_1d(data, slice(-1,3)),
                 np.array([0,1,2,3])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_subarray_1d(data, slice(0,4)),
                 np.array([1,2,3,0])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_subarray_1d(data, slice(-1,4)),
                 np.array([0,1,2,3,0])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_subarray_1d(data, slice(-3,-1)),
                 np.array([0,0])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_subarray_1d(data, slice(4,5)),
                 np.array([0])
             )
-    
+
         data = np.array([1,2,3,4,5,6,7,8])
-        
+
         np.testing.assert_equal(
                 regions.get_subarray_1d(data, slice(0,4), scale=0),
                 np.array([1,2,3,4])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_subarray_1d(data, slice(0,4), scale=1),
                 np.array([1,2])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_subarray_1d(data, slice(0,4), scale=2),
                 np.array([1])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_subarray_1d(data, slice(5,8), scale=1),
                 np.array([3,4])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_subarray_1d(data, slice(5,8), scale=2),
                 np.array([2])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_subarray_1d(data, slice(0,8), scale=1),
                 np.array([1,2,3,4])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_subarray_1d(data, slice(0,8), scale=2),
                 np.array([1,2])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_subarray_1d(data, slice(0,8), scale=3),
                 np.array([1])
             )
-    
+
     #########################################
     def test_get_neighbourhood_array_1d(self):
         data = np.array([1,2,3])
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_1d(data, (0,), 0),
                 np.array([1])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_1d(data, (1,), 0),
                 np.array([2])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_1d(data, (2,), 0),
                 np.array([3])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_1d(data, (-1,), 0),
                 np.array([0])
             )
-            
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_1d(data, (3,), 0),
                 np.array([0])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_1d(data, (0,), 1),
                 np.array([0,1,2])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_1d(data, (1,), 1),
                 np.array([1,2,3])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_1d(data, (2,), 1),
                 np.array([2,3,0])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_1d(data, (-1,), 1),
                 np.array([0,0,1])
             )
-            
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_1d(data, (3,), 1),
                 np.array([3,0,0])
             )
-        
+
         data = np.array([1,2,3,4,5,6,7,8])
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_1d(data, (3,), 1, scale=0, scale_radius=False),
                 np.array([3,4,5])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_1d(data, (3,), 1, scale=0, scale_radius=True),
                 np.array([3,4,5])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_1d(data, (3,), 1, scale=1, scale_radius=False),
                 np.array([1,2,3])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_1d(data, (3,), 1, scale=1, scale_radius=True),
                 np.array([2])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_1d(data, (3,), 1, scale=2, scale_radius=False),
                 np.array([0,1,2])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_1d(data, (3,), 1, scale=2, scale_radius=True),
                 np.array([1])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_1d(data, (7,), 1, scale=0, scale_radius=False),
                 np.array([7,8,0])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_1d(data, (7,), 1, scale=0, scale_radius=True),
                 np.array([7,8,0])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_1d(data, (7,), 1, scale=1, scale_radius=False),
                 np.array([3,4,5])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_1d(data, (7,), 1, scale=1, scale_radius=True),
                 np.array([4])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_1d(data, (7,), 1, scale=2, scale_radius=False),
                 np.array([1,2,3])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_1d(data, (7,), 1, scale=2, scale_radius=True),
                 np.array([2])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_1d(data, (3,), 2, scale=0, scale_radius=False),
                 np.array([2,3,4,5,6])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_1d(data, (3,), 2, scale=0, scale_radius=True),
                 np.array([2,3,4,5,6])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_1d(data, (3,), 2, scale=1, scale_radius=False),
                 np.array([0,1,2,3,4])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_1d(data, (3,), 2, scale=1, scale_radius=True),
                 np.array([1,2,3])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_1d(data, (3,), 2, scale=2, scale_radius=False),
                 np.array([0,0,1,2,3])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_1d(data, (3,), 2, scale=2, scale_radius=True),
                 np.array([1])
             )
-    
+
     #########################################
     def test_get_subarray_2d(self):
         data = np.array([
@@ -251,14 +271,14 @@ class Regions(unittest.TestCase):
                 [4,5,6],
                 [7,8,9],
             ])
-        
+
         np.testing.assert_equal(
                 regions.get_subarray_2d(data, slice(1,2), slice(1,2)),
                 np.array([
                         [5],
                     ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_subarray_2d(data, slice(0,3), slice(0,3)),
                 np.array([
@@ -267,7 +287,7 @@ class Regions(unittest.TestCase):
                         [7,8,9],
                     ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_subarray_2d(data, slice(0,2), slice(0,3)),
                 np.array([
@@ -275,7 +295,7 @@ class Regions(unittest.TestCase):
                         [4,5,6],
                     ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_subarray_2d(data, slice(0,3), slice(0,2)),
                 np.array([
@@ -284,7 +304,7 @@ class Regions(unittest.TestCase):
                         [7,8],
                     ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_subarray_2d(data, slice(0,2), slice(0,2)),
                 np.array([
@@ -292,7 +312,7 @@ class Regions(unittest.TestCase):
                         [4,5],
                     ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_subarray_2d(data, slice(1,3), slice(0,3)),
                 np.array([
@@ -300,7 +320,7 @@ class Regions(unittest.TestCase):
                         [7,8,9],
                     ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_subarray_2d(data, slice(0,3), slice(1,3)),
                 np.array([
@@ -309,7 +329,7 @@ class Regions(unittest.TestCase):
                         [8,9],
                     ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_subarray_2d(data, slice(1,3), slice(1,3)),
                 np.array([
@@ -317,14 +337,14 @@ class Regions(unittest.TestCase):
                         [8,9],
                     ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_subarray_2d(data, slice(1,2), slice(0,3)),
                 np.array([
                         [4,5,6],
                     ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_subarray_2d(data, slice(0,3), slice(1,2)),
                 np.array([
@@ -333,7 +353,7 @@ class Regions(unittest.TestCase):
                         [8],
                     ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_subarray_2d(data, slice(-1,3), slice(0,3)),
                 np.array([
@@ -343,7 +363,7 @@ class Regions(unittest.TestCase):
                         [7,8,9],
                     ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_subarray_2d(data, slice(0,4), slice(0,3)),
                 np.array([
@@ -353,7 +373,7 @@ class Regions(unittest.TestCase):
                         [0,0,0],
                     ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_subarray_2d(data, slice(0,3), slice(-1,3)),
                 np.array([
@@ -362,7 +382,7 @@ class Regions(unittest.TestCase):
                         [0,7,8,9],
                     ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_subarray_2d(data, slice(0,3), slice(0,4)),
                 np.array([
@@ -371,7 +391,7 @@ class Regions(unittest.TestCase):
                         [7,8,9,0],
                     ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_subarray_2d(data, slice(-1,4), slice(-1,4)),
                 np.array([
@@ -382,7 +402,7 @@ class Regions(unittest.TestCase):
                         [0,0,0,0,0],
                     ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_subarray_2d(data, slice(-3,-1), slice(-3,-1)),
                 np.array([
@@ -390,14 +410,14 @@ class Regions(unittest.TestCase):
                         [0,0],
                     ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_subarray_2d(data, slice(4,5), slice(4,5)),
                 np.array([
                         [0],
                     ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_subarray_2d(data, slice(-3,-1), slice(4,5)),
                 np.array([
@@ -405,21 +425,21 @@ class Regions(unittest.TestCase):
                         [0],
                     ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_subarray_2d(data, slice(-3,-2), slice(0,2)),
                 np.array([
                         [0,0],
                     ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_subarray_2d(data, slice(1,2), slice(-3,-1)),
                 np.array([
                         [0,0],
                     ])
             )
-    
+
         data = np.array([
                 [ 1, 2, 3, 4, 5, 6, 7, 8],
                 [ 9,10,11,12,13,14,15,16],
@@ -430,7 +450,7 @@ class Regions(unittest.TestCase):
                 [49,50,51,52,53,54,55,56],
                 [57,58,59,60,61,62,63,64],
             ])
-        
+
         np.testing.assert_equal(
                 regions.get_subarray_2d(data, slice(0,4), slice(0,4), scale=0),
                 np.array([
@@ -440,7 +460,7 @@ class Regions(unittest.TestCase):
                     [25,26,27,28],
                 ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_subarray_2d(data, slice(0,4), slice(0,4), scale=1),
                 np.array([
@@ -448,14 +468,14 @@ class Regions(unittest.TestCase):
                     [ 9,10],
                 ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_subarray_2d(data, slice(0,4), slice(0,4), scale=2),
                 np.array([
                     [ 1],
                 ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_subarray_2d(data, slice(5,8), slice(5,8), scale=1),
                 np.array([
@@ -463,14 +483,14 @@ class Regions(unittest.TestCase):
                     [27,28],
                 ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_subarray_2d(data, slice(5,8), slice(5,8), scale=2),
                 np.array([
                     [10],
                 ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_subarray_2d(data, slice(0,8), slice(0,8), scale=1),
                 np.array([
@@ -480,7 +500,7 @@ class Regions(unittest.TestCase):
                     [25,26,27,28],
                 ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_subarray_2d(data, slice(0,8), slice(0,8), scale=2),
                 np.array([
@@ -488,14 +508,14 @@ class Regions(unittest.TestCase):
                     [ 9,10],
                 ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_subarray_2d(data, slice(0,8), slice(0,8), scale=3),
                 np.array([
                     [ 1],
                 ])
             )
-    
+
     #########################################
     def test_get_neighbourhood_array_2d(self):
         data = np.array([
@@ -503,49 +523,49 @@ class Regions(unittest.TestCase):
                 [4,5,6],
                 [7,8,9],
             ])
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_2d(data, (0,0), 0, {0,1}),
                 np.array([
                         [1],
                     ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_2d(data, (1,1), 0, {0,1}),
                 np.array([
                         [5],
                     ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_2d(data, (2,2), 0, {0,1}),
                 np.array([
                         [9],
                     ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_2d(data, (3,2), 0, {0,1}),
                 np.array([
                         [0],
                     ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_2d(data, (2,3), 0, {0,1}),
                 np.array([
                         [0],
                     ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_2d(data, (3,3), 0, {0,1}),
                 np.array([
                         [0],
                     ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_2d(data, (0,0), 1, {0,1}),
                 np.array([
@@ -554,7 +574,7 @@ class Regions(unittest.TestCase):
                         [0,4,5],
                     ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_2d(data, (1,1), 1, {0,1}),
                 np.array([
@@ -563,7 +583,7 @@ class Regions(unittest.TestCase):
                         [7,8,9],
                     ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_2d(data, (2,2), 1, {0,1}),
                 np.array([
@@ -572,7 +592,7 @@ class Regions(unittest.TestCase):
                         [0,0,0],
                     ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_2d(data, (2,3), 1, {0,1}),
                 np.array([
@@ -581,7 +601,7 @@ class Regions(unittest.TestCase):
                         [0,0,0],
                     ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_2d(data, (3,2), 1, {0,1}),
                 np.array([
@@ -590,7 +610,7 @@ class Regions(unittest.TestCase):
                         [0,0,0],
                     ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_2d(data, (3,3), 1, {0,1}),
                 np.array([
@@ -599,7 +619,7 @@ class Regions(unittest.TestCase):
                         [0,0,0],
                     ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_2d(data, (0,0), 2, {0,1}),
                 np.array([
@@ -610,7 +630,7 @@ class Regions(unittest.TestCase):
                         [0,0,7,8,9],
                     ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_2d(data, (1,1), 2, {0,1}),
                 np.array([
@@ -621,7 +641,7 @@ class Regions(unittest.TestCase):
                         [0,0,0,0,0],
                     ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_2d(data, (2,2), 2, {0,1}),
                 np.array([
@@ -632,17 +652,17 @@ class Regions(unittest.TestCase):
                         [0,0,0,0,0],
                     ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_2d(data, (2,2), 2, {0}),
                 np.array([3,6,9,0,0])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_2d(data, (2,2), 2, {1}),
                 np.array([7,8,9,0,0])
             )
-        
+
         data = np.array([
                 [ 1, 2, 3, 4, 5, 6, 7, 8],
                 [ 9,10,11,12,13,14,15,16],
@@ -653,7 +673,7 @@ class Regions(unittest.TestCase):
                 [49,50,51,52,53,54,55,56],
                 [57,58,59,60,61,62,63,64],
             ])
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_2d(data, (3,3), 1, {0,1}, scale=0, scale_radius=False),
                 np.array([
@@ -662,7 +682,7 @@ class Regions(unittest.TestCase):
                     [35,36,37],
                 ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_2d(data, (3,3), 1, {0,1}, scale=0, scale_radius=True),
                 np.array([
@@ -671,7 +691,7 @@ class Regions(unittest.TestCase):
                     [35,36,37],
                 ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_2d(data, (3,3), 1, {0,1}, scale=1, scale_radius=False),
                 np.array([
@@ -680,14 +700,14 @@ class Regions(unittest.TestCase):
                     [17,18,19],
                 ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_2d(data, (3,3), 1, {0,1}, scale=1, scale_radius=True),
                 np.array([
                     [10],
                 ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_2d(data, (3,3), 1, {0,1}, scale=2, scale_radius=False),
                 np.array([
@@ -696,14 +716,14 @@ class Regions(unittest.TestCase):
                     [ 0, 9,10],
                 ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_2d(data, (3,3), 1, {0,1}, scale=2, scale_radius=True),
                 np.array([
                     [ 1],
                 ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_2d(data, (7,7), 1, {0,1}, scale=0, scale_radius=False),
                 np.array([
@@ -712,7 +732,7 @@ class Regions(unittest.TestCase):
                     [ 0, 0, 0],
                 ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_2d(data, (7,7), 1, {0,1}, scale=0, scale_radius=True),
                 np.array([
@@ -721,7 +741,7 @@ class Regions(unittest.TestCase):
                     [ 0, 0, 0],
                 ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_2d(data, (7,7), 1, {0,1}, scale=1, scale_radius=False),
                 np.array([
@@ -730,14 +750,14 @@ class Regions(unittest.TestCase):
                     [35,36,37],
                 ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_2d(data, (7,7), 1, {0,1}, scale=1, scale_radius=True),
                 np.array([
                     [28],
                 ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_2d(data, (7,7), 1, {0,1}, scale=2, scale_radius=False),
                 np.array([
@@ -746,14 +766,14 @@ class Regions(unittest.TestCase):
                     [17,18,19],
                 ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_2d(data, (7,7), 1, {0,1}, scale=2, scale_radius=True),
                 np.array([
                     [10],
                 ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_2d(data, (3,3), 2, {0,1}, scale=0, scale_radius=False),
                 np.array([
@@ -764,7 +784,7 @@ class Regions(unittest.TestCase):
                     [42,43,44,45,46],
                 ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_2d(data, (3,3), 2, {0,1}, scale=0, scale_radius=True),
                 np.array([
@@ -775,7 +795,7 @@ class Regions(unittest.TestCase):
                     [42,43,44,45,46],
                 ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_2d(data, (3,3), 2, {0,1}, scale=1, scale_radius=False),
                 np.array([
@@ -786,7 +806,7 @@ class Regions(unittest.TestCase):
                     [ 0,25,26,27,28],
                 ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_2d(data, (3,3), 2, {0,1}, scale=1, scale_radius=True),
                 np.array([
@@ -795,7 +815,7 @@ class Regions(unittest.TestCase):
                     [17,18,19],
                 ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_2d(data, (3,3), 2, {0,1}, scale=2, scale_radius=False),
                 np.array([
@@ -806,14 +826,14 @@ class Regions(unittest.TestCase):
                     [ 0, 0,17,18,19],
                 ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_2d(data, (3,3), 2, {0,1}, scale=2, scale_radius=True),
                 np.array([
                     [ 1],
                 ])
             )
-    
+
     #########################################
     def test_get_subarray_3d(self):
         data = np.array([
@@ -833,7 +853,7 @@ class Regions(unittest.TestCase):
                     [25,26,27],
                 ],
             ])
-        
+
         np.testing.assert_equal(
                 regions.get_subarray_3d(data, slice(1,2), slice(1,2), slice(1,2)),
                 np.array([
@@ -842,7 +862,7 @@ class Regions(unittest.TestCase):
                         ]
                     ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_subarray_3d(data, slice(0,3), slice(0,3), slice(0,3)),
                 np.array([
@@ -863,7 +883,7 @@ class Regions(unittest.TestCase):
                     ],
                 ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_subarray_3d(data, slice(0,2), slice(0,3), slice(0,3)),
                 np.array([
@@ -879,7 +899,7 @@ class Regions(unittest.TestCase):
                     ],
                 ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_subarray_3d(data, slice(0,3), slice(0,2), slice(0,3)),
                 np.array([
@@ -897,7 +917,7 @@ class Regions(unittest.TestCase):
                     ],
                 ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_subarray_3d(data, slice(0,3), slice(0,3), slice(0,2)),
                 np.array([
@@ -918,7 +938,7 @@ class Regions(unittest.TestCase):
                     ],
                 ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_subarray_3d(data, slice(1,3), slice(0,3), slice(0,3)),
                 np.array([
@@ -934,7 +954,7 @@ class Regions(unittest.TestCase):
                     ],
                 ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_subarray_3d(data, slice(0,3), slice(1,3), slice(0,3)),
                 np.array([
@@ -952,7 +972,7 @@ class Regions(unittest.TestCase):
                     ],
                 ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_subarray_3d(data, slice(0,3), slice(0,3), slice(1,3)),
                 np.array([
@@ -973,7 +993,7 @@ class Regions(unittest.TestCase):
                     ],
                 ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_subarray_3d(data, slice(0,2), slice(0,3), slice(0,2)),
                 np.array([
@@ -989,7 +1009,7 @@ class Regions(unittest.TestCase):
                     ],
                 ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_subarray_3d(data, slice(0,3), slice(1,3), slice(0,2)),
                 np.array([
@@ -1007,7 +1027,7 @@ class Regions(unittest.TestCase):
                     ],
                 ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_subarray_3d(data, slice(0,1), slice(0,3), slice(0,3)),
                 np.array([
@@ -1018,7 +1038,7 @@ class Regions(unittest.TestCase):
                     ],
                 ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_subarray_3d(data, slice(0,3), slice(2,3), slice(0,3)),
                 np.array([
@@ -1033,7 +1053,7 @@ class Regions(unittest.TestCase):
                     ],
                 ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_subarray_3d(data, slice(0,3), slice(0,3), slice(1,2)),
                 np.array([
@@ -1054,7 +1074,7 @@ class Regions(unittest.TestCase):
                     ],
                 ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_subarray_3d(data, slice(0,1), slice(0,3), slice(0,3), to_2d=True),
                 np.array([
@@ -1063,7 +1083,7 @@ class Regions(unittest.TestCase):
                     [ 7, 8, 9],
                 ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_subarray_3d(data, slice(0,3), slice(2,3), slice(0,3), to_2d=True),
                 np.array([
@@ -1072,7 +1092,7 @@ class Regions(unittest.TestCase):
                     [25,26,27],
                 ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_subarray_3d(data, slice(0,3), slice(0,3), slice(1,2), to_2d=True),
                 np.array([
@@ -1081,7 +1101,7 @@ class Regions(unittest.TestCase):
                     [20,23,26],
                 ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_subarray_3d(data, slice(0,1), slice(0,2), slice(1,3), to_2d=True),
                 np.array([
@@ -1089,7 +1109,7 @@ class Regions(unittest.TestCase):
                     [ 5, 6],
                 ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_subarray_3d(data, slice(1,3), slice(2,3), slice(1,3), to_2d=True),
                 np.array([
@@ -1097,7 +1117,7 @@ class Regions(unittest.TestCase):
                     [26,27],
                 ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_subarray_3d(data, slice(0,2), slice(0,2), slice(1,2), to_2d=True),
                 np.array([
@@ -1105,14 +1125,14 @@ class Regions(unittest.TestCase):
                     [11,14],
                 ])
             )
-        
+
         with self.assertRaises(ValueError):
             regions.get_subarray_3d(data, slice(0,1), slice(0,1), slice(0,3), to_2d=True)
         with self.assertRaises(ValueError):
             regions.get_subarray_3d(data, slice(0,3), slice(0,1), slice(2,3), to_2d=True)
         with self.assertRaises(ValueError):
             regions.get_subarray_3d(data, slice(2,3), slice(0,3), slice(0,1), to_2d=True)
-        
+
         np.testing.assert_equal(
                 regions.get_subarray_3d(data, slice(-1,3), slice(0,3), slice(0,3)),
                 np.array([
@@ -1138,7 +1158,7 @@ class Regions(unittest.TestCase):
                     ],
                 ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_subarray_3d(data, slice(0,3), slice(-1,3), slice(0,3)),
                 np.array([
@@ -1162,7 +1182,7 @@ class Regions(unittest.TestCase):
                     ],
                 ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_subarray_3d(data, slice(0,3), slice(0,3), slice(-1,3)),
                 np.array([
@@ -1183,7 +1203,7 @@ class Regions(unittest.TestCase):
                     ],
                 ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_subarray_3d(data, slice(0,4), slice(0,3), slice(0,3)),
                 np.array([
@@ -1209,7 +1229,7 @@ class Regions(unittest.TestCase):
                     ],
                 ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_subarray_3d(data, slice(0,3), slice(0,4), slice(0,3)),
                 np.array([
@@ -1233,7 +1253,7 @@ class Regions(unittest.TestCase):
                     ],
                 ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_subarray_3d(data, slice(0,3), slice(0,3), slice(0,4)),
                 np.array([
@@ -1254,7 +1274,7 @@ class Regions(unittest.TestCase):
                     ],
                 ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_subarray_3d(data, slice(-1,4), slice(-1,4), slice(-1,4)),
                 np.array([
@@ -1295,7 +1315,7 @@ class Regions(unittest.TestCase):
                     ],
                 ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_subarray_3d(data, slice(-3,-1), slice(0,3), slice(0,3)),
                 np.array([
@@ -1311,7 +1331,7 @@ class Regions(unittest.TestCase):
                     ],
                 ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_subarray_3d(data, slice(0,3), slice(3,5), slice(0,3)),
                 np.array([
@@ -1329,7 +1349,7 @@ class Regions(unittest.TestCase):
                     ],
                 ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_subarray_3d(data, slice(0,3), slice(0,3), slice(-5,-3)),
                 np.array([
@@ -1350,7 +1370,7 @@ class Regions(unittest.TestCase):
                     ],
                 ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_subarray_3d(data, slice(3,4), slice(3,4), slice(3,4)),
                 np.array([
@@ -1359,7 +1379,7 @@ class Regions(unittest.TestCase):
                     ],
                 ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_subarray_3d(data, slice(0,1), slice(0,4), slice(0,3), to_2d=True),
                 np.array([
@@ -1369,7 +1389,7 @@ class Regions(unittest.TestCase):
                     [ 0, 0, 0],
                 ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_subarray_3d(data, slice(0,3), slice(1,2), slice(-1,4), to_2d=True),
                 np.array([
@@ -1378,7 +1398,7 @@ class Regions(unittest.TestCase):
                     [ 0,22,23,24, 0],
                 ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_subarray_3d(data, slice(-1,3), slice(0,3), slice(2,3), to_2d=True),
                 np.array([
@@ -1388,7 +1408,7 @@ class Regions(unittest.TestCase):
                     [21,24,27],
                 ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_subarray_3d(data, slice(-3,-1), slice(0,1), slice(0,3), to_2d=True),
                 np.array([
@@ -1396,14 +1416,14 @@ class Regions(unittest.TestCase):
                     [ 0, 0, 0],
                 ])
             )
-        
+
         with self.assertRaises(ValueError):
             regions.get_subarray_3d(data, slice(0,1), slice(0,1), slice(-3,-1), to_2d=True)
         with self.assertRaises(ValueError):
             regions.get_subarray_3d(data, slice(3,5), slice(0,1), slice(2,3), to_2d=True)
         with self.assertRaises(ValueError):
             regions.get_subarray_3d(data, slice(2,3), slice(7,9), slice(0,1), to_2d=True)
-        
+
         data = np.array([
                 [
                     [  1,  2,  3,  4,  5,  6,  7,  8,],
@@ -1486,7 +1506,7 @@ class Regions(unittest.TestCase):
                     [505,506,507,508,509,510,511,512,],
                 ]
             ])
-        
+
         np.testing.assert_equal(
                 regions.get_subarray_3d(data, slice(0,4), slice(0,4), slice(0,4), scale=0),
                 np.array([
@@ -1516,7 +1536,7 @@ class Regions(unittest.TestCase):
                     ],
                 ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_subarray_3d(data, slice(0,4), slice(0,4), slice(0,4), scale=1),
                 np.array([
@@ -1530,7 +1550,7 @@ class Regions(unittest.TestCase):
                     ],
                 ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_subarray_3d(data, slice(0,4), slice(0,4), slice(0,4), scale=2),
                 np.array([
@@ -1539,7 +1559,7 @@ class Regions(unittest.TestCase):
                     ]
                 ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_subarray_3d(data, slice(5,8), slice(5,8), slice(5,8), scale=1),
                 np.array([
@@ -1553,7 +1573,7 @@ class Regions(unittest.TestCase):
                     ],
                 ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_subarray_3d(data, slice(5,8), slice(5,8), slice(5,8), scale=2),
                 np.array([
@@ -1562,7 +1582,7 @@ class Regions(unittest.TestCase):
                     ]
                 ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_subarray_3d(data, slice(0,8), slice(0,8), slice(0,8), scale=1),
                 np.array([
@@ -1592,7 +1612,7 @@ class Regions(unittest.TestCase):
                     ],
                 ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_subarray_3d(data, slice(0,8), slice(0,8), slice(0,8), scale=2),
                 np.array([
@@ -1606,7 +1626,7 @@ class Regions(unittest.TestCase):
                     ],
                 ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_subarray_3d(data, slice(0,8), slice(0,8), slice(0,8), scale=3),
                 np.array([
@@ -1615,7 +1635,7 @@ class Regions(unittest.TestCase):
                     ]
                 ])
             )
-    
+
     #########################################
     def test_get_neighbourhood_array_3d(self):
         data = np.array([
@@ -1635,7 +1655,7 @@ class Regions(unittest.TestCase):
                     [25,26,27],
                 ],
             ])
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_3d(data, (0,0,0), 0, {0,1,2}),
                 np.array([
@@ -1644,7 +1664,7 @@ class Regions(unittest.TestCase):
                         ]
                     ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_3d(data, (1,1,1), 0, {0,1,2}),
                 np.array([
@@ -1653,7 +1673,7 @@ class Regions(unittest.TestCase):
                         ]
                     ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_3d(data, (2,2,2), 0, {0,1,2}),
                 np.array([
@@ -1662,7 +1682,7 @@ class Regions(unittest.TestCase):
                         ]
                     ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_3d(data, (3,3,3), 0, {0,1,2}),
                 np.array([
@@ -1671,7 +1691,7 @@ class Regions(unittest.TestCase):
                         ]
                     ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_3d(data, (0,0,0), 1, {0,1,2}),
                 np.array([
@@ -1692,7 +1712,7 @@ class Regions(unittest.TestCase):
                     ],
                 ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_3d(data, (1,1,1), 1, {0,1,2}),
                 np.array([
@@ -1713,7 +1733,7 @@ class Regions(unittest.TestCase):
                     ],
                 ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_3d(data, (2,2,2), 1, {0,1,2}),
                 np.array([
@@ -1734,7 +1754,7 @@ class Regions(unittest.TestCase):
                     ],
                 ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_3d(data, (2,2,3), 1, {0,1,2}),
                 np.array([
@@ -1755,7 +1775,7 @@ class Regions(unittest.TestCase):
                     ],
                 ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_3d(data, (2,2,4), 1, {0,1,2}),
                 np.array([
@@ -1776,7 +1796,7 @@ class Regions(unittest.TestCase):
                     ],
                 ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_3d(data, (4,4,4), 1, {0,1,2}),
                 np.array([
@@ -1797,7 +1817,7 @@ class Regions(unittest.TestCase):
                     ],
                 ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_3d(data, (1,1,1), 1, {0,1}),
                 np.array([
@@ -1806,7 +1826,7 @@ class Regions(unittest.TestCase):
                     [20,23,26],
                 ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_3d(data, (1,1,1), 1, {0,2}),
                 np.array([
@@ -1815,7 +1835,7 @@ class Regions(unittest.TestCase):
                     [22,23,24],
                 ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_3d(data, (1,1,1), 1, {1,2}),
                 np.array([
@@ -1824,7 +1844,7 @@ class Regions(unittest.TestCase):
                     [16,17,18],
                 ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_3d(data, (0,0,0), 1, {0,1}),
                 np.array([
@@ -1833,7 +1853,7 @@ class Regions(unittest.TestCase):
                     [ 0,10,13],
                 ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_3d(data, (0,0,0), 1, {0,2}),
                 np.array([
@@ -1842,7 +1862,7 @@ class Regions(unittest.TestCase):
                     [ 0,10,11],
                 ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_3d(data, (2,2,2), 1, {1,2}),
                 np.array([
@@ -1851,97 +1871,97 @@ class Regions(unittest.TestCase):
                     [ 0, 0, 0],
                 ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_3d(data, (0,0,0), 1, {0}),
                 np.array([ 0, 1,10])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_3d(data, (1,1,1), 1, {0}),
                 np.array([ 5,14,23])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_3d(data, (2,2,2), 1, {0}),
                 np.array([18,27, 0])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_3d(data, (2,2,3), 1, {0}),
                 np.array([ 0, 0, 0])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_3d(data, (2,2,4), 1, {0}),
                 np.array([ 0, 0, 0])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_3d(data, (4,4,4), 1, {0}),
                 np.array([ 0, 0, 0])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_3d(data, (0,0,0), 1, {1}),
                 np.array([ 0, 1, 4])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_3d(data, (1,1,1), 1, {1}),
                 np.array([11,14,17])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_3d(data, (2,2,2), 1, {1}),
                 np.array([24,27, 0])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_3d(data, (2,2,3), 1, {1}),
                 np.array([ 0, 0, 0])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_3d(data, (2,2,4), 1, {1}),
                 np.array([ 0, 0, 0])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_3d(data, (4,4,4), 1, {1}),
                 np.array([ 0, 0, 0])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_3d(data, (0,0,0), 1, {2}),
                 np.array([ 0, 1, 2])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_3d(data, (1,1,1), 1, {2}),
                 np.array([13,14,15])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_3d(data, (2,2,2), 1, {2}),
                 np.array([26,27, 0])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_3d(data, (2,2,3), 1, {2}),
                 np.array([27, 0, 0])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_3d(data, (2,2,4), 1, {2}),
                 np.array([ 0, 0, 0])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_3d(data, (4,4,4), 1, {2}),
                 np.array([ 0, 0, 0])
             )
-            
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_3d(data, (1,1,1), 2, {0,1,2}),
                 np.array([
@@ -1982,7 +2002,7 @@ class Regions(unittest.TestCase):
                     ],
                 ])
             )
-        
+
         data = np.array([
                 [
                     [  1,  2,  3,  4,  5,  6,  7,  8,],
@@ -2065,7 +2085,7 @@ class Regions(unittest.TestCase):
                     [505,506,507,508,509,510,511,512,],
                 ]
             ])
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_3d(data, (3,3,3), 1, {0,1,2}, scale=0, scale_radius=False),
                 np.array([
@@ -2086,7 +2106,7 @@ class Regions(unittest.TestCase):
                     ],
                 ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_3d(data, (3,3,3), 1, {0,1,2}, scale=0, scale_radius=True),
                 np.array([
@@ -2107,7 +2127,7 @@ class Regions(unittest.TestCase):
                     ],
                 ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_3d(data, (3,3,3), 1, {0,1,2}, scale=1, scale_radius=False),
                 np.array([
@@ -2128,7 +2148,7 @@ class Regions(unittest.TestCase):
                     ],
                 ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_3d(data, (3,3,3), 1, {0,1,2}, scale=1, scale_radius=True),
                 np.array([
@@ -2137,7 +2157,7 @@ class Regions(unittest.TestCase):
                     ],
                 ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_3d(data, (3,3,3), 1, {0,1,2}, scale=2, scale_radius=False),
                 np.array([
@@ -2158,7 +2178,7 @@ class Regions(unittest.TestCase):
                     ],
                 ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_3d(data, (3,3,3), 1, {0,1,2}, scale=2, scale_radius=True),
                 np.array([
@@ -2167,7 +2187,7 @@ class Regions(unittest.TestCase):
                     ],
                 ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_3d(data, (7,7,7), 1, {0,1,2}, scale=0, scale_radius=False),
                 np.array([
@@ -2188,7 +2208,7 @@ class Regions(unittest.TestCase):
                     ],
                 ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_3d(data, (7,7,7), 1, {0,1,2}, scale=0, scale_radius=True),
                 np.array([
@@ -2209,7 +2229,7 @@ class Regions(unittest.TestCase):
                     ],
                 ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_3d(data, (7,7,7), 1, {0,1,2}, scale=1, scale_radius=False),
                 np.array([
@@ -2230,7 +2250,7 @@ class Regions(unittest.TestCase):
                     ],
                 ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_3d(data, (7,7,7), 1, {0,1,2}, scale=1, scale_radius=True),
                 np.array([
@@ -2239,7 +2259,7 @@ class Regions(unittest.TestCase):
                     ],
                 ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_3d(data, (7,7,7), 1, {0,1,2}, scale=2, scale_radius=False),
                 np.array([
@@ -2260,7 +2280,7 @@ class Regions(unittest.TestCase):
                     ],
                 ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_3d(data, (7,7,7), 1, {0,1,2}, scale=2, scale_radius=True),
                 np.array([
@@ -2269,7 +2289,7 @@ class Regions(unittest.TestCase):
                     ]
                 ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_3d(data, (3,3,3), 2, {0,1,2}, scale=0, scale_radius=False),
                 np.array([
@@ -2310,7 +2330,7 @@ class Regions(unittest.TestCase):
                     ],
                 ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_3d(data, (3,3,3), 2, {0,1,2}, scale=0, scale_radius=True),
                 np.array([
@@ -2351,7 +2371,7 @@ class Regions(unittest.TestCase):
                     ],
                 ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_3d(data, (3,3,3), 2, {0,1,2}, scale=1, scale_radius=False),
                 np.array([
@@ -2392,7 +2412,7 @@ class Regions(unittest.TestCase):
                     ],
                 ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_3d(data, (3,3,3), 2, {0,1,2}, scale=1, scale_radius=True),
                 np.array([
@@ -2413,7 +2433,7 @@ class Regions(unittest.TestCase):
                     ],
                 ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_3d(data, (3,3,3), 2, {0,1,2}, scale=2, scale_radius=False),
                 np.array([
@@ -2454,7 +2474,7 @@ class Regions(unittest.TestCase):
                     ],
                 ])
             )
-        
+
         np.testing.assert_equal(
                 regions.get_neighbourhood_array_3d(data, (3,3,3), 2, {0,1,2}, scale=2, scale_radius=True),
                 np.array([
@@ -2463,6 +2483,6 @@ class Regions(unittest.TestCase):
                     ],
                 ])
             )
-        
+
 if __name__ == '__main__':
     unittest.main()

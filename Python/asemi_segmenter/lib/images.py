@@ -1,3 +1,23 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+#
+# Copyright © 2020 Marc Tanti
+#
+# This file is part of ASEMI-segmenter.
+#
+# ASEMI-segmenter is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# ASEMI-segmenter is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with ASEMI-segmenter.  If not, see <http://www.gnu.org/licenses/>.
+
 '''Image functions.'''
 
 import subprocess
@@ -16,7 +36,7 @@ IMAGE_EXTS_OUT = set('.tiff .tif .png'.split(' '))
 def matplotlib_to_imagedata(figure):
     '''
     Convert a Matplotlib figure to a numpy array.
-    
+
     :param matplotlib.pyplot.Figure figure: The figure to convert.
     :return: The numpy array.
     :rtype: numpy.ndarray
@@ -39,7 +59,7 @@ def matplotlib_to_imagedata(figure):
 def check_image_ext(fname, image_exts):
     '''
     Check if the file name extension of an image is one of the extensions in image_exts.
-    
+
     :param str fname: The file name of the image.
     :param set image_exts: A set of file extensions with the dot included e.g. {'.png'}.
         Alternatively just use images.IMAGE_EXTS_IN or images.IMAGE_EXTS_OUT.
@@ -51,14 +71,14 @@ def check_image_ext(fname, image_exts):
 def convert_dtype(image_data, num_bits=16):
     '''
     Convert image data type.
-    
+
     :param numpy.ndarray image_data: The image array.
     :param int num_bits: The number of bits per pixel to force the image data into.
         Must be 8, 16, or 32
     '''
     if num_bits not in {8, 16, 32}:
         raise ValueError('num_bits must be 8, 16, or 32.')
-    
+
     if num_bits == 8:
         if image_data.dtype == np.uint8:
             pass
@@ -88,7 +108,7 @@ def convert_dtype(image_data, num_bits=16):
             raise NotImplementedError('Image datatype not supported.')
     else:
         raise NotImplementedError('Number of bits not supported.')
-    
+
     return image_data
 
 
@@ -107,7 +127,7 @@ def load_image(image_dir, num_bits=16):
         raise ValueError('num_bits must be 8, 16, or 32.')
     if not check_image_ext(image_dir, IMAGE_EXTS_IN):
         raise ValueError('Image is not of an accepted extension.')
-        
+
     image_data = np.array(PIL.Image.open(image_dir))
     if image_data.shape == ():
         if image_dir.endswith('.jp2') and platform.system() == 'Linux':
@@ -123,9 +143,9 @@ def load_image(image_dir, num_bits=16):
                 image_data = np.array(PIL.Image.open(os.path.join(tmp_dir, 'tmp.tif')))
         else:
             raise ValueError('Image format not supported.')
-    
+
     image_data = convert_dtype(image_data, num_bits)
-    
+
     return image_data
 
 
@@ -143,14 +163,14 @@ def save_image(image_dir, image_data, num_bits=16, compress=False):
         raise ValueError('num_bits must be 8, 16, or 32.')
     if not check_image_ext(image_dir, IMAGE_EXTS_OUT):
         raise ValueError('Image is not of an accepted extension.')
-    
+
     options = dict()
     if image_dir.endswith('.tif') or image_dir.endswith('.tiff'):
         options['compression'] = 'tiff_deflate' if compress else None
     elif image_dir.endswith('.png'):
         options['compress_level'] = 9 if compress else 0
-    
+
     image_data = convert_dtype(image_data, num_bits)
     im = PIL.Image.fromarray(image_data)
-    
+
     im.save(image_dir, **options)

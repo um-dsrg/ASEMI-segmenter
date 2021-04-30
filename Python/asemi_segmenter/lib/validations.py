@@ -1,3 +1,23 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+#
+# Copyright © 2020 Marc Tanti
+#
+# This file is part of ASEMI-segmenter.
+#
+# ASEMI-segmenter is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# ASEMI-segmenter is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with ASEMI-segmenter.  If not, see <http://www.gnu.org/licenses/>.
+
 '''Validation related functions.'''
 
 import os
@@ -12,7 +32,7 @@ from asemi_segmenter.lib import volumes
 def validate_json_with_schema_file(loaded_json, schema_name):
     '''
     Validate a loaded JSON object using a schema file in the json_schema resource directory.
-    
+
     :param str loaded_json: The JSON object.
     :param str schema_name: The file name of the json_schema resource.
     :raise jsonschema.exceptions.ValidationError: Invalid JSON.
@@ -44,7 +64,7 @@ def validate_annotation_data(full_volume, subvolume_data, labels_data):
     * that the subvolume and all label slices are of the same shape as those of the full volume,
     * that the number of labels does not exceed the built in limit of FIRST_CONTROL_LABEL-1, and
     * that the number of slices in each label is equal to the number of slices in the subvolume.
-    
+
     :param volumes.FullVolume full_volume: The full volume object from which to take the reference
         slice shape. If None then this will instead be taken from subvolume_data.
     :param volumes.VolumeData subvolume_data: The subvolume object to validate.
@@ -54,7 +74,7 @@ def validate_annotation_data(full_volume, subvolume_data, labels_data):
         shape = subvolume_data.shape
     else:
         shape = full_volume.get_shape()[1:]
-    
+
     if subvolume_data.shape != shape:
         raise ValueError('Subvolume slice shapes do not match volume slice shapes ' \
             '(volume={}, subvolume={}).'.format(
