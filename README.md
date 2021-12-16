@@ -22,7 +22,7 @@ Documentation is available as follows:
 - Technical documentation is divided as follows:
    - High level technical documentation can be found in the [Wiki](https://github.com/um-dsrg/ASEMI-segmenter/wiki).
    - A discussion of the algorithms used and results on four specimens can be found in our paper:
-      [Automated segmentation of microtomography imaging of Egyptian mummies]()
+      [Automated segmentation of microtomography imaging of Egyptian mummies](http://dx.doi.org/10.1371/journal.pone.0260707)
    - Detailed documentation for the API is available in the code.
 
 Contact details:
